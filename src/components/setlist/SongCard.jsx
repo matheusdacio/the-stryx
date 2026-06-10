@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 
-const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra', descartada: 'Descartada' }
+const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
 
 export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position }) {
   const [editing, setEditing] = useState(false)
