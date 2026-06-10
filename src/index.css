@@ -320,9 +320,135 @@ body {
   flex-direction: column; align-items: center; gap: 14px;
 }
 
+/* ─── SUGESTÕES ─── */
+.pending-badge {
+  display: inline-flex; align-items: center; justify-content: center;
+  background: var(--red); color: #fff; font-size: 0.65rem; font-weight: 700;
+  border-radius: 10px; padding: 1px 6px; margin-left: 8px; vertical-align: middle;
+}
+.nav-badge {
+  position: absolute; top: -5px; right: -7px;
+  background: var(--red); color: #fff; font-size: 0.6rem; font-weight: 700;
+  border-radius: 8px; padding: 1px 5px; pointer-events: none;
+}
+
+.sug-list { display: flex; flex-direction: column; gap: 10px; }
+.sug-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); overflow: hidden;
+  display: flex; cursor: pointer; transition: border-color 0.2s;
+}
+.sug-card:hover { border-color: var(--red); }
+.sug-card-aprovada { border-left: 4px solid var(--green); }
+.sug-card-rejeitada { border-left: 4px solid var(--gray); opacity: 0.6; }
+.sug-card-aberta { border-left: 4px solid #3b82f6; }
+
+.sug-thumb-wrap { flex-shrink: 0; width: 110px; overflow: hidden; }
+.sug-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+.sug-card-body { padding: 12px; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
+.sug-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.sug-card-title { font-weight: 600; font-size: 0.92rem; }
+.sug-card-artist { font-size: 0.82rem; color: var(--text-muted); }
+.sug-card-by { font-size: 0.73rem; color: var(--text-muted); }
+.sug-status-tag {
+  font-size: 0.7rem; padding: 2px 8px; border-radius: 10px;
+  white-space: nowrap; flex-shrink: 0;
+}
+.sug-aprovada { background: rgba(16,185,129,0.15); color: var(--green); }
+.sug-rejeitada { background: rgba(107,114,128,0.15); color: var(--gray); }
+
+.opinion-summary { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
+.opinion-pill {
+  font-size: 0.7rem; padding: 2px 8px;
+  border-radius: 10px; font-weight: 500;
+}
+.my-vote-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
+
+/* Modal de sugestão */
+.yt-thumb-wrap {
+  display: block; position: relative; margin-bottom: 16px;
+  border-radius: var(--radius); overflow: hidden; max-height: 200px;
+}
+.yt-thumb { width: 100%; object-fit: cover; display: block; }
+.yt-play-icon {
+  position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+  background: rgba(0,0,0,0.7); color: #fff; width: 48px; height: 48px;
+  border-radius: 50%; display: flex; align-items: center; justify-content: center;
+  font-size: 1.2rem; pointer-events: none;
+}
+.yt-preview-small {
+  display: flex; align-items: center; gap: 10px; margin-bottom: 14px;
+  padding: 8px; background: var(--surface2); border-radius: var(--radius);
+}
+.yt-preview-small img { width: 64px; height: 40px; object-fit: cover; border-radius: 4px; }
+.yt-preview-small span { font-size: 0.82rem; color: var(--green); }
+
+.sug-description {
+  font-size: 0.85rem; color: var(--text-muted); margin-bottom: 14px;
+  padding: 10px; background: var(--surface2); border-radius: var(--radius);
+  white-space: pre-wrap;
+}
+.sug-status-banner {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 14px; border-radius: var(--radius); margin-bottom: 14px;
+  font-size: 0.85rem; font-weight: 500;
+}
+.sug-aprovada-banner { background: rgba(16,185,129,0.12); color: var(--green); }
+.sug-rejeitada-banner { background: rgba(107,114,128,0.12); color: var(--gray); }
+.btn-reopen {
+  background: none; border: 1px solid currentColor; color: inherit;
+  padding: 2px 10px; border-radius: var(--radius); font-size: 0.78rem; cursor: pointer;
+}
+
+.opinions-list { margin-bottom: 16px; }
+.opinion-item {
+  padding: 10px; background: var(--surface2); border-radius: var(--radius);
+  margin-bottom: 6px;
+}
+.opinion-item-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 4px; }
+.opinion-item-header strong { font-size: 0.85rem; }
+.opinion-badge { font-size: 0.72rem; padding: 2px 9px; border-radius: 10px; }
+.opinion-comment { font-size: 0.82rem; color: var(--text-muted); white-space: pre-wrap; }
+
+.opinion-form { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
+.existing-vote { font-size: 0.8rem; margin-bottom: 10px; color: var(--text-muted); }
+.opinion-btns { display: flex; flex-direction: column; gap: 6px; margin-bottom: 10px; }
+.btn-opinion {
+  padding: 9px 14px; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text-muted); font-size: 0.85rem;
+  cursor: pointer; text-align: left; transition: all 0.2s;
+}
+.btn-opinion:hover { border-color: var(--gray); color: var(--text); }
+.btn-opinion.selected { font-weight: 500; }
+.opinion-comment-input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); padding: 8px 11px;
+  font-size: 0.88rem; font-family: inherit; resize: vertical; outline: none;
+  transition: border-color 0.2s; margin-bottom: 8px;
+}
+.opinion-comment-input:focus { border-color: var(--red); }
+
+.admin-controls {
+  margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border);
+}
+.btn-approve {
+  background: rgba(16,185,129,0.15); border: 1px solid rgba(16,185,129,0.4);
+  color: var(--green); padding: 8px 16px; border-radius: var(--radius);
+  font-size: 0.88rem; cursor: pointer; font-weight: 500; transition: all 0.2s;
+}
+.btn-approve:hover { background: rgba(16,185,129,0.25); }
+.btn-reject {
+  background: rgba(230,57,70,0.1); border: 1px solid rgba(230,57,70,0.3);
+  color: var(--red); padding: 8px 16px; border-radius: var(--radius);
+  font-size: 0.88rem; cursor: pointer; font-weight: 500; transition: all 0.2s;
+}
+.btn-reject:hover { background: rgba(230,57,70,0.2); }
+
 @media (max-width: 480px) {
   .form-row { grid-template-columns: 1fr; }
   .card-grid { grid-template-columns: 1fr; }
   .page { padding: 16px 12px; }
   .modal { padding: 18px; }
+  .sug-thumb-wrap { width: 90px; }
 }
