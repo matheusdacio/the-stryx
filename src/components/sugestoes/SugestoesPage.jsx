@@ -260,11 +260,29 @@ function AddSugestaoModal({ onClose, userId, userName }) {
 }
 
 const FILTERS = [
-  { value: 'all', label: 'Todas' },
-  { value: 'aberta', label: 'Em aberto' },
-  { value: 'aprovada', label: 'Aprovadas' },
+  { value: 'all',       label: 'Todas' },
+  { value: 'aberta',    label: 'Em aberto' },
+  { value: 'aprovada',  label: 'Aprovadas' },
   { value: 'rejeitada', label: 'Rejeitadas' },
 ]
+
+const SORTS = [
+  { value: 'score',  label: '⭐ Pontuação' },
+  { value: 'votes',  label: '🗳 Votos' },
+  { value: 'recent', label: '🕐 Recentes' },
+]
+
+// ── Pontuação por tipo de opinião ─────────────────────────────────────
+const SCORES = { escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
+
+// Prefixo numérico para células da planilha  (ex: "1 - Escopo")
+const SCORE_PREFIX = { escopo: '1', ajustar: '0,6', fora: '0,2', nao_gosto: '0' }
+const SCORE_LABELS_XLS = {
+  escopo:    '1 - Escopo',
+  ajustar:   '0,6 - Ajustar',
+  fora:      '0,2 - Fora',
+  nao_gosto: '0 - Não curti',
+}
 
 const STATUS_LABELS_XLS = {
   aberta:    'Em aberto',
@@ -272,17 +290,26 @@ const STATUS_LABELS_XLS = {
   rejeitada: 'Rejeitada',
 }
 
-const OPINION_LABELS_XLS = {
-  escopo:    '✓ Escopo',
-  ajustar:   '~ Ajustar',
-  fora:      '✕ Fora',
-  nao_gosto: '– Não curti',
+/** Calcula pontuação de uma sugestão */
+function calcSongScore(opinoes) {
+  const list = Object.values(opinoes || {})
+  if (!list.length) return { soma: 0, media: 0, total: 0 }
+  const soma = list.reduce((acc, v) => acc + (SCORES[v.opinion] ?? 0), 0)
+  const rounded = (n) => Math.round(n * 100) / 100
+  return { soma: rounded(soma), media: rounded(soma / list.length), total: list.length }
 }
 
 function exportToExcel(sugestoes, filterLabel) {
-  // ── 1. Coleta todos os membros que votaram (ordena por quem mais votou) ──
+  // ── 1. Ordena por pontuação decrescente para o ranking ──
+  const sorted = [...sugestoes].sort((a, b) => {
+    const sa = calcSongScore(a.opinoes)
+    const sb = calcSongScore(b.opinoes)
+    return sb.soma - sa.soma || sb.total - sa.total
+  })
+
+  // ── 2. Coleta membros únicos (ordem: mais votantes primeiro) ──
   const memberFreq = {}
-  sugestoes.forEach((s) => {
+  sorted.forEach((s) => {
     Object.values(s.opinoes || {}).forEach((v) => {
       if (v.userName) memberFreq[v.userName] = (memberFreq[v.userName] || 0) + 1
     })
@@ -291,82 +318,71 @@ function exportToExcel(sugestoes, filterLabel) {
     .sort((a, b) => b[1] - a[1])
     .map(([name]) => name)
 
-  // ── 2. Cabeçalho ──
+  // ── 3. Cabeçalho ──
   const header = [
     '#',
-    'Status',
     'Título',
     'Artista',
-    'Sugerida por',
-    'YouTube',
+    'Total Votos',
+    'Soma',
+    'Média',
     ...members,
-    'Escopo',
-    'Ajustar',
-    'Fora',
-    'Não curti',
-    'Total votos',
+    'Status',
+    'YouTube',
+    'Sugerida por',
   ]
 
-  // ── 3. Linhas de dados ──
-  const rows = sugestoes.map((s, i) => {
-    const opinoes = s.opinoes || {}
-    const counts = { escopo: 0, ajustar: 0, fora: 0, nao_gosto: 0 }
+  // ── 4. Linhas de dados ──
+  const rows = sorted.map((s, i) => {
+    const { soma, media, total } = calcSongScore(s.opinoes)
 
-    // userName → label de opinião (+ comentário se houver)
+    // userName → label com score (ex: "1 - Escopo")
     const byName = {}
-    Object.values(opinoes).forEach((v) => {
+    Object.values(s.opinoes || {}).forEach((v) => {
       if (!v.userName) return
-      const label = OPINION_LABELS_XLS[v.opinion] || v.opinion
-      byName[v.userName] = v.comment ? `${label}\n${v.comment}` : label
-      if (counts[v.opinion] !== undefined) counts[v.opinion]++
+      const label = SCORE_LABELS_XLS[v.opinion] || v.opinion
+      byName[v.userName] = v.comment ? `${label}\n"${v.comment}"` : label
     })
-
-    const totalVotos = Object.keys(opinoes).length
 
     return [
       i + 1,
-      STATUS_LABELS_XLS[s.status] || s.status,
       s.title || '',
       s.artist || '',
-      s.suggestedBy || '',
-      s.videoUrl || '',
+      total,
+      soma,
+      media,
       ...members.map((m) => byName[m] || ''),
-      counts.escopo,
-      counts.ajustar,
-      counts.fora,
-      counts.nao_gosto,
-      totalVotos,
+      STATUS_LABELS_XLS[s.status] || s.status,
+      s.videoUrl || '',
+      s.suggestedBy || '',
     ]
   })
 
-  // ── 4. Monta a planilha ──
+  // ── 5. Monta a planilha ──
   const wb = XLSX.utils.book_new()
   const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
 
-  // Congela a primeira linha (cabeçalho)
+  // Congela a primeira linha
   ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }
 
   // Largura das colunas
   ws['!cols'] = [
     { wch: 4 },   // #
+    { wch: 30 },  // Título
+    { wch: 20 },  // Artista
+    { wch: 12 },  // Total Votos
+    { wch: 8 },   // Soma
+    { wch: 7 },   // Média
+    ...members.map(() => ({ wch: 18 })),
     { wch: 12 },  // Status
-    { wch: 32 },  // Título
-    { wch: 22 },  // Artista
-    { wch: 18 },  // Sugerida por
     { wch: 44 },  // YouTube
-    ...members.map(() => ({ wch: 16 })),
-    { wch: 8 },   // Escopo
-    { wch: 8 },   // Ajustar
-    { wch: 6 },   // Fora
-    { wch: 11 },  // Não curti
-    { wch: 11 },  // Total votos
+    { wch: 18 },  // Sugerida por
   ]
 
-  // Nome da aba: filtragem atual (máx 31 chars — limite do Excel)
   const sheetName = `Sugestões ${filterLabel}`.slice(0, 31)
   XLSX.utils.book_append_sheet(wb, ws, sheetName)
 
-  // ── 5. Download ──
+  // ── 6. Download ──
   const today = new Date()
   const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
   XLSX.writeFile(wb, `thestryx-sugestoes-${dateStr}.xlsx`)
@@ -376,6 +392,7 @@ export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('aberta')
+  const [sortBy, setSortBy] = useState('score')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
 
@@ -395,6 +412,22 @@ export default function SugestoesPage() {
 
   const filtered = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
   const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
+
+  // ── Ordenação ──────────────────────────────────────────────────────
+  const displayed = [...filtered].sort((a, b) => {
+    if (sortBy === 'score') {
+      const sa = calcSongScore(a.opinoes)
+      const sb = calcSongScore(b.opinoes)
+      return sb.soma - sa.soma || sb.total - sa.total
+    }
+    if (sortBy === 'votes') {
+      const ta = Object.keys(a.opinoes || {}).length
+      const tb = Object.keys(b.opinoes || {}).length
+      return tb - ta || calcSongScore(b.opinoes).soma - calcSongScore(a.opinoes).soma
+    }
+    // 'recent' — já vem do Firestore por createdAt desc, mantém ordem original
+    return 0
+  })
 
   const currentFilterLabel = FILTERS.find((f) => f.value === filter)?.label || ''
 
@@ -420,6 +453,7 @@ export default function SugestoesPage() {
         </div>
       </div>
 
+      {/* Filtros de status */}
       <div className="filter-bar">
         {FILTERS.map((f) => {
           const count = f.value === 'all' ? sugestoes.length : sugestoes.filter((s) => s.status === f.value).length
@@ -431,16 +465,32 @@ export default function SugestoesPage() {
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {/* Ordenação */}
+      <div className="sort-bar">
+        <span className="sort-label">Ordenar:</span>
+        {SORTS.map((s) => (
+          <button
+            key={s.value}
+            className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
+            onClick={() => setSortBy(s.value)}
+          >
+            {s.label}
+          </button>
+        ))}
+      </div>
+
+      {displayed.length === 0 ? (
         <div className="empty-state">
           <p>{filter === 'aberta' ? 'Nenhuma sugestão em aberto.' : 'Nenhuma sugestão aqui.'}</p>
           {filter !== 'rejeitada' && <button className="btn-primary" onClick={() => setAddModal(true)}>Fazer primeira sugestão</button>}
         </div>
       ) : (
         <div className="sug-list">
-          {filtered.map((s) => {
+          {displayed.map((s, rank) => {
             const videoId = getYouTubeId(s.videoUrl)
             const myVote = (s.opinoes || {})[user.uid]
+            const { soma, media, total } = calcSongScore(s.opinoes)
+            const showScore = total > 0
             return (
               <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
                 {videoId && (
@@ -450,15 +500,27 @@ export default function SugestoesPage() {
                 )}
                 <div className="sug-card-body">
                   <div className="sug-card-top">
-                    <div>
-                      <span className="sug-card-title">{s.title}</span>
-                      {s.artist && <span className="sug-card-artist"> — {s.artist}</span>}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
+                      {sortBy === 'score' && showScore && (
+                        <span className="sug-rank-badge">#{rank + 1}</span>
+                      )}
+                      <div>
+                        <span className="sug-card-title">{s.title}</span>
+                        {s.artist && <span className="sug-card-artist"> — {s.artist}</span>}
+                      </div>
                     </div>
-                    {s.status !== 'aberta' && (
-                      <span className={`sug-status-tag sug-${s.status}`}>
-                        {s.status === 'aprovada' ? '✓ Aprovada' : '✕ Rejeitada'}
-                      </span>
-                    )}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      {showScore && (
+                        <span className="sug-score-chip" title={`Soma: ${soma} · Média: ${media} · ${total} voto(s)`}>
+                          ⭐ {soma.toFixed(1)} <span className="sug-score-avg">({media.toFixed(2)})</span>
+                        </span>
+                      )}
+                      {s.status !== 'aberta' && (
+                        <span className={`sug-status-tag sug-${s.status}`}>
+                          {s.status === 'aprovada' ? '✓ Aprovada' : '✕ Rejeitada'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                   <p className="sug-card-by">por {s.suggestedBy}</p>
                   <OpinionSummary opinoes={s.opinoes} />
