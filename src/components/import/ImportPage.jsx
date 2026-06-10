@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc } from 'firebase/firestore'
+import { useState, useEffect } from 'react'
+import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc, getDocs, updateDoc, query, orderBy, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -126,6 +126,79 @@ export default function ImportPage() {
   const [status, setStatus] = useState(null) // null | 'importing' | 'done' | { error }
   const [progress, setProgress] = useState([])
 
+  // ── Vinculação de membros ─────────────────────────────────────────
+  const [members, setMembers] = useState([])
+  const [emailMap, setEmailMap] = useState({}) // { memberId: email }
+  const [savingEmails, setSavingEmails] = useState(false)
+  const [mergingVotes, setMergingVotes] = useState(false)
+  const [mergeMsg, setMergeMsg] = useState('')
+
+  useEffect(() => {
+    getDocs(query(collection(db, 'members'), orderBy('name'))).then(snap => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() }))
+      setMembers(list)
+      const map = {}
+      list.forEach(m => { map[m.id] = m.email || '' })
+      setEmailMap(map)
+    })
+  }, [])
+
+  const handleSaveEmails = async () => {
+    setSavingEmails(true)
+    for (const m of members) {
+      const email = (emailMap[m.id] || '').trim().toLowerCase()
+      if (email !== (m.email || '')) {
+        await updateDoc(doc(db, 'members', m.id), { email, mergedAt: null })
+      }
+    }
+    setSavingEmails(false)
+    setMergeMsg('✅ E-mails salvos! Os votos serão fundidos automaticamente quando cada membro fizer login.')
+  }
+
+  // Fusão manual: admin força a mesclagem para todos os membros com email + firebaseUid
+  const handleMergeNow = async () => {
+    setMergingVotes(true)
+    setMergeMsg('')
+    let merged = 0
+    try {
+      const membersSnap = await getDocs(collection(db, 'members'))
+      const sugestoesSnap = await getDocs(collection(db, 'sugestoes'))
+
+      for (const mDoc of membersSnap.docs) {
+        const m = mDoc.data()
+        if (!m.email || !m.firebaseUid || m.mergedAt) continue
+
+        const importKey = `import_${m.name.trim().replace(/\s+/g, '_')}`
+        const batch = writeBatch(db)
+        let count = 0
+
+        sugestoesSnap.forEach(sDoc => {
+          const opinoes = sDoc.data().opinoes || {}
+          if (!opinoes[importKey]) return
+          if (!opinoes[m.firebaseUid]) {
+            batch.update(sDoc.ref, {
+              [`opinoes.${m.firebaseUid}`]: { ...opinoes[importKey], userName: m.name.trim() },
+              [`opinoes.${importKey}`]: deleteField(),
+            })
+          } else {
+            batch.update(sDoc.ref, { [`opinoes.${importKey}`]: deleteField() })
+          }
+          count++
+        })
+
+        if (count > 0) {
+          await batch.commit()
+          await updateDoc(mDoc.ref, { mergedAt: new Date().toISOString() })
+          merged += count
+        }
+      }
+      setMergeMsg(`✅ Fusão concluída! ${merged} voto(s) vinculado(s) aos perfis reais.`)
+    } catch (e) {
+      setMergeMsg(`❌ Erro: ${e.message}`)
+    }
+    setMergingVotes(false)
+  }
+
   if (user.email !== ADMIN_EMAIL) {
     return <div className="page"><div className="empty-state"><p>Acesso restrito ao administrador.</p></div></div>
   }
@@ -185,6 +258,44 @@ export default function ImportPage() {
       <div className="page-header">
         <h2>Importar do Glissandoo</h2>
       </div>
+
+      {/* Vincular Membros ao Google */}
+      {members.length > 0 && (
+        <div className="import-section" style={{ marginBottom: 16 }}>
+          <p className="section-label">👤 Vincular membros ao Google</p>
+          <p className="import-desc" style={{ marginBottom: 10 }}>
+            Informe o e-mail Google de cada membro. Quando cada um fizer login, os votos importados serão fundidos automaticamente com o perfil real.
+          </p>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {members.map(m => (
+              <div key={m.id} style={{ display: 'flex', gap: 8, alignItems: 'center' }}>
+                <span style={{ width: 130, fontSize: '0.9rem', color: 'var(--text-muted)' }}>{m.name}</span>
+                <input
+                  type="email"
+                  placeholder="email@google.com"
+                  value={emailMap[m.id] || ''}
+                  onChange={e => setEmailMap(map => ({ ...map, [m.id]: e.target.value }))}
+                  style={{ flex: 1, fontSize: '0.85rem' }}
+                />
+                {m.firebaseUid && <span title="Já logou no app" style={{ fontSize: '1rem' }}>✅</span>}
+              </div>
+            ))}
+          </div>
+          <div style={{ display: 'flex', gap: 8, marginTop: 12 }}>
+            <button className="btn-secondary" onClick={handleSaveEmails} disabled={savingEmails}>
+              {savingEmails ? 'Salvando...' : '💾 Salvar e-mails'}
+            </button>
+            <button className="btn-primary" onClick={handleMergeNow} disabled={mergingVotes}>
+              {mergingVotes ? 'Fundindo...' : '🔗 Fundir votos importados agora'}
+            </button>
+          </div>
+          {mergeMsg && (
+            <p style={{ marginTop: 8, fontSize: '0.85rem', color: mergeMsg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+              {mergeMsg}
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Instruções */}
       <div className="import-instructions">
