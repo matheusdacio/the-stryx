@@ -9,7 +9,6 @@ const FILTERS = [
   { value: 'ensaiando', label: 'Ensaiando' },
   { value: 'pronta',    label: 'Prontas' },
   { value: 'extra',     label: 'Extras' },
-  { value: 'descartada',label: 'Descartadas' },
 ]
 
 export default function SetlistPage() {
@@ -48,11 +47,10 @@ export default function SetlistPage() {
   const filtered = filter === 'all' ? songs : songs.filter((s) => s.status === filter)
 
   const counts = {
-    all:        songs.length,
-    ensaiando:  songs.filter((s) => s.status === 'ensaiando').length,
-    pronta:     songs.filter((s) => s.status === 'pronta').length,
-    extra:      songs.filter((s) => s.status === 'extra').length,
-    descartada: songs.filter((s) => s.status === 'descartada').length,
+    all:       songs.length,
+    ensaiando: songs.filter((s) => s.status === 'ensaiando').length,
+    pronta:    songs.filter((s) => s.status === 'pronta').length,
+    extra:     songs.filter((s) => s.status === 'extra').length,
   }
 
   return (
