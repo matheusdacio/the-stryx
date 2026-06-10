@@ -50,17 +50,22 @@ function ResumoCard({ icon, label, count, selected, onToggle }) {
 // ── Importadores ─────────────────────────────────────────────────────
 
 async function importMembros(membros) {
+  // Busca membros existentes para não criar duplicatas
+  const existing = await getDocs(collection(db, 'members'))
+  const existingNames = new Set(existing.docs.map(d => (d.data().name || '').toLowerCase().trim()))
+  const existingUids  = new Set(existing.docs.map(d => d.data().uid).filter(Boolean))
+
   const batch = writeBatch(db)
+  let added = 0
   membros.forEach((m) => {
+    const nameKey = (m.name || '').toLowerCase().trim()
+    if (existingNames.has(nameKey) || (m.uid && existingUids.has(m.uid))) return // já existe
     const ref = doc(collection(db, 'members'))
-    batch.set(ref, {
-      name: m.name,
-      uid: m.uid || '',
-      role: '',
-      createdAt: serverTimestamp(),
-    })
+    batch.set(ref, { name: m.name, uid: m.uid || '', role: '', createdAt: serverTimestamp() })
+    added++
   })
-  await batch.commit()
+  if (added > 0) await batch.commit()
+  return added
 }
 
 async function importMusicas(musicas) {

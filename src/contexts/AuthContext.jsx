@@ -2,7 +2,7 @@ import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import {
   collection, query, where, getDocs, updateDoc, writeBatch,
-  deleteField, setDoc, doc,
+  deleteField, setDoc, addDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, googleProvider, db } from '../firebase/config'
 
@@ -71,7 +71,18 @@ export function AuthProvider({ children }) {
                        || (!uidSnap.empty   && uidSnap.docs[0])
                        || null
 
-        if (!memberDoc) return
+        if (!memberDoc) {
+          // Pessoa nova → cadastra automaticamente como membro da banda
+          await addDoc(collection(db, 'members'), {
+            name:        u.displayName || u.email,
+            email:       u.email,
+            firebaseUid: u.uid,
+            photoURL:    u.photoURL || '',
+            role:        '',
+            createdAt:   serverTimestamp(),
+          })
+          return
+        }
 
         const data = memberDoc.data()
 
