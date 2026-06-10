@@ -445,6 +445,56 @@ body {
 }
 .btn-reject:hover { background: rgba(230,57,70,0.2); }
 
+/* ─── IMPORT ─── */
+.btn-import {
+  font-size: 0.78rem; color: var(--text-muted); text-decoration: none;
+  border: 1px solid var(--border); padding: 3px 10px; border-radius: var(--radius);
+  transition: all 0.2s;
+}
+.btn-import:hover { color: var(--text); border-color: var(--gray); }
+
+.import-instructions {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px; margin-bottom: 24px;
+}
+.import-instructions ol { padding-left: 18px; display: flex; flex-direction: column; gap: 6px; margin-top: 8px; font-size: 0.88rem; color: var(--text-muted); }
+
+.import-section {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 20px; margin-bottom: 16px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.import-section h3 { font-size: 1rem; font-weight: 600; }
+.import-desc { font-size: 0.83rem; color: var(--text-muted); }
+
+.file-upload-label {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 8px 16px; background: var(--surface2); border: 1px dashed var(--border);
+  border-radius: var(--radius); cursor: pointer; font-size: 0.88rem;
+  color: var(--text-muted); transition: all 0.2s; width: fit-content;
+}
+.file-upload-label:hover { border-color: var(--red); color: var(--text); }
+.file-upload-label input { display: none; }
+
+.import-count { font-size: 0.85rem; color: var(--green); }
+.import-success {
+  padding: 12px 16px; background: rgba(16,185,129,0.12);
+  border: 1px solid rgba(16,185,129,0.3); border-radius: var(--radius);
+  color: var(--green); font-size: 0.88rem;
+}
+
+.import-preview { overflow-x: auto; margin-bottom: 4px; }
+.import-preview table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.import-preview th {
+  text-align: left; padding: 6px 10px; background: var(--surface2);
+  color: var(--text-muted); font-weight: 600; border-bottom: 1px solid var(--border);
+}
+.import-preview td { padding: 5px 10px; border-bottom: 1px solid var(--border); vertical-align: top; }
+.import-preview tr:last-child td { border-bottom: none; }
+.opinions-preview { display: flex; flex-direction: column; gap: 2px; }
+.mini-opinion { font-size: 0.72rem; color: var(--text-muted); }
+.preview-more { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; }
+
 @media (max-width: 480px) {
   .form-row { grid-template-columns: 1fr; }
   .card-grid { grid-template-columns: 1fr; }

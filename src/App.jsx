@@ -8,6 +8,7 @@ import CifrasPage from './components/cifras/CifrasPage'
 import EnsaiosPage from './components/ensaios/EnsaiosPage'
 import RascunhosPage from './components/rascunhos/RascunhosPage'
 import SugestoesPage from './components/sugestoes/SugestoesPage'
+import ImportPage from './components/import/ImportPage'
 
 export default function App() {
   const { user } = useAuth()
@@ -23,6 +24,7 @@ export default function App() {
           <Route path="/ensaios" element={<EnsaiosPage />} />
           <Route path="/rascunhos" element={<RascunhosPage />} />
           <Route path="/sugestoes" element={<SugestoesPage />} />
+          <Route path="/import" element={<ImportPage />} />
         </Routes>
       </div>
       <BottomNav />
