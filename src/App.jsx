@@ -1,17 +1,29 @@
+import { HashRouter, Routes, Route } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Login from './components/Login'
 import Navbar from './components/Navbar'
+import BottomNav from './components/BottomNav'
 import SetlistPage from './components/setlist/SetlistPage'
+import CifrasPage from './components/cifras/CifrasPage'
+import EnsaiosPage from './components/ensaios/EnsaiosPage'
+import RascunhosPage from './components/rascunhos/RascunhosPage'
 
 export default function App() {
   const { user } = useAuth()
-
   if (!user) return <Login />
 
   return (
-    <>
+    <HashRouter>
       <Navbar />
-      <SetlistPage />
-    </>
+      <div className="app-content">
+        <Routes>
+          <Route path="/" element={<SetlistPage />} />
+          <Route path="/cifras" element={<CifrasPage />} />
+          <Route path="/ensaios" element={<EnsaiosPage />} />
+          <Route path="/rascunhos" element={<RascunhosPage />} />
+        </Routes>
+      </div>
+      <BottomNav />
+    </HashRouter>
   )
 }

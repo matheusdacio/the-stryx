@@ -2,32 +2,28 @@ import { useState } from 'react'
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 
-const STATUS_LABELS = {
-  ensaiando: 'Ensaiando',
-  pronta: 'Pronta',
-  descartada: 'Descartada',
-}
+const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', descartada: 'Descartada' }
 
-export default function SongCard({ song }) {
+export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position }) {
   const [editing, setEditing] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
   const ref = doc(db, 'songs', song.id)
 
   const changeStatus = (status) => updateDoc(ref, { status })
-
-  const saveNotes = async () => {
-    await updateDoc(ref, { notes })
-    setEditing(false)
-  }
-
-  const remove = () => {
-    if (confirm(`Remover "${song.title}" do setlist?`)) deleteDoc(ref)
-  }
+  const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
+  const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
 
   return (
     <div className={`song-card status-${song.status}`}>
       <div className="song-header">
-        <div>
+        <div className="song-order-wrap">
+          <span className="song-position">{position}</span>
+          <div className="order-btns">
+            <button className="btn-order" onClick={onMoveUp} disabled={isFirst} title="Mover para cima">▲</button>
+            <button className="btn-order" onClick={onMoveDown} disabled={isLast} title="Mover para baixo">▼</button>
+          </div>
+        </div>
+        <div className="song-info">
           <span className="song-title">{song.title}</span>
           {song.artist && <span className="song-artist"> — {song.artist}</span>}
         </div>

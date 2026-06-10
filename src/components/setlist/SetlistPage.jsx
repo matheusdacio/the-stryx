@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import SongCard from './SongCard'
 import AddSongModal from './AddSongModal'
@@ -17,12 +17,32 @@ export default function SetlistPage() {
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
-    const q = query(collection(db, 'songs'), orderBy('createdAt', 'desc'))
+    const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
     const unsub = onSnapshot(q, (snap) => {
       setSongs(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
   }, [])
+
+  const moveUp = async (index) => {
+    if (index === 0) return
+    const a = songs[index]
+    const b = songs[index - 1]
+    const batch = writeBatch(db)
+    batch.update(doc(db, 'songs', a.id), { order: b.order })
+    batch.update(doc(db, 'songs', b.id), { order: a.order })
+    await batch.commit()
+  }
+
+  const moveDown = async (index) => {
+    if (index === songs.length - 1) return
+    const a = songs[index]
+    const b = songs[index + 1]
+    const batch = writeBatch(db)
+    batch.update(doc(db, 'songs', a.id), { order: b.order })
+    batch.update(doc(db, 'songs', b.id), { order: a.order })
+    await batch.commit()
+  }
 
   const filtered = filter === 'all' ? songs : songs.filter((s) => s.status === filter)
 
@@ -37,7 +57,7 @@ export default function SetlistPage() {
     <div className="page">
       <div className="page-header">
         <h2>Setlist</h2>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Adicionar Música</button>
+        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
       </div>
 
       <div className="filter-bar">
@@ -56,16 +76,31 @@ export default function SetlistPage() {
         <div className="empty-state">
           <p>Nenhuma música aqui ainda.</p>
           {filter === 'all' && (
-            <button className="btn-primary" onClick={() => setShowModal(true)}>Adicionar primeira música</button>
+            <button className="btn-primary" onClick={() => setShowModal(true)}>
+              Adicionar primeira música
+            </button>
           )}
         </div>
       ) : (
         <div className="song-list">
-          {filtered.map((song) => <SongCard key={song.id} song={song} />)}
+          {filtered.map((song, i) => {
+            const globalIndex = songs.findIndex((s) => s.id === song.id)
+            return (
+              <SongCard
+                key={song.id}
+                song={song}
+                onMoveUp={() => moveUp(globalIndex)}
+                onMoveDown={() => moveDown(globalIndex)}
+                isFirst={globalIndex === 0}
+                isLast={globalIndex === songs.length - 1}
+                position={globalIndex + 1}
+              />
+            )
+          })}
         </div>
       )}
 
-      {showModal && <AddSongModal onClose={() => setShowModal(false)} />}
+      {showModal && <AddSongModal onClose={() => setShowModal(false)} totalSongs={songs.length} />}
     </div>
   )
 }
