@@ -1,8 +1,9 @@
-import { useState } from 'react'
-import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp } from 'firebase/firestore'
+import { useState, useEffect } from 'react'
+import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 
-const BAND_MEMBERS = ['Matheus', 'Vocalista 1', 'Vocalista 2', 'Guitarrista Base', 'Baixista', 'Baterista']
+// Fallback caso ainda não tenha membros importados
+const DEFAULT_MEMBERS = ['Cristiano', 'Shirleano', 'Marcio Braz', 'Marcos', 'Albano', 'Matheus Dacio']
 
 function toInputDate(ts) {
   if (!ts) return ''
@@ -11,6 +12,7 @@ function toInputDate(ts) {
 }
 
 export default function EnsaioModal({ ensaio, onClose }) {
+  const [bandMembers, setBandMembers] = useState(DEFAULT_MEMBERS)
   const [form, setForm] = useState({
     date: toInputDate(ensaio?.date) || '',
     location: ensaio?.location || '',
@@ -22,14 +24,23 @@ export default function EnsaioModal({ ensaio, onClose }) {
   const [newItem, setNewItem] = useState('')
   const [saving, setSaving] = useState(false)
 
+  // Carrega membros do Firestore se existirem
+  useEffect(() => {
+    const q = query(collection(db, 'members'), orderBy('name'))
+    return onSnapshot(q, (snap) => {
+      if (!snap.empty) {
+        setBandMembers(snap.docs.map((d) => d.data().name))
+      }
+    })
+  }, [])
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const toggleMember = (m) => {
+  const toggleMember = (m) =>
     setForm((f) => ({
       ...f,
       members: f.members.includes(m) ? f.members.filter((x) => x !== m) : [...f.members, m],
     }))
-  }
 
   const addPauta = () => {
     if (!newItem.trim()) return
@@ -95,7 +106,7 @@ export default function EnsaioModal({ ensaio, onClose }) {
           <div className="form-group">
             <p className="section-label">Membros presentes</p>
             <div className="members-check">
-              {BAND_MEMBERS.map((m) => (
+              {bandMembers.map((m) => (
                 <label key={m} className="member-check-item">
                   <input type="checkbox" checked={form.members.includes(m)} onChange={() => toggleMember(m)} />
                   {m}
@@ -104,7 +115,9 @@ export default function EnsaioModal({ ensaio, onClose }) {
             </div>
           </div>
 
-          <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Notas do ensaio..." /></label>
+          <label>Observações
+            <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Notas do ensaio..." />
+          </label>
 
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>

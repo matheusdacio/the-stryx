@@ -1,205 +1,180 @@
 import { useState } from 'react'
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
+import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
-const MEMBER_NAMES = ['Cristiano', 'Shirleano', 'Marcio Braz', 'Marcos', 'Albano', 'Matheus Dacio']
+const VOTE_TO_OPINION = { 4: 'escopo', 3: 'ajustar', 2: 'fora', 1: 'nao_gosto' }
 
-// Mapeia nota Glissandoo (1-4) → opinião The Stryx
-const VOTE_TO_OPINION = { '4': 'escopo', '3': 'ajustar', '2': 'fora', '1': 'nao_gosto' }
-const VOTE_LABEL      = { '4': 'Adora', '3': 'Eu Gosto Disso', '2': 'Eu Não Sei', '1': 'Eu Não Gosto Disso' }
+// ── Helpers ──────────────────────────────────────────────────────────
 
-// Parser de CSV com separador ; e aspas duplas
-function parseCSV(text) {
-  const clean = text.replace(/^﻿/, '').replace(/\r/g, '')
-  const lines = clean.split('\n').filter((l) => l.trim())
-  const headers = parseLine(lines[0])
-  return lines.slice(1).map((line) => {
-    const vals = parseLine(line)
-    const obj = {}
-    headers.forEach((h, i) => { obj[h] = vals[i] ?? '' })
-    return obj
+function parseJSON(text) {
+  try { return JSON.parse(text) } catch (e) { return null }
+}
+
+function buildOpinoes(votes) {
+  const opinoes = {}
+  Object.entries(votes || {}).forEach(([name, v]) => {
+    const val = typeof v === 'object' ? v.value : v
+    const label = typeof v === 'object' ? v.label : String(v)
+    const opinion = VOTE_TO_OPINION[val]
+    if (!opinion) return
+    const key = `import_${name.replace(/\s+/g, '_')}`
+    opinoes[key] = {
+      userName: name,
+      opinion,
+      comment: `Glissandoo: ${label}`,
+      at: new Date().toISOString(),
+    }
   })
+  return opinoes
 }
 
-function parseLine(line) {
-  const values = []
-  let inQuote = false, cur = ''
-  for (let i = 0; i < line.length; i++) {
-    const ch = line[i]
-    if (ch === '"') {
-      if (inQuote && line[i + 1] === '"') { cur += '"'; i++ }
-      else inQuote = !inQuote
-    } else if (ch === ';' && !inQuote) { values.push(cur); cur = '' }
-    else cur += ch
-  }
-  values.push(cur)
-  return values
-}
+// ── Seção de resumo ───────────────────────────────────────────────────
 
-// Converte linhas do CSV de sugestões em documentos do Firestore
-function csvToSugestoes(rows) {
-  return rows.map((row) => {
-    const title = row['Título']?.trim()
-    if (!title) return null
-    const opinoes = {}
-    MEMBER_NAMES.forEach((name) => {
-      const val = (row[name] || '').trim()
-      if (!val) return
-      const voteNum = val.charAt(0)
-      if (!VOTE_TO_OPINION[voteNum]) return
-      const key = `import_${name.replace(/\s+/g, '_')}`
-      opinoes[key] = {
-        userName: name,
-        opinion: VOTE_TO_OPINION[voteNum],
-        comment: `Glissandoo: ${VOTE_LABEL[voteNum]}`,
-        at: new Date().toISOString(),
-      }
-    })
-    return { title, opinoes, totalVotos: parseInt(row['Total Votos']) || 0 }
-  }).filter(Boolean)
-}
-
-// Converte linhas do CSV de repertório em documentos de songs
-function csvToSongs(rows) {
-  return rows.map((row, i) => {
-    const title = (row['Título'] || row['titulo'] || row['title'] || '').trim()
-    if (!title) return null
-    const artist = (row['Artista'] || row['artista'] || row['artist'] || '').trim()
-    return { title, artist, status: 'pronta', notes: '', order: i, createdAt: serverTimestamp() }
-  }).filter(Boolean)
-}
-
-// ─── Componente de preview de tabela ───
-function PreviewTable({ rows, type }) {
-  if (!rows.length) return null
-  const cols = type === 'sugestoes'
-    ? ['#', 'Título', 'Votos', 'Opiniões mapeadas']
-    : ['#', 'Título', 'Artista']
-
+function ResumoCard({ icon, label, count, selected, onToggle }) {
   return (
-    <div className="import-preview">
-      <table>
-        <thead>
-          <tr>{cols.map((c) => <th key={c}>{c}</th>)}</tr>
-        </thead>
-        <tbody>
-          {rows.slice(0, 20).map((row, i) => (
-            <tr key={i}>
-              <td>{i + 1}</td>
-              <td>{row.title}</td>
-              {type === 'sugestoes' ? (
-                <>
-                  <td>{row.totalVotos}</td>
-                  <td className="opinions-preview">
-                    {Object.values(row.opinoes).map((o, j) => (
-                      <span key={j} className="mini-opinion">{o.userName}: {o.comment.replace('Glissandoo: ', '')}</span>
-                    ))}
-                  </td>
-                </>
-              ) : (
-                <td>{row.artist || '—'}</td>
-              )}
-            </tr>
-          ))}
-        </tbody>
-      </table>
-      {rows.length > 20 && <p className="preview-more">+ {rows.length - 20} itens não exibidos...</p>}
-    </div>
+    <button
+      className={`resumo-card ${selected ? 'selected' : ''} ${count === 0 ? 'empty' : ''}`}
+      onClick={() => count > 0 && onToggle()}
+    >
+      <span className="resumo-icon">{icon}</span>
+      <span className="resumo-count">{count}</span>
+      <span className="resumo-label">{label}</span>
+      {count > 0 && <span className="resumo-check">{selected ? '✓' : '+'}</span>}
+    </button>
   )
 }
 
-// ─── Seção de importação (reutilizável) ───
-function ImportSection({ title, desc, type, onImport }) {
-  const [rows, setRows] = useState(null)
-  const [importing, setImporting] = useState(false)
-  const [done, setDone] = useState(false)
+// ── Importadores ─────────────────────────────────────────────────────
+
+async function importMembros(membros) {
+  const batch = writeBatch(db)
+  membros.forEach((m) => {
+    const ref = doc(collection(db, 'members'))
+    batch.set(ref, {
+      name: m.name,
+      uid: m.uid || '',
+      role: '',
+      createdAt: serverTimestamp(),
+    })
+  })
+  await batch.commit()
+}
+
+async function importMusicas(musicas) {
+  for (let i = 0; i < musicas.length; i++) {
+    const m = musicas[i]
+    await addDoc(collection(db, 'songs'), {
+      title: m.title,
+      artist: m.artist || '',
+      status: 'pronta',
+      notes: '',
+      order: i,
+      createdAt: serverTimestamp(),
+    })
+  }
+}
+
+async function importSugestoes(sugestoes) {
+  for (const s of sugestoes) {
+    await addDoc(collection(db, 'sugestoes'), {
+      title: s.title,
+      artist: s.artist || '',
+      videoUrl: '',
+      description: 'Importada do Glissandoo',
+      status: 'aberta',
+      opinoes: buildOpinoes(s.votes),
+      suggestedBy: 'Glissandoo (importação)',
+      suggestedById: 'import',
+      createdAt: serverTimestamp(),
+    })
+  }
+}
+
+async function importEnsaios(ensaios) {
+  for (const e of ensaios) {
+    let date = null
+    try {
+      if (e.date) date = Timestamp.fromDate(new Date(e.date + 'T12:00:00'))
+    } catch (_) {}
+    if (!date) continue
+    await addDoc(collection(db, 'ensaios'), {
+      date,
+      location: e.location || '',
+      notes: e.notes || '',
+      status: e.status || 'realizado',
+      members: e.members || [],
+      pauta: e.pauta || [],
+      createdAt: serverTimestamp(),
+    })
+  }
+}
+
+// ── Página principal ─────────────────────────────────────────────────
+
+export default function ImportPage() {
+  const { user } = useAuth()
+  const [data, setData] = useState(null)
+  const [fileName, setFileName] = useState('')
+  const [selected, setSelected] = useState({ membros: true, musicas: true, sugestoes: true, ensaios: true })
+  const [status, setStatus] = useState(null) // null | 'importing' | 'done' | { error }
+  const [progress, setProgress] = useState([])
+
+  if (user.email !== ADMIN_EMAIL) {
+    return <div className="page"><div className="empty-state"><p>Acesso restrito ao administrador.</p></div></div>
+  }
 
   const handleFile = (e) => {
     const file = e.target.files[0]
     if (!file) return
+    setFileName(file.name)
+    setData(null)
+    setStatus(null)
+    setProgress([])
     const reader = new FileReader()
     reader.onload = (ev) => {
-      const parsed = parseCSV(ev.target.result)
-      const converted = type === 'sugestoes' ? csvToSugestoes(parsed) : csvToSongs(parsed)
-      setRows(converted)
-      setDone(false)
+      const parsed = parseJSON(ev.target.result)
+      if (!parsed) { setStatus({ error: 'Arquivo JSON inválido.' }); return }
+      setData(parsed)
     }
     reader.readAsText(file, 'UTF-8')
   }
 
+  const toggle = (key) => setSelected((s) => ({ ...s, [key]: !s[key] }))
+
   const handleImport = async () => {
-    if (!rows?.length) return
-    setImporting(true)
-    await onImport(rows)
-    setImporting(false)
-    setDone(true)
-    setRows(null)
-  }
+    if (!data) return
+    setStatus('importing')
+    setProgress([])
 
-  return (
-    <div className="import-section">
-      <h3>{title}</h3>
-      <p className="import-desc">{desc}</p>
-      <label className="file-upload-label">
-        <input type="file" accept=".csv" onChange={handleFile} />
-        📂 Selecionar CSV
-      </label>
+    const steps = [
+      { key: 'membros',   label: 'Membros',   fn: () => importMembros(data.membros || []) },
+      { key: 'musicas',   label: 'Músicas',    fn: () => importMusicas(data.musicas || []) },
+      { key: 'sugestoes', label: 'Sugestões',  fn: () => importSugestoes(data.sugestoes || []) },
+      { key: 'ensaios',   label: 'Ensaios',    fn: () => importEnsaios(data.ensaios || []) },
+    ]
 
-      {rows && (
-        <>
-          <p className="import-count">✓ {rows.length} itens encontrados no arquivo</p>
-          <PreviewTable rows={rows} type={type} />
-          <button className="btn-primary" onClick={handleImport} disabled={importing}>
-            {importing ? 'Importando...' : `Importar ${rows.length} itens`}
-          </button>
-        </>
-      )}
-
-      {done && (
-        <div className="import-success">✅ Importação concluída com sucesso!</div>
-      )}
-    </div>
-  )
-}
-
-// ─── Página principal ───
-export default function ImportPage() {
-  const { user } = useAuth()
-
-  if (user.email !== ADMIN_EMAIL) {
-    return (
-      <div className="page">
-        <div className="empty-state">
-          <p>Acesso restrito ao administrador.</p>
-        </div>
-      </div>
-    )
-  }
-
-  const importSugestoes = async (rows) => {
-    for (const row of rows) {
-      await addDoc(collection(db, 'sugestoes'), {
-        title: row.title,
-        artist: '',
-        videoUrl: '',
-        description: `Importada do Glissandoo (${row.totalVotos} votos originais)`,
-        status: 'aberta',
-        opinoes: row.opinoes,
-        suggestedBy: 'Glissandoo (importação)',
-        suggestedById: 'import',
-        createdAt: serverTimestamp(),
-      })
+    for (const step of steps) {
+      if (!selected[step.key]) continue
+      const count = (data[step.key] || []).length
+      if (!count) continue
+      setProgress((p) => [...p, { label: step.label, status: 'running', count }])
+      try {
+        await step.fn()
+        setProgress((p) => p.map((x) => x.label === step.label ? { ...x, status: 'done' } : x))
+      } catch (err) {
+        setProgress((p) => p.map((x) => x.label === step.label ? { ...x, status: 'error', err: err.message } : x))
+      }
     }
+
+    setStatus('done')
   }
 
-  const importRepertorio = async (rows) => {
-    for (const row of rows) {
-      await addDoc(collection(db, 'songs'), row)
-    }
-  }
+  const totalSelected = data
+    ? Object.entries(selected).filter(([k, v]) => v && (data[k] || []).length > 0).length
+    : 0
 
   return (
     <div className="page">
@@ -207,28 +182,114 @@ export default function ImportPage() {
         <h2>Importar do Glissandoo</h2>
       </div>
 
+      {/* Instruções */}
       <div className="import-instructions">
-        <p className="section-label">Como funciona</p>
+        <p className="section-label">Como usar</p>
         <ol>
-          <li>Rode o script de extração no console do Glissandoo</li>
-          <li>Baixe o CSV gerado</li>
-          <li>Selecione o arquivo aqui e confirme a importação</li>
+          <li>Abra o arquivo <code>glissandoo-extrator-completo.js</code> da pasta do projeto</li>
+          <li>Acesse <strong>app.glissandoo.com/group/thestryx/repertory</strong> (sem filtros)</li>
+          <li>Abra o console do navegador (F12 → Console)</li>
+          <li>Cole o script e pressione Enter — o JSON será baixado</li>
+          <li>Selecione o arquivo abaixo e confirme a importação</li>
         </ol>
       </div>
 
-      <ImportSection
-        title="🗳️ Sugestões com votos"
-        desc="CSV gerado pelo script de sugestões. Os votos (1–4) serão convertidos para as opiniões do The Stryx."
-        type="sugestoes"
-        onImport={importSugestoes}
-      />
+      {/* Upload */}
+      <div className="import-section">
+        <label className="file-upload-label">
+          <input type="file" accept=".json" onChange={handleFile} />
+          📂 Selecionar arquivo JSON
+        </label>
+        {fileName && <p className="import-count">📄 {fileName}</p>}
+        {status?.error && <p style={{ color: 'var(--red)', fontSize: '0.85rem' }}>⚠ {status.error}</p>}
+      </div>
 
-      <ImportSection
-        title="🎵 Repertório atual"
-        desc="CSV gerado pelo script de repertório. As músicas entram como 'Prontas' no Setlist."
-        type="repertorio"
-        onImport={importRepertorio}
-      />
+      {/* Resumo do que foi encontrado */}
+      {data && (
+        <>
+          <div className="resumo-header">
+            <p className="section-label">O que foi encontrado — clique para selecionar/deselecionar</p>
+            {data.exportedAt && (
+              <p className="import-desc">Exportado em: {new Date(data.exportedAt).toLocaleString('pt-BR')}</p>
+            )}
+          </div>
+
+          <div className="resumo-grid">
+            <ResumoCard icon="👤" label="Membros"   count={(data.membros   || []).length} selected={selected.membros}   onToggle={() => toggle('membros')} />
+            <ResumoCard icon="🎵" label="Músicas"   count={(data.musicas   || []).length} selected={selected.musicas}   onToggle={() => toggle('musicas')} />
+            <ResumoCard icon="🗳️" label="Sugestões" count={(data.sugestoes || []).length} selected={selected.sugestoes} onToggle={() => toggle('sugestoes')} />
+            <ResumoCard icon="📅" label="Ensaios"   count={(data.ensaios   || []).length} selected={selected.ensaios}   onToggle={() => toggle('ensaios')} />
+          </div>
+
+          {/* Preview de cada tipo */}
+          {selected.membros && (data.membros || []).length > 0 && (
+            <PreviewSection title="👤 Membros" items={(data.membros || []).map(m => m.name)} />
+          )}
+          {selected.musicas && (data.musicas || []).length > 0 && (
+            <PreviewSection title="🎵 Músicas" items={(data.musicas || []).map(m => `${m.title}${m.artist ? ` — ${m.artist}` : ''}`)} />
+          )}
+          {selected.sugestoes && (data.sugestoes || []).length > 0 && (
+            <PreviewSection
+              title="🗳️ Sugestões"
+              items={(data.sugestoes || []).map(s => {
+                const nVotes = Object.keys(s.votes || {}).length
+                return `${s.title}${s.artist ? ` — ${s.artist}` : ''} (${nVotes} votos)`
+              })}
+            />
+          )}
+          {selected.ensaios && (data.ensaios || []).length > 0 && (
+            <PreviewSection title="📅 Ensaios" items={(data.ensaios || []).map(e => `${e.date}${e.location ? ` · ${e.location}` : ''}`)} />
+          )}
+
+          {/* Progresso */}
+          {progress.length > 0 && (
+            <div className="import-progress">
+              {progress.map((p, i) => (
+                <div key={i} className={`progress-item progress-${p.status}`}>
+                  {p.status === 'running' && <span className="spinner">⏳</span>}
+                  {p.status === 'done'    && <span>✅</span>}
+                  {p.status === 'error'   && <span>❌</span>}
+                  <span>{p.label} ({p.count})</span>
+                  {p.err && <span style={{ color: 'var(--red)', fontSize: '0.75rem' }}>{p.err}</span>}
+                </div>
+              ))}
+            </div>
+          )}
+
+          {status === 'done' && (
+            <div className="import-success">✅ Importação concluída! Confira cada módulo no menu.</div>
+          )}
+
+          {status !== 'done' && totalSelected > 0 && (
+            <button
+              className="btn-primary"
+              style={{ marginTop: 8 }}
+              onClick={handleImport}
+              disabled={status === 'importing'}
+            >
+              {status === 'importing' ? 'Importando...' : `Importar dados selecionados`}
+            </button>
+          )}
+        </>
+      )}
+    </div>
+  )
+}
+
+function PreviewSection({ title, items }) {
+  const [expanded, setExpanded] = useState(false)
+  const visible = expanded ? items : items.slice(0, 5)
+  return (
+    <div className="preview-section">
+      <p className="preview-section-title">{title}</p>
+      <ul className="preview-list">
+        {visible.map((item, i) => <li key={i}>{item}</li>)}
+      </ul>
+      {items.length > 5 && (
+        <button className="btn-expand" onClick={() => setExpanded(!expanded)}>
+          {expanded ? 'Ver menos' : `+ ${items.length - 5} mais`}
+        </button>
+      )}
     </div>
   )
 }
