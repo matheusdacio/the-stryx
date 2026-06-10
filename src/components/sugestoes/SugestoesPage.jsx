@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, onSnapshot, orderBy, query,
-  addDoc, updateDoc, doc, serverTimestamp, arrayUnion, arrayRemove
+  addDoc, updateDoc, doc, serverTimestamp
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
@@ -9,11 +9,17 @@ import { useAuth } from '../../contexts/AuthContext'
 const ADMIN_EMAIL = 'matheusdaciofscbr@gmail.com'
 
 const OPINIONS = [
-  { value: 'escopo',    label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'fora',     label: '✕ Não faz sentido',            color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'nao_gosto',label: '– Não curti',                  color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+  { value: 'escopo',    label: '✓ Entra no escopo',          color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
 ]
+
+// opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
+// Isso garante 1 voto por usuário — sobrescreve se votar de novo
+function opinoesArray(opinoes) {
+  return Object.entries(opinoes || {}).map(([uid, data]) => ({ userId: uid, ...data }))
+}
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -33,10 +39,11 @@ function YouTubeThumbnail({ url, title }) {
 }
 
 function OpinionSummary({ opinoes }) {
+  const list = opinoesArray(opinoes)
   return (
     <div className="opinion-summary">
       {OPINIONS.map((o) => {
-        const count = (opinoes || []).filter((x) => x.opinion === o.value).length
+        const count = list.filter((x) => x.opinion === o.value).length
         if (!count) return null
         return (
           <span key={o.value} className="opinion-pill" style={{ color: o.color, background: o.bg }}>
@@ -54,27 +61,24 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
   const [saving, setSaving] = useState(false)
   const ref = doc(db, 'sugestoes', sugestao.id)
 
-  const existing = (sugestao.opinoes || []).find((o) => o.userId === userId)
+  const list = opinoesArray(sugestao.opinoes)
+  const existing = (sugestao.opinoes || {})[userId]
 
   const submitOpinion = async () => {
     if (!myOpinion) return
     setSaving(true)
-    // Remove old opinion if exists
-    if (existing) {
-      await updateDoc(ref, { opinoes: arrayRemove(existing) })
-    }
+    // Chave é o userId — sobrescreve automaticamente opinião anterior
     await updateDoc(ref, {
-      opinoes: arrayUnion({
-        userId,
+      [`opinoes.${userId}`]: {
         userName,
         opinion: myOpinion,
         comment: comment.trim(),
         at: new Date().toISOString(),
-      }),
+      },
     })
     setSaving(false)
-    setComment('')
     setMyOpinion(null)
+    setComment('')
   }
 
   const approve = async () => {
@@ -97,7 +101,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
     onClose()
   }
 
-  const reopen = async () => updateDoc(ref, { status: 'aberta' })
+  const reopen = () => updateDoc(ref, { status: 'aberta' })
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -120,29 +124,23 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           <p className="sug-description">{sugestao.description}</p>
         )}
 
-        {/* Status badge */}
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
             {sugestao.status === 'aprovada' ? '✓ Aprovada — adicionada ao setlist' : '✕ Rejeitada'}
-            {isAdmin && (
-              <button className="btn-reopen" onClick={reopen}>Reabrir</button>
-            )}
+            {isAdmin && <button className="btn-reopen" onClick={reopen}>Reabrir</button>}
           </div>
         )}
 
-        {/* Opiniões existentes */}
-        {(sugestao.opinoes || []).length > 0 && (
+        {list.length > 0 && (
           <div className="opinions-list">
-            <p className="section-label">Opiniões da banda</p>
-            {sugestao.opinoes.map((o, i) => {
+            <p className="section-label">Opiniões da banda ({list.length})</p>
+            {list.map((o, i) => {
               const op = OPINIONS.find((x) => x.value === o.opinion)
               return (
                 <div key={i} className="opinion-item">
                   <div className="opinion-item-header">
                     <strong>{o.userName}</strong>
-                    <span className="opinion-badge" style={{ color: op?.color, background: op?.bg }}>
-                      {op?.label}
-                    </span>
+                    <span className="opinion-badge" style={{ color: op?.color, background: op?.bg }}>{op?.label}</span>
                   </div>
                   {o.comment && <p className="opinion-comment">{o.comment}</p>}
                 </div>
@@ -151,14 +149,14 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           </div>
         )}
 
-        {/* Formulário de opinião */}
         {sugestao.status === 'aberta' && (
           <div className="opinion-form">
             <p className="section-label">{existing ? 'Alterar minha opinião' : 'Deixar minha opinião'}</p>
             {existing && (
               <p className="existing-vote">
-                Sua opinião atual: <span style={{ color: OPINIONS.find(o=>o.value===existing.opinion)?.color }}>
-                  {OPINIONS.find(o=>o.value===existing.opinion)?.label}
+                Sua opinião atual:{' '}
+                <span style={{ color: OPINIONS.find((o) => o.value === existing.opinion)?.color }}>
+                  {OPINIONS.find((o) => o.value === existing.opinion)?.label}
                 </span>
               </p>
             )}
@@ -184,14 +182,13 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
                   rows={2}
                 />
                 <button className="btn-primary" onClick={submitOpinion} disabled={saving}>
-                  {saving ? 'Enviando...' : 'Enviar opinião'}
+                  {saving ? 'Enviando...' : existing ? 'Atualizar opinião' : 'Enviar opinião'}
                 </button>
               </>
             )}
           </div>
         )}
 
-        {/* Controles do admin */}
         {isAdmin && sugestao.status === 'aberta' && (
           <div className="admin-controls">
             <p className="section-label">Decisão final</p>
@@ -220,7 +217,7 @@ function AddSugestaoModal({ onClose, userId, userName }) {
     await addDoc(collection(db, 'sugestoes'), {
       ...form,
       status: 'aberta',
-      opinoes: [],
+      opinoes: {},
       suggestedBy: userName,
       suggestedById: userId,
       createdAt: serverTimestamp(),
@@ -282,6 +279,13 @@ export default function SugestoesPage() {
     return onSnapshot(q, (snap) => setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [])
 
+  // Atualiza o modal com dados frescos do Firestore
+  useEffect(() => {
+    if (!modal || modal === 'add') return
+    const fresh = sugestoes.find((s) => s.id === modal.id)
+    if (fresh) setModal(fresh)
+  }, [sugestoes])
+
   const filtered = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
   const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
 
@@ -315,7 +319,7 @@ export default function SugestoesPage() {
         <div className="sug-list">
           {filtered.map((s) => {
             const videoId = getYouTubeId(s.videoUrl)
-            const myVote = (s.opinoes || []).find((o) => o.userId === user.uid)
+            const myVote = (s.opinoes || {})[user.uid]
             return (
               <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
                 {videoId && (
@@ -339,8 +343,9 @@ export default function SugestoesPage() {
                   <OpinionSummary opinoes={s.opinoes} />
                   {myVote && (
                     <p className="my-vote-label">
-                      Sua opinião: <span style={{ color: OPINIONS.find(o=>o.value===myVote.opinion)?.color }}>
-                        {OPINIONS.find(o=>o.value===myVote.opinion)?.label}
+                      Sua opinião:{' '}
+                      <span style={{ color: OPINIONS.find((o) => o.value === myVote.opinion)?.color }}>
+                        {OPINIONS.find((o) => o.value === myVote.opinion)?.label}
                       </span>
                     </p>
                   )}
@@ -351,7 +356,7 @@ export default function SugestoesPage() {
         </div>
       )}
 
-      {modal && (
+      {modal && modal !== 'add' && (
         <SugestaoModal
           sugestao={modal}
           onClose={() => setModal(null)}
