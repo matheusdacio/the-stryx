@@ -145,28 +145,77 @@ export default function ImportPage() {
 
   const handleSaveEmails = async () => {
     setSavingEmails(true)
+
+    // Busca a coleção users para vincular UID automaticamente ao salvar o email
+    const usersSnap = await getDocs(collection(db, 'users'))
+    const emailToUser = {}
+    usersSnap.forEach(u => {
+      const d = u.data()
+      if (d.email) emailToUser[d.email.trim().toLowerCase()] = { uid: u.id, ...d }
+    })
+
     for (const m of members) {
       const email = (emailMap[m.id] || '').trim().toLowerCase()
-      if (email !== (m.email || '')) {
-        await updateDoc(doc(db, 'members', m.id), { email, mergedAt: null })
+      if (!email) continue
+      const updates = {}
+      if (email !== (m.email || '').toLowerCase()) {
+        updates.email    = email
+        updates.mergedAt = null   // força refusão se email mudou
+      }
+      // Se já logou mas firebaseUid não está no membro, preenche agora
+      if (!m.firebaseUid && emailToUser[email]) {
+        const u = emailToUser[email]
+        updates.firebaseUid  = u.uid
+        updates.photoURL     = u.photoURL     || ''
+        updates.displayName  = u.displayName  || ''
+      }
+      if (Object.keys(updates).length) {
+        await updateDoc(doc(db, 'members', m.id), updates)
       }
     }
     setSavingEmails(false)
-    setMergeMsg('✅ E-mails salvos! Os votos serão fundidos automaticamente quando cada membro fizer login.')
+    setMergeMsg('✅ E-mails salvos! Clique em "Fundir votos importados agora" para resolver os duplicados.')
   }
 
-  // Fusão manual: admin força a mesclagem para todos os membros com email + firebaseUid
+  // Fusão manual: admin força a mesclagem
+  // Funciona mesmo que firebaseUid não esteja no membro ainda —
+  // busca na coleção users pelo email cadastrado.
   const handleMergeNow = async () => {
     setMergingVotes(true)
     setMergeMsg('')
     let merged = 0
     try {
-      const membersSnap = await getDocs(collection(db, 'members'))
-      const sugestoesSnap = await getDocs(collection(db, 'sugestoes'))
+      const [membersSnap, sugestoesSnap, usersSnap] = await Promise.all([
+        getDocs(collection(db, 'members')),
+        getDocs(collection(db, 'sugestoes')),
+        getDocs(collection(db, 'users')),
+      ])
+
+      // Mapa email → { uid, displayName, photoURL }
+      const emailToUser = {}
+      usersSnap.forEach(u => {
+        const d = u.data()
+        if (d.email) emailToUser[d.email.trim().toLowerCase()] = { uid: u.id, ...d }
+      })
 
       for (const mDoc of membersSnap.docs) {
         const m = mDoc.data()
-        if (!m.email || !m.firebaseUid || m.mergedAt) continue
+        if (!m.email) continue        // sem email cadastrado, não tem como vincular
+        if (m.mergedAt) continue      // já foi fundido antes
+
+        // Resolve o UID: prefere o que está no doc, senão busca em users pelo email
+        let firebaseUid = m.firebaseUid
+        if (!firebaseUid) {
+          const found = emailToUser[m.email.trim().toLowerCase()]
+          if (!found) continue        // usuário ainda não logou, pula por enquanto
+          firebaseUid = found.uid
+          // Aproveita para salvar no membro
+          await updateDoc(mDoc.ref, {
+            firebaseUid:  found.uid,
+            photoURL:     found.photoURL    || '',
+            displayName:  found.displayName || '',
+          })
+        }
 
         const importKey = `import_${m.name.trim().replace(/\s+/g, '_')}`
         const batch = writeBatch(db)
@@ -175,12 +224,13 @@ export default function ImportPage() {
         sugestoesSnap.forEach(sDoc => {
           const opinoes = sDoc.data().opinoes || {}
           if (!opinoes[importKey]) return
-          if (!opinoes[m.firebaseUid]) {
+          if (!opinoes[firebaseUid]) {
             batch.update(sDoc.ref, {
-              [`opinoes.${m.firebaseUid}`]: { ...opinoes[importKey], userName: m.name.trim() },
+              [`opinoes.${firebaseUid}`]: { ...opinoes[importKey], userName: m.name.trim() },
               [`opinoes.${importKey}`]: deleteField(),
             })
           } else {
+            // Já tem voto real — apaga só o duplicado importado
             batch.update(sDoc.ref, { [`opinoes.${importKey}`]: deleteField() })
           }
           count++
