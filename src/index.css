@@ -535,10 +535,67 @@ body {
 .progress-done    { border-color: var(--green); }
 .progress-error   { border-color: var(--red); }
 
+/* ─── MEMBROS ─── */
+.members-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+  gap: 14px;
+  margin-top: 4px;
+}
+.member-card {
+  background: var(--surface); border: 1px solid var(--border);
+  border-radius: var(--radius); padding: 16px;
+  display: flex; gap: 14px; align-items: flex-start;
+  transition: border-color 0.2s;
+}
+.member-card.linked { border-color: #2a3a2a; }
+.member-avatar-wrap { position: relative; flex-shrink: 0; }
+.member-avatar {
+  width: 52px; height: 52px; border-radius: 50%;
+  object-fit: cover; border: 2px solid var(--border);
+}
+.member-avatar-placeholder {
+  width: 52px; height: 52px; border-radius: 50%;
+  background: var(--surface2); border: 2px dashed var(--border);
+  display: flex; align-items: center; justify-content: center;
+  font-size: 1.3rem; font-weight: 700; color: var(--text-muted);
+}
+.member-linked-dot {
+  position: absolute; bottom: 2px; right: 2px;
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--green); border: 2px solid var(--surface);
+}
+.member-info { flex: 1; min-width: 0; }
+.member-name { font-weight: 600; font-size: 0.95rem; margin-bottom: 2px; }
+.member-role {
+  font-size: 0.8rem; color: var(--text-muted);
+  cursor: pointer; margin-bottom: 6px;
+}
+.member-role:hover { color: var(--red); }
+.member-admin-info { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.member-email { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; }
+.merge-badge {
+  display: inline-block; font-size: 0.7rem; padding: 2px 6px;
+  border-radius: 4px; background: rgba(16,185,129,0.12);
+  color: var(--green); border: 1px solid rgba(16,185,129,0.25);
+  width: fit-content;
+}
+.merge-badge.pending {
+  background: rgba(245,158,11,0.1); color: var(--yellow);
+  border-color: rgba(245,158,11,0.25);
+}
+.pending-user {
+  display: flex; align-items: center; gap: 10px;
+  padding: 10px 12px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: var(--radius);
+  margin-bottom: 8px; font-size: 0.85rem;
+}
+
 @media (max-width: 480px) {
   .form-row { grid-template-columns: 1fr; }
   .card-grid { grid-template-columns: 1fr; }
   .page { padding: 16px 12px; }
   .modal { padding: 18px; }
   .sug-thumb-wrap { width: 90px; }
+  .members-grid { grid-template-columns: 1fr; }
 }

@@ -12,9 +12,14 @@ export default function Navbar() {
       <span className="navbar-brand">THE STRYX</span>
       <div className="navbar-user">
         {isAdmin && (
-          <Link to="/import" className="btn-import" title="Importar do Glissandoo">
-            ⬆ Importar
-          </Link>
+          <>
+            <Link to="/membros" className="btn-import" title="Membros da banda">
+              👥 Banda
+            </Link>
+            <Link to="/import" className="btn-import" title="Importar do Glissandoo">
+              ⬆ Importar
+            </Link>
+          </>
         )}
         <img src={user.photoURL} alt={user.displayName} className="avatar" />
         <span className="navbar-username">{user.displayName.split(' ')[0]}</span>
