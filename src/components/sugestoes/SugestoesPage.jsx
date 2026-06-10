@@ -6,7 +6,8 @@ import {
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 
-const ADMIN_EMAIL = 'matheusdaciofscbr@gmail.com'
+// Qualquer membro logado pode aprovar (app é privado, exige login)
+const ADMIN_EMAIL = null
 
 const OPINIONS = [
   { value: 'escopo',    label: '✓ Entra no escopo',          color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
@@ -272,7 +273,7 @@ export default function SugestoesPage() {
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
 
-  const isAdmin = user.email === ADMIN_EMAIL
+  const isAdmin = true // todos os membros logados podem aprovar
 
   useEffect(() => {
     const q = query(collection(db, 'sugestoes'), orderBy('createdAt', 'desc'))
