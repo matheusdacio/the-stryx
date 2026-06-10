@@ -3,6 +3,7 @@ import {
   collection, onSnapshot, orderBy, query,
   addDoc, updateDoc, doc, serverTimestamp
 } from 'firebase/firestore'
+import * as XLSX from 'xlsx'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 
@@ -265,6 +266,112 @@ const FILTERS = [
   { value: 'rejeitada', label: 'Rejeitadas' },
 ]
 
+const STATUS_LABELS_XLS = {
+  aberta:    'Em aberto',
+  aprovada:  'Aprovada',
+  rejeitada: 'Rejeitada',
+}
+
+const OPINION_LABELS_XLS = {
+  escopo:    '✓ Escopo',
+  ajustar:   '~ Ajustar',
+  fora:      '✕ Fora',
+  nao_gosto: '– Não curti',
+}
+
+function exportToExcel(sugestoes, filterLabel) {
+  // ── 1. Coleta todos os membros que votaram (ordena por quem mais votou) ──
+  const memberFreq = {}
+  sugestoes.forEach((s) => {
+    Object.values(s.opinoes || {}).forEach((v) => {
+      if (v.userName) memberFreq[v.userName] = (memberFreq[v.userName] || 0) + 1
+    })
+  })
+  const members = Object.entries(memberFreq)
+    .sort((a, b) => b[1] - a[1])
+    .map(([name]) => name)
+
+  // ── 2. Cabeçalho ──
+  const header = [
+    '#',
+    'Status',
+    'Título',
+    'Artista',
+    'Sugerida por',
+    'YouTube',
+    ...members,
+    'Escopo',
+    'Ajustar',
+    'Fora',
+    'Não curti',
+    'Total votos',
+  ]
+
+  // ── 3. Linhas de dados ──
+  const rows = sugestoes.map((s, i) => {
+    const opinoes = s.opinoes || {}
+    const counts = { escopo: 0, ajustar: 0, fora: 0, nao_gosto: 0 }
+
+    // userName → label de opinião (+ comentário se houver)
+    const byName = {}
+    Object.values(opinoes).forEach((v) => {
+      if (!v.userName) return
+      const label = OPINION_LABELS_XLS[v.opinion] || v.opinion
+      byName[v.userName] = v.comment ? `${label}\n${v.comment}` : label
+      if (counts[v.opinion] !== undefined) counts[v.opinion]++
+    })
+
+    const totalVotos = Object.keys(opinoes).length
+
+    return [
+      i + 1,
+      STATUS_LABELS_XLS[s.status] || s.status,
+      s.title || '',
+      s.artist || '',
+      s.suggestedBy || '',
+      s.videoUrl || '',
+      ...members.map((m) => byName[m] || ''),
+      counts.escopo,
+      counts.ajustar,
+      counts.fora,
+      counts.nao_gosto,
+      totalVotos,
+    ]
+  })
+
+  // ── 4. Monta a planilha ──
+  const wb = XLSX.utils.book_new()
+  const ws = XLSX.utils.aoa_to_sheet([header, ...rows])
+
+  // Congela a primeira linha (cabeçalho)
+  ws['!freeze'] = { xSplit: 0, ySplit: 1, topLeftCell: 'A2', activePane: 'bottomLeft' }
+
+  // Largura das colunas
+  ws['!cols'] = [
+    { wch: 4 },   // #
+    { wch: 12 },  // Status
+    { wch: 32 },  // Título
+    { wch: 22 },  // Artista
+    { wch: 18 },  // Sugerida por
+    { wch: 44 },  // YouTube
+    ...members.map(() => ({ wch: 16 })),
+    { wch: 8 },   // Escopo
+    { wch: 8 },   // Ajustar
+    { wch: 6 },   // Fora
+    { wch: 11 },  // Não curti
+    { wch: 11 },  // Total votos
+  ]
+
+  // Nome da aba: filtragem atual (máx 31 chars — limite do Excel)
+  const sheetName = `Sugestões ${filterLabel}`.slice(0, 31)
+  XLSX.utils.book_append_sheet(wb, ws, sheetName)
+
+  // ── 5. Download ──
+  const today = new Date()
+  const dateStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, '0')}-${String(today.getDate()).padStart(2, '0')}`
+  XLSX.writeFile(wb, `thestryx-sugestoes-${dateStr}.xlsx`)
+}
+
 export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
@@ -289,6 +396,13 @@ export default function SugestoesPage() {
   const filtered = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
   const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
 
+  const currentFilterLabel = FILTERS.find((f) => f.value === filter)?.label || ''
+
+  const handleExport = () => {
+    if (filtered.length === 0) return
+    exportToExcel(filtered, currentFilterLabel)
+  }
+
   return (
     <div className="page">
       <div className="page-header">
@@ -296,7 +410,14 @@ export default function SugestoesPage() {
           Sugestões
           {pendingCount > 0 && <span className="pending-badge">{pendingCount}</span>}
         </h2>
-        <button className="btn-primary" onClick={() => setAddModal(true)}>+ Sugerir</button>
+        <div style={{ display: 'flex', gap: 8 }}>
+          {isAdmin && filtered.length > 0 && (
+            <button className="btn-secondary" onClick={handleExport} title="Exportar para Excel">
+              📊 Exportar
+            </button>
+          )}
+          <button className="btn-primary" onClick={() => setAddModal(true)}>+ Sugerir</button>
+        </div>
       </div>
 
       <div className="filter-bar">
