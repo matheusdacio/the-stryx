@@ -1,16 +1,32 @@
 // ============================================================
-// Glissandoo — Extrator Completo (The Stryx)
-// Extrai: músicas, sugestões, ensaios e membros
+// Glissandoo — Extrator Completo (The Stryx) v2
 //
-// Como usar:
-//   1. Acesse https://app.glissandoo.com/group/thestryx/repertory
-//      (sem filtros, para carregar todas as músicas)
-//   2. Abra o console (F12 > Console)
-//   3. Cole todo este script e pressione Enter
-//   4. O arquivo thestryx-export.json será baixado
+// Estrutura validada diretamente no app em Jun/2026.
+//
+// ── COMO USAR ────────────────────────────────────────────────
+//
+//  Para extrair MÚSICAS + SUGESTÕES + MEMBROS:
+//    1. Acesse: https://app.glissandoo.com/group/thestryx/repertory
+//       (sem filtro de busca ativo — deve mostrar todas as 112 peças)
+//    2. Abra o console do navegador (F12 → Console)
+//    3. Cole todo este script e pressione Enter
+//    4. Arquivo "thestryx-export-repertorio-YYYY-MM-DD.json" será baixado
+//
+//  Para extrair ENSAIOS:
+//    1. Acesse: https://app.glissandoo.com/group/thestryx/events
+//    2. Clique em "Anteriores" para ver os ensaios passados
+//    3. Role a página até o fim para garantir que todos carregaram
+//    4. Cole este script no console e pressione Enter
+//    5. Arquivo "thestryx-export-eventos-YYYY-MM-DD.json" será baixado
+//
+//  Depois de exportar, use a página de Importação do The Stryx App.
 // ============================================================
 
 (function () {
+  'use strict';
+
+  // ── Mapeamento de UIDs do Glissandoo → nomes ─────────────────────
+  // (usado para converter votes de músicas, que só têm UID)
   const memberMap = {
     "QrBlf5DKDWYCh88sd0CNrgd5j4x2": "Cristiano",
     "Ev6SDcTdrRXUjMUHN0xKr3pIcSc2": "Shirleano",
@@ -20,110 +36,232 @@
     "YV2aDlkRbzfmnvMqQ5aF013qtjB3": "Matheus Dacio",
   };
 
-  const VOTE_LABEL = { 4: 'Adora', 3: 'Eu Gosto Disso', 2: 'Eu Não Sei', 1: 'Eu Não Gosto Disso' };
+  // Legenda dos votos do Glissandoo
+  const VOTE_LABEL = {
+    4: 'Adora',
+    3: 'Eu Gosto Disso',
+    2: 'Eu Não Sei',
+    1: 'Eu Não Gosto Disso'
+  };
 
+  // ── Helpers ──────────────────────────────────────────────────────
   const root = document.getElementById('root');
   const containerKey = Object.keys(root).find(k => k.startsWith('__reactContainer'));
+  if (!containerKey) { alert('Erro: React root não encontrado.'); return; }
   const fiber = root[containerKey];
 
-  // ── Busca genérica no fiber ──────────────────────────────
-  function findArrayWhere(check, minLen = 1, maxLen = 9999) {
+  // Busca array em memoizedState do fiber (para músicas)
+  function findArrayInState(check, minLen = 5) {
     const visited = new WeakSet();
-    function _s(n, d) {
-      if (!n || d > 100 || visited.has(n)) return null;
+    function _s(n, depth) {
+      if (!n || depth > 160 || visited.has(n)) return null;
       visited.add(n);
       try {
         let s = n.memoizedState;
         while (s) {
           const ms = s.memoizedState;
-          if (Array.isArray(ms) && ms.length >= minLen && ms.length <= maxLen) {
-            try { if (check(ms[0])) return ms; } catch(e) {}
+          if (Array.isArray(ms) && ms.length >= minLen) {
+            try { if (check(ms[0])) return ms; } catch (_) {}
           }
           s = s.next;
         }
-      } catch (e) {}
-      return _s(n.child, d + 1) || _s(n.sibling, d + 1);
+      } catch (_) {}
+      return _s(n.child, depth + 1) || _s(n.sibling, depth + 1);
     }
     return _s(fiber, 0);
   }
 
-  // ── Músicas ─────────────────────────────────────────────
-  const songsRaw = findArrayWhere(
-    item => item && item.id && item.title !== undefined && item.tags !== undefined
-  );
+  // Coleta objetos evento via memoizedProps (para ensaios)
+  function collectEventProps() {
+    const events = [];
+    const visited = new WeakSet();
+    function scan(n, depth) {
+      if (!n || depth > 220 || visited.has(n)) return;
+      visited.add(n);
+      try {
+        const p = n.memoizedProps;
+        if (p && p.event && p.event._data && p.event.id && !events.find(e => e.id === p.event.id)) {
+          events.push(p.event);
+        }
+      } catch (_) {}
+      scan(n.child, depth + 1);
+      scan(n.sibling, depth + 1);
+    }
+    scan(fiber, 0);
+    return events;
+  }
 
-  if (!songsRaw) {
-    alert('Músicas não encontradas. Certifique-se de estar na página de repertório.');
+  // Converte Firestore Timestamp → "YYYY-MM-DD"
+  function tsToDate(ts) {
+    if (!ts) return '';
+    if (ts.seconds) return new Date(ts.seconds * 1000).toISOString().slice(0, 10);
+    if (ts.toDate) return ts.toDate().toISOString().slice(0, 10);
+    if (typeof ts === 'string') return ts.slice(0, 10);
+    if (typeof ts === 'number') return new Date(ts).toISOString().slice(0, 10);
+    return '';
+  }
+
+  // ── Detecta a página atual ───────────────────────────────────────
+  const path = window.location.pathname;
+  const isRepertory = path.includes('/repertory');
+  const isEvents = path.includes('/events');
+
+  if (!isRepertory && !isEvents) {
+    alert(
+      'Execute este script na página de Repertório ou Eventos do Glissandoo.\n\n' +
+      '• Músicas/Sugestões: /group/thestryx/repertory\n' +
+      '• Ensaios: /group/thestryx/events'
+    );
     return;
   }
 
-  const songs = [], sugestoes = [];
+  let songs = [], sugestoes = [], ensaios = [], membros = [];
+  let tipo = '';
 
-  songsRaw.forEach(s => {
-    const tags = s.tags || [];
-    const isSugestao = tags.some(t => /sugest/i.test(t));
+  // ── EXTRAÇÃO DE MÚSICAS E SUGESTÕES ─────────────────────────────
+  if (isRepertory) {
+    tipo = 'repertorio';
 
-    const votes = {};
-    Object.entries(s.votes || {}).forEach(([uid, v]) => {
-      const name = memberMap[uid];
-      if (name) votes[name] = { value: v, label: VOTE_LABEL[v] || String(v) };
-    });
+    // Músicas estão num array de memoizedState com campos: id, title, tags, votes
+    // OBS: os campos vêm de _data via getters, por isso 'tags' e 'title' funcionam
+    // como propriedades diretas mas NÃO são own properties do objeto.
+    const songsRaw = findArrayInState(
+      item => item && item.id && item.title !== undefined && item.tags !== undefined
+    );
 
-    const item = {
-      title: s.title || '',
-      artist: s.artist || s.author || '',
-      tags,
-      votes,
-    };
+    if (!songsRaw) {
+      alert(
+        'Músicas não encontradas!\n\n' +
+        'Verifique:\n' +
+        '• Está na página https://app.glissandoo.com/group/thestryx/repertory\n' +
+        '• Não há filtro de busca ativo (barra de pesquisa vazia)\n' +
+        '• A página terminou de carregar (deve mostrar 112 peças)'
+      );
+      return;
+    }
 
-    if (isSugestao) sugestoes.push(item);
-    else songs.push(item);
-  });
+    console.log(`🔍 ${songsRaw.length} itens encontrados no repertório...`);
 
-  // ── Ensaios ──────────────────────────────────────────────
-  // Tenta diferentes padrões de campo de data
-  const rehearsalsRaw = findArrayWhere(
-    item => item && item.id && (item.date || item.startDate || item.scheduledAt || item.datetime || item.when)
-  );
+    songsRaw.forEach(s => {
+      const tags = s.tags || [];
 
-  const ensaios = (rehearsalsRaw || [])
-    .filter(r => r.id && (r.date || r.startDate || r.scheduledAt || r.datetime || r.when))
-    .map(r => {
-      const rawDate = r.date || r.startDate || r.scheduledAt || r.datetime || r.when;
-      let dateISO = '';
-      try {
-        if (typeof rawDate === 'number') dateISO = new Date(rawDate).toISOString().slice(0, 10);
-        else if (typeof rawDate === 'string') dateISO = rawDate.slice(0, 10);
-        else if (rawDate && typeof rawDate.toDate === 'function') dateISO = rawDate.toDate().toISOString().slice(0, 10);
-        else if (rawDate && rawDate.seconds) dateISO = new Date(rawDate.seconds * 1000).toISOString().slice(0, 10);
-      } catch(e) {}
+      // Determina se é sugestão (tag "Sugestão") ou música ativa
+      const isSugestao = tags.some(t => t === 'Sugestão' || /sugest/i.test(t));
 
-      const membersPresent = [];
-      (r.members || r.attendees || r.presence || []).forEach(uid => {
-        const name = memberMap[uid] || (typeof uid === 'string' && uid.length < 30 ? uid : null);
-        if (name) membersPresent.push(name);
+      // Constrói objeto de votos: { nomeDoMembro: { value: 1-4, label: '...' } }
+      const votes = {};
+      Object.entries(s.votes || {}).forEach(([uid, v]) => {
+        const name = memberMap[uid] || uid; // fallback: usa UID se não encontrar
+        const numVal = typeof v === 'number' ? v : (v?.value ?? 0);
+        if (numVal >= 1 && numVal <= 4) {
+          votes[name] = { value: numVal, label: VOTE_LABEL[numVal] };
+        }
       });
 
-      return {
-        date: dateISO,
-        location: r.location || r.place || r.local || '',
-        notes: r.notes || r.description || r.obs || '',
-        status: r.status || 'realizado',
-        members: membersPresent,
-        pauta: (r.agenda || r.pauta || r.items || []).map(p =>
-          typeof p === 'string' ? { text: p, done: false } : { text: p.text || p.title || String(p), done: !!p.done }
-        ),
+      // YouTube: campo correto é 'compositor' (não 'artist' nem 'author')
+      const ytId = s.media?.id || null;
+      const ytThumb = s.media?.thumbnails?.maxres?.url
+                   || s.media?.thumbnails?.high?.url
+                   || s.media?.thumbnails?.standard?.url
+                   || null;
+
+      const item = {
+        title: s.title || '',
+        artist: s.compositor || '', // ← campo real no Glissandoo é 'compositor'
+        tags,
+        votes,
+        videoId: ytId,
+        videoThumb: ytThumb,
       };
-    })
-    .filter(r => r.date); // só com data válida
 
-  // ── Membros ──────────────────────────────────────────────
-  const membros = Object.entries(memberMap).map(([uid, name]) => ({ uid, name }));
+      if (isSugestao) {
+        sugestoes.push(item);
+      } else {
+        // "Repertório" e "Extra" vão para songs
+        songs.push(item);
+      }
+    });
 
-  // ── Exporta JSON ─────────────────────────────────────────
+    membros = Object.entries(memberMap).map(([uid, name]) => ({ uid, name }));
+
+    console.log(`✅ ${songs.length} músicas, ${sugestoes.length} sugestões encontradas`);
+  }
+
+  // ── EXTRAÇÃO DE ENSAIOS ──────────────────────────────────────────
+  if (isEvents) {
+    tipo = 'eventos';
+
+    // Eventos ficam em memoizedProps (não em memoizedState)
+    // Cada card de evento passa props.event com toda a estrutura
+    const eventsRaw = collectEventProps();
+
+    if (eventsRaw.length === 0) {
+      alert(
+        'Nenhum evento encontrado!\n\n' +
+        'Certifique-se de:\n' +
+        '• Estar em https://app.glissandoo.com/group/thestryx/events\n' +
+        '• Ter clicado em "Anteriores" para ver eventos passados\n' +
+        '• Ter rolado a página até o fim para carregar todos'
+      );
+      return;
+    }
+
+    console.log(`🔍 ${eventsRaw.length} eventos encontrados...`);
+
+    // Reconstrói mapa de membros a partir dos próprios eventos (mais confiável)
+    const dynamicMemberMap = { ...memberMap };
+    eventsRaw.forEach(ev => {
+      Object.entries(ev._data.players || {}).forEach(([uid, p]) => {
+        if (p.name && !dynamicMemberMap[uid]) {
+          dynamicMemberMap[uid] = p.name.trim();
+        }
+      });
+    });
+    membros = Object.entries(dynamicMemberMap).map(([uid, name]) => ({ uid, name }));
+
+    const now = Date.now() / 1000;
+
+    ensaios = eventsRaw
+      .filter(ev => ev._data.datetime)
+      .map(ev => {
+        const d = ev._data;
+
+        // Determina status pelo horário
+        const isPast = d.datetime.seconds < now;
+        const status = isPast ? 'realizado' : 'planejado';
+
+        // Membros presentes: confirmed → presentes, declined → ausentes
+        // Para eventos futuros, lista todos como planejados
+        const membersPresent = Object.values(d.players || {})
+          .filter(p => p.status === 'confirmed' || (!isPast && p.status !== 'declined'))
+          .map(p => (p.name || '').trim())
+          .filter(Boolean);
+
+        // Notas: pode ter description (às vezes tem espaço vazio)
+        const notes = (d.description || '').trim();
+
+        return {
+          date: tsToDate(d.datetime),
+          dateEnd: tsToDate(d.datetimeEnd),
+          location: d.locality || '',
+          notes,
+          status,
+          type: d.type || 'practice',
+          members: membersPresent,
+          pauta: [],
+        };
+      })
+      .filter(e => e.date)
+      .sort((a, b) => (a.date < b.date ? -1 : 1));
+
+    console.log(`✅ ${ensaios.length} ensaios processados`);
+  }
+
+  // ── Exporta JSON ─────────────────────────────────────────────────
   const output = {
     exportedAt: new Date().toISOString(),
-    fonte: 'Glissandoo - The Stryx',
+    fonte: `Glissandoo - The Stryx (${tipo})`,
+    tipo,
     resumo: {
       musicas: songs.length,
       sugestoes: sugestoes.length,
@@ -140,11 +278,13 @@
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = `thestryx-export-${new Date().toISOString().slice(0, 10)}.json`;
+  a.download = `thestryx-export-${tipo}-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(a);
   a.click();
+  document.body.removeChild(a);
   URL.revokeObjectURL(url);
 
-  console.log('✅ Exportação concluída:');
+  console.log(`\n✅ Exportação (${tipo}) concluída:`);
   console.table(output.resumo);
-  console.log('📁 Arquivo: thestryx-export-*.json');
+  console.log(`📁 Arquivo: thestryx-export-${tipo}-*.json`);
 })();

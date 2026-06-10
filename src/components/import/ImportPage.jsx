@@ -79,10 +79,14 @@ async function importMusicas(musicas) {
 
 async function importSugestoes(sugestoes) {
   for (const s of sugestoes) {
+    // Reconstrói URL do YouTube a partir do videoId exportado pelo extrator
+    const videoUrl = s.videoId
+      ? `https://www.youtube.com/watch?v=${s.videoId}`
+      : (s.videoUrl || '')
     await addDoc(collection(db, 'sugestoes'), {
       title: s.title,
       artist: s.artist || '',
-      videoUrl: '',
+      videoUrl,
       description: 'Importada do Glissandoo',
       status: 'aberta',
       opinoes: buildOpinoes(s.votes),
@@ -184,13 +188,19 @@ export default function ImportPage() {
 
       {/* Instruções */}
       <div className="import-instructions">
-        <p className="section-label">Como usar</p>
+        <p className="section-label">Como exportar do Glissandoo</p>
+        <p className="import-desc" style={{ marginBottom: 6, fontWeight: 600 }}>📀 Para músicas e sugestões:</p>
         <ol>
-          <li>Abra o arquivo <code>glissandoo-extrator-completo.js</code> da pasta do projeto</li>
           <li>Acesse <strong>app.glissandoo.com/group/thestryx/repertory</strong> (sem filtros)</li>
-          <li>Abra o console do navegador (F12 → Console)</li>
-          <li>Cole o script e pressione Enter — o JSON será baixado</li>
-          <li>Selecione o arquivo abaixo e confirme a importação</li>
+          <li>Abra o console (F12 → Console), cole <code>glissandoo-extrator-completo.js</code> e Enter</li>
+          <li>Baixa <code>thestryx-export-repertorio-*.json</code> — importe abaixo</li>
+        </ol>
+        <p className="import-desc" style={{ marginTop: 8, marginBottom: 6, fontWeight: 600 }}>📅 Para ensaios:</p>
+        <ol>
+          <li>Acesse <strong>app.glissandoo.com/group/thestryx/events</strong></li>
+          <li>Clique em <strong>Anteriores</strong> e role até o fim para carregar tudo</li>
+          <li>Cole o mesmo script no console — baixa <code>thestryx-export-eventos-*.json</code></li>
+          <li>Importe este segundo arquivo aqui também (pode importar um por vez)</li>
         </ol>
       </div>
 
