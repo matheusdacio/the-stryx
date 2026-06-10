@@ -66,10 +66,12 @@ async function importMembros(membros) {
 async function importMusicas(musicas) {
   for (let i = 0; i < musicas.length; i++) {
     const m = musicas[i]
+    // Músicas com tag "Extra" no Glissandoo → status extra no The Stryx
+    const isExtra = (m.tags || []).some(t => t === 'Extra' || /^extra$/i.test(t))
     await addDoc(collection(db, 'songs'), {
       title: m.title,
       artist: m.artist || '',
-      status: 'pronta',
+      status: isExtra ? 'extra' : 'pronta',
       notes: '',
       order: i,
       createdAt: serverTimestamp(),

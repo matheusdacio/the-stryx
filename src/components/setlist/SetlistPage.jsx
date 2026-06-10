@@ -5,10 +5,11 @@ import SongCard from './SongCard'
 import AddSongModal from './AddSongModal'
 
 const FILTERS = [
-  { value: 'all', label: 'Todas' },
+  { value: 'all',       label: 'Todas' },
   { value: 'ensaiando', label: 'Ensaiando' },
-  { value: 'pronta', label: 'Prontas' },
-  { value: 'descartada', label: 'Descartadas' },
+  { value: 'pronta',    label: 'Prontas' },
+  { value: 'extra',     label: 'Extras' },
+  { value: 'descartada',label: 'Descartadas' },
 ]
 
 export default function SetlistPage() {
@@ -47,9 +48,10 @@ export default function SetlistPage() {
   const filtered = filter === 'all' ? songs : songs.filter((s) => s.status === filter)
 
   const counts = {
-    all: songs.length,
-    ensaiando: songs.filter((s) => s.status === 'ensaiando').length,
-    pronta: songs.filter((s) => s.status === 'pronta').length,
+    all:        songs.length,
+    ensaiando:  songs.filter((s) => s.status === 'ensaiando').length,
+    pronta:     songs.filter((s) => s.status === 'pronta').length,
+    extra:      songs.filter((s) => s.status === 'extra').length,
     descartada: songs.filter((s) => s.status === 'descartada').length,
   }
 

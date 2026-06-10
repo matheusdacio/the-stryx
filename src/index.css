@@ -126,7 +126,8 @@ body {
   border-left: 4px solid var(--border);
 }
 .song-card.status-ensaiando { border-left-color: var(--yellow); }
-.song-card.status-pronta { border-left-color: var(--green); }
+.song-card.status-pronta    { border-left-color: var(--green); }
+.song-card.status-extra     { border-left-color: #8b5cf6; }
 .song-card.status-descartada { border-left-color: var(--gray); opacity: 0.6; }
 
 .song-header {
@@ -156,9 +157,10 @@ body {
   border: 1px solid var(--border); background: var(--surface2);
   color: var(--text-muted); cursor: pointer; transition: all 0.2s;
 }
-.btn-status.active.status-btn-ensaiando { background: var(--yellow); border-color: var(--yellow); color: #000; }
-.btn-status.active.status-btn-pronta { background: var(--green); border-color: var(--green); color: #000; }
-.btn-status.active.status-btn-descartada { background: var(--gray); border-color: var(--gray); color: #fff; }
+.btn-status.active.status-btn-ensaiando  { background: var(--yellow); border-color: var(--yellow); color: #000; }
+.btn-status.active.status-btn-pronta     { background: var(--green);  border-color: var(--green);  color: #000; }
+.btn-status.active.status-btn-extra      { background: #8b5cf6;       border-color: #8b5cf6;       color: #fff; }
+.btn-status.active.status-btn-descartada { background: var(--gray);   border-color: var(--gray);   color: #fff; }
 .btn-status:not(.active):hover { border-color: var(--gray); color: var(--text); }
 
 .song-notes {
