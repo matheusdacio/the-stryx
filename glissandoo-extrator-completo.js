@@ -188,11 +188,14 @@
   }
 
   // ── EXTRAÇÃO DE ENSAIOS ──────────────────────────────────────────
+  // Estratégia: acumula via localStorage (passados + futuros ficam em abas separadas).
+  // Passo 1: estar em "Anteriores" OU "Próximos" e rodar o script → salva no localStorage
+  // Passo 2: mudar para a outra aba e rodar de novo → combina e baixa o JSON final
   if (isEvents) {
     tipo = 'eventos';
 
-    // Eventos ficam em memoizedProps (não em memoizedState)
-    // Cada card de evento passa props.event com toda a estrutura
+    const CACHE_KEY = 'thestryx_events_cache';
+
     const eventsRaw = collectEventProps();
 
     if (eventsRaw.length === 0) {
@@ -200,61 +203,81 @@
         'Nenhum evento encontrado!\n\n' +
         'Certifique-se de:\n' +
         '• Estar em https://app.glissandoo.com/group/thestryx/events\n' +
-        '• Ter clicado em "Anteriores" para ver eventos passados\n' +
-        '• Ter rolado a página até o fim para carregar todos'
+        '• Ter carregado os eventos (Próximos ou Anteriores) antes de rodar'
       );
       return;
     }
 
-    console.log(`🔍 ${eventsRaw.length} eventos encontrados...`);
-
-    // Reconstrói mapa de membros a partir dos próprios eventos (mais confiável)
+    // Reconstrói mapa de membros a partir dos eventos
     const dynamicMemberMap = { ...memberMap };
     eventsRaw.forEach(ev => {
       Object.entries(ev._data.players || {}).forEach(([uid, p]) => {
-        if (p.name && !dynamicMemberMap[uid]) {
-          dynamicMemberMap[uid] = p.name.trim();
-        }
+        if (p.name && !dynamicMemberMap[uid]) dynamicMemberMap[uid] = p.name.trim();
       });
     });
     membros = Object.entries(dynamicMemberMap).map(([uid, name]) => ({ uid, name }));
 
     const now = Date.now() / 1000;
 
-    ensaios = eventsRaw
+    // Converte eventos da tela atual
+    const ensaiosAtual = eventsRaw
       .filter(ev => ev._data.datetime)
       .map(ev => {
         const d = ev._data;
-
-        // Determina status pelo horário
-        const isPast = d.datetime.seconds < now;
-        const status = isPast ? 'realizado' : 'planejado';
-
-        // Membros presentes: confirmed → presentes, declined → ausentes
-        // Para eventos futuros, lista todos como planejados
+        const isPastEv = d.datetime.seconds < now;
+        const status = isPastEv ? 'realizado' : 'planejado';
         const membersPresent = Object.values(d.players || {})
-          .filter(p => p.status === 'confirmed' || (!isPast && p.status !== 'declined'))
+          .filter(p => p.status === 'confirmed' || (!isPastEv && p.status !== 'declined'))
           .map(p => (p.name || '').trim())
           .filter(Boolean);
-
-        // Notas: pode ter description (às vezes tem espaço vazio)
-        const notes = (d.description || '').trim();
-
         return {
+          _id: ev.id,   // chave de dedup — removida na exportação final
           date: tsToDate(d.datetime),
           dateEnd: tsToDate(d.datetimeEnd),
           location: d.locality || '',
-          notes,
+          notes: (d.description || '').trim(),
           status,
           type: d.type || 'practice',
           members: membersPresent,
           pauta: [],
         };
       })
-      .filter(e => e.date)
-      .sort((a, b) => (a.date < b.date ? -1 : 1));
+      .filter(e => e.date);
 
-    console.log(`✅ ${ensaios.length} ensaios processados`);
+    // Carrega cache anterior (se houver)
+    let cached = [];
+    try { cached = JSON.parse(localStorage.getItem(CACHE_KEY) || '[]'); } catch (_) {}
+
+    // Mescla e remove duplicatas pelo id original
+    const mergedMap = {};
+    [...cached, ...ensaiosAtual].forEach(e => { mergedMap[e._id || e.date] = e; });
+    const allEnsaios = Object.values(mergedMap).sort((a, b) => a.date < b.date ? -1 : 1);
+
+    // Separa passados e futuros para mostrar na mensagem
+    const pastCount   = allEnsaios.filter(e => e.status === 'realizado').length;
+    const futureCount = allEnsaios.filter(e => e.status === 'planejado').length;
+
+    // Verifica se ainda falta alguma aba
+    const hasPast   = pastCount > 0;
+    const hasFuture = futureCount > 0;
+
+    if (hasPast && hasFuture) {
+      // Tem ambos → exporta agora e limpa o cache
+      localStorage.removeItem(CACHE_KEY);
+      ensaios = allEnsaios.map(({ _id, ...rest }) => rest); // remove _id temporário
+      console.log(`✅ ${ensaios.length} ensaios (${pastCount} realizados + ${futureCount} planejados)`);
+    } else {
+      // Salva no cache e pede a outra aba
+      localStorage.setItem(CACHE_KEY, JSON.stringify(allEnsaios));
+      const falta = hasPast ? '"Próximos"' : '"Anteriores"';
+      console.log(`⏳ ${allEnsaios.length} evento(s) salvos. Clique em ${falta} e rode o script de novo para combinar tudo.`);
+      alert(
+        `✅ ${allEnsaios.length} evento(s) coletados e salvos!\n\n` +
+        `Agora clique em ${falta} na página de Eventos e rode o script novamente.\n` +
+        `O JSON final será baixado automaticamente com todos os ensaios.`
+      );
+      return;
+    }
   }
 
   // ── Exporta JSON ─────────────────────────────────────────────────

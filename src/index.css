@@ -206,31 +206,65 @@ body {
 .cifra-textarea { font-family: 'Courier New', monospace !important; font-size: 0.88rem !important; }
 
 /* ─── ENSAIOS ─── */
-.ensaio-list { display: flex; flex-direction: column; gap: 10px; }
-.ensaio-card {
+.ensaio-list { display: flex; flex-direction: column; gap: 6px; }
+
+/* Card destaque — próximo ensaio */
+.next-ensaio-card {
+  background: var(--surface); border: 1px solid #2a3f5c;
+  border-left: 4px solid #3b82f6;
+  border-radius: var(--radius); padding: 16px; margin-bottom: 4px;
+}
+.next-ensaio-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.next-ensaio-label { font-size: 0.7rem; color: #60a5fa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
+.next-ensaio-date { font-weight: 700; font-size: 1rem; }
+.next-ensaio-loc { font-size: 0.83rem; color: var(--text-muted); margin-top: 2px; }
+.next-ensaio-relative {
+  font-size: 0.78rem; font-weight: 600; color: #60a5fa;
+  background: rgba(59,130,246,0.12); border: 1px solid rgba(59,130,246,0.25);
+  padding: 3px 8px; border-radius: 10px; white-space: nowrap;
+}
+.next-ensaio-members { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; text-align: right; }
+
+/* Linha compacta de ensaio */
+.ensaio-row {
   background: var(--surface); border: 1px solid var(--border);
   border-radius: var(--radius); overflow: hidden;
-  border-left: 4px solid var(--border);
 }
-.ensaio-card.status-ens-planejado { border-left-color: #3b82f6; }
-.ensaio-card.status-ens-realizado { border-left-color: var(--green); }
-.ensaio-card.status-ens-cancelado { border-left-color: var(--gray); opacity: 0.6; }
-.ensaio-header {
+.ensaio-row-header {
   display: flex; align-items: center; justify-content: space-between;
-  padding: 14px; cursor: pointer;
+  padding: 11px 14px; cursor: pointer; gap: 8px;
+  transition: background 0.15s;
 }
-.ensaio-date { font-weight: 600; font-size: 0.9rem; }
-.ensaio-location { font-size: 0.85rem; color: var(--text-muted); }
-.badge-status {
-  padding: 2px 9px; border-radius: 12px; font-size: 0.72rem; font-weight: 500;
+.ensaio-row-header:hover { background: var(--surface2); }
+.ensaio-row-left { display: flex; align-items: center; gap: 8px; min-width: 0; }
+.ensaio-row-date { font-weight: 600; font-size: 0.88rem; white-space: nowrap; }
+.ensaio-row-loc { font-size: 0.82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ensaio-row-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
+.ensaio-row-members { font-size: 0.78rem; color: var(--text-muted); }
+.ensaio-row-arrow { font-size: 1.2rem; color: var(--text-muted); transition: transform 0.2s; display: inline-block; }
+.ensaio-row-arrow.up { transform: rotate(90deg); }
+.ensaio-row-body {
+  padding: 12px 14px 14px;
+  border-top: 1px solid var(--border);
+  display: flex; flex-direction: column; gap: 10px;
 }
-.ens-planejado { background: rgba(59,130,246,0.15); color: #60a5fa; }
-.ens-realizado { background: rgba(16,185,129,0.15); color: var(--green); }
-.ens-cancelado { background: rgba(107,114,128,0.15); color: var(--gray); }
+.ensaio-row-actions { display: flex; gap: 8px; margin-top: 4px; }
+.btn-ghost-danger {
+  background: none; border: 1px solid transparent; color: var(--gray);
+  padding: 5px 12px; border-radius: 6px; font-size: 0.8rem; cursor: pointer;
+  transition: color 0.15s, border-color 0.15s;
+}
+.btn-ghost-danger:hover { color: var(--red); border-color: var(--red); }
+.btn-ghost {
+  background: none; border: none; color: var(--text-muted);
+  padding: 0; cursor: pointer; font-size: 0.82rem;
+  transition: color 0.15s;
+}
+.btn-ghost:hover { color: var(--text); }
 
-.ensaio-body { padding: 0 14px 14px; border-top: 1px solid var(--border); padding-top: 12px; display: flex; flex-direction: column; gap: 12px; }
-.section-label { font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
-.pauta-list { display: flex; flex-direction: column; gap: 6px; }
+/* Elementos compartilhados */
+.section-label { font-size: 0.72rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1px; margin-bottom: 6px; }
+.pauta-block { display: flex; flex-direction: column; gap: 6px; }
 .pauta-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem; }
 .pauta-item input { accent-color: var(--red); width: 15px; height: 15px; }
 .pauta-item .done { text-decoration: line-through; color: var(--text-muted); }
