@@ -10,7 +10,7 @@ import { useAuth } from '../../contexts/AuthContext'
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
 const OPINIONS = [
-  { value: 'hino',     label: '⚡ Hino',                      color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
+  { value: 'hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
   { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
