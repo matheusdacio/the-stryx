@@ -177,6 +177,44 @@ body {
 }
 .notes-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; }
 
+/* BPM, metrônomo e vídeo no card de música */
+.song-meta-bar { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; margin: 2px 0; }
+.btn-metronome {
+  font-size: 0.74rem; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn-metronome:hover { border-color: var(--accent); color: var(--accent); }
+.btn-metronome.playing {
+  background: rgba(16,185,129,0.12); border-color: var(--green);
+  color: var(--green); animation: pulse-beat 0.5s infinite alternate;
+}
+@keyframes pulse-beat { from { opacity: 1; } to { opacity: 0.6; } }
+.song-video-link {
+  font-size: 0.74rem; font-weight: 600; padding: 3px 10px;
+  border-radius: 20px; border: 1px solid var(--border);
+  color: #f87171; text-decoration: none; white-space: nowrap;
+  transition: all 0.15s;
+}
+.song-video-link:hover { border-color: #f87171; background: rgba(248,113,113,0.08); }
+.btn-meta-add {
+  font-size: 0.72rem; padding: 3px 10px;
+  border-radius: 20px; border: 1px dashed var(--border);
+  background: transparent; color: var(--text-muted); opacity: 0.7;
+  cursor: pointer; transition: all 0.15s; white-space: nowrap;
+}
+.btn-meta-add:hover { opacity: 1; border-color: var(--gray); }
+.btn-meta-edit {
+  font-size: 0.72rem; padding: 3px 7px;
+  border-radius: 4px; border: none;
+  background: transparent; color: var(--text-muted); opacity: 0.5;
+  cursor: pointer;
+}
+.btn-meta-edit:hover { opacity: 1; }
+.song-meta-edit { margin: 4px 0; }
+.song-meta-edit input { width: 100%; }
+
 /* ─── CIFRAS ─── */
 .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
 .cifra-card {

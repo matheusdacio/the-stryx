@@ -10,7 +10,8 @@ import { useAuth } from '../../contexts/AuthContext'
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
 const OPINIONS = [
-  { value: 'escopo',    label: '✓ Entra no escopo',          color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'hino',     label: '⚡ Hino',                      color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
+  { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
   { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
@@ -60,10 +61,17 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
   const [myOpinion, setMyOpinion] = useState(null)
   const [comment, setComment] = useState('')
   const [saving, setSaving] = useState(false)
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [notes, setNotes] = useState(sugestao.notes || '')
   const ref = doc(db, 'sugestoes', sugestao.id)
 
   const list = opinoesArray(sugestao.opinoes)
   const existing = (sugestao.opinoes || {})[userId]
+
+  const saveNotes = async () => {
+    await updateDoc(ref, { notes: notes.trim() })
+    setEditingNotes(false)
+  }
 
   const submitOpinion = async () => {
     if (!myOpinion) return
@@ -87,8 +95,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
     await addDoc(collection(db, 'songs'), {
       title: sugestao.title,
       artist: sugestao.artist || '',
+      videoUrl: sugestao.videoUrl || '',
       status: 'ensaiando',
-      notes: `Aprovada da sugestão de ${sugestao.suggestedBy}`,
+      notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
       order: Date.now(),
       createdAt: serverTimestamp(),
     })
@@ -123,6 +132,21 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
 
         {sugestao.description && (
           <p className="sug-description">{sugestao.description}</p>
+        )}
+
+        {/* Observações da banda — editável por qualquer membro */}
+        {editingNotes ? (
+          <div className="notes-edit" style={{ marginBottom: 12 }}>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} autoFocus placeholder="Observações da banda..." />
+            <div className="notes-actions">
+              <button className="btn-secondary" onClick={() => setEditingNotes(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveNotes}>Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <p className="song-notes" style={{ marginBottom: 12 }} onClick={() => { setNotes(sugestao.notes || ''); setEditingNotes(true) }}>
+            {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+          </p>
         )}
 
         {sugestao.status !== 'aberta' && (
@@ -273,11 +297,11 @@ const SORTS = [
 ]
 
 // ── Pontuação por tipo de opinião ─────────────────────────────────────
-const SCORES = { escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
+const SCORES = { hino: 1.2, escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
 
-// Prefixo numérico para células da planilha  (ex: "1 - Escopo")
-const SCORE_PREFIX = { escopo: '1', ajustar: '0,6', fora: '0,2', nao_gosto: '0' }
+// Labels com score para as células da planilha (ex: "1 - Escopo")
 const SCORE_LABELS_XLS = {
+  hino:      '1,2 - Hino',
   escopo:    '1 - Escopo',
   ajustar:   '0,6 - Ajustar',
   fora:      '0,2 - Fora',

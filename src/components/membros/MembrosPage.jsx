@@ -15,12 +15,14 @@ const INSTRUMENTS = [
 
 // ── Card de membro ────────────────────────────────────────────────────
 
-function MemberCard({ member, isAdmin, onRemove }) {
+function MemberCard({ member, isAdmin, currentUid, onRemove }) {
   const [editingRole, setEditingRole] = useState(false)
   const [role, setRole] = useState(member.role || '')
 
-  const linked = !!member.firebaseUid
-  const photo  = member.photoURL || null
+  const linked  = !!member.firebaseUid
+  const photo   = member.photoURL || null
+  // Admin edita qualquer um; membro edita o próprio instrumento
+  const canEdit = isAdmin || (linked && member.firebaseUid === currentUid)
 
   const saveRole = async () => {
     await updateDoc(doc(db, 'members', member.id), { role })
@@ -43,7 +45,7 @@ function MemberCard({ member, isAdmin, onRemove }) {
         <p className="member-name">{member.name}</p>
 
         {/* Instrumento */}
-        {isAdmin && editingRole ? (
+        {canEdit && editingRole ? (
           <div style={{ display: 'flex', gap: 4, marginTop: 4 }}>
             <select value={role} onChange={e => setRole(e.target.value)} style={{ fontSize: '0.8rem', flex: 1 }}>
               <option value="">Instrumento...</option>
@@ -55,10 +57,10 @@ function MemberCard({ member, isAdmin, onRemove }) {
         ) : (
           <p
             className="member-role"
-            onClick={isAdmin ? () => setEditingRole(true) : undefined}
-            title={isAdmin ? 'Clique para editar' : undefined}
+            onClick={canEdit ? () => setEditingRole(true) : undefined}
+            title={canEdit ? 'Clique para editar' : undefined}
           >
-            {member.role || (isAdmin ? '+ instrumento' : '—')}
+            {member.role || (canEdit ? '+ instrumento' : '—')}
           </p>
         )}
 
@@ -198,6 +200,7 @@ export default function MembrosPage() {
               key={m.id}
               member={m}
               isAdmin={isAdmin}
+              currentUid={user.uid}
               onRemove={handleRemove}
             />
           ))}
