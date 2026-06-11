@@ -14,6 +14,7 @@ const FILTERS = [
 export default function SetlistPage() {
   const [songs, setSongs] = useState([])
   const [filter, setFilter] = useState('all')
+  const [tagFilter, setTagFilter] = useState(null)
   const [showModal, setShowModal] = useState(false)
 
   useEffect(() => {
@@ -44,7 +45,14 @@ export default function SetlistPage() {
     await batch.commit()
   }
 
-  const filtered = filter === 'all' ? songs : songs.filter((s) => s.status === filter)
+  const allTags = [...new Set(songs.flatMap((s) => s.tags || []))].sort((a, b) =>
+    a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
+  )
+
+  const filtered = songs.filter((s) =>
+    (filter === 'all' || s.status === filter) &&
+    (!tagFilter || (s.tags || []).includes(tagFilter))
+  )
 
   const counts = {
     all:       songs.length,
@@ -71,6 +79,28 @@ export default function SetlistPage() {
           </button>
         ))}
       </div>
+
+      {/* Filtro por tags customizadas */}
+      {allTags.length > 0 && (
+        <div className="tag-bar">
+          <span className="sort-label">🏷</span>
+          {allTags.map((t) => (
+            <button
+              key={t}
+              className={`btn-tag ${tagFilter === t ? 'active' : ''}`}
+              onClick={() => setTagFilter(tagFilter === t ? null : t)}
+            >
+              {t}
+              <span className="count">{songs.filter((s) => (s.tags || []).includes(t)).length}</span>
+            </button>
+          ))}
+          {tagFilter && (
+            <button className="btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => setTagFilter(null)}>
+              ✕ limpar
+            </button>
+          )}
+        </div>
+      )}
 
       {filtered.length === 0 ? (
         <div className="empty-state">

@@ -17,6 +17,8 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   const [notes, setNotes] = useState(song.notes || '')
   const [bpm, setBpm] = useState(song.bpm || '')
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
+  const [tags, setTags] = useState(song.tags || [])
+  const [newTag, setNewTag] = useState('')
   const ref = doc(db, 'songs', song.id)
 
   const changeStatus = (status) => updateDoc(ref, { status })
@@ -25,9 +27,17 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
     await updateDoc(ref, {
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
+      tags,
     })
     setEditingMeta(false)
   }
+  const addTag = () => {
+    const t = newTag.trim()
+    if (!t || tags.some((x) => x.toLowerCase() === t.toLowerCase())) { setNewTag(''); return }
+    setTags([...tags, t])
+    setNewTag('')
+  }
+  const removeTag = (t) => setTags(tags.filter((x) => x !== t))
   const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
 
   const videoId = getYouTubeId(song.videoUrl)
@@ -81,7 +91,10 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         ) : (
           <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>🎬 + vídeo</button>
         )}
-        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)} title="Editar BPM e vídeo">✎</button>
+        {(song.tags || []).map((t) => (
+          <span key={t} className="song-tag">🏷 {t}</span>
+        ))}
+        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)} title="Editar BPM, vídeo e tags">✎</button>
       </div>
 
       {editingMeta && (
@@ -94,6 +107,28 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." />
             </label>
           </div>
+          <label style={{ display: 'flex', flexDirection: 'column', gap: 5, fontSize: '0.82rem', color: 'var(--text-muted)', marginTop: 8 }}>
+            Tags
+            <div className="tag-edit-row">
+              <input
+                value={newTag}
+                onChange={(e) => setNewTag(e.target.value)}
+                onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
+                placeholder="Ex: Acústico, Show Bar do Zé..."
+              />
+              <button type="button" className="btn-primary" onClick={addTag}>+</button>
+            </div>
+          </label>
+          {tags.length > 0 && (
+            <div className="tag-chips">
+              {tags.map((t) => (
+                <span key={t} className="song-tag editable">
+                  {t}
+                  <button type="button" className="tag-remove" onClick={() => removeTag(t)}>✕</button>
+                </span>
+              ))}
+            </div>
+          )}
           <div className="notes-actions">
             <button className="btn-secondary" onClick={() => setEditingMeta(false)}>Cancelar</button>
             <button className="btn-primary" onClick={saveMeta}>Salvar</button>

@@ -10,6 +10,7 @@ function getYouTubeId(url) {
 
 export default function AddSongModal({ onClose, totalSongs }) {
   const [form, setForm] = useState({ title: '', artist: '', notes: '', status: 'ensaiando', bpm: '', videoUrl: '' })
+  const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
 
@@ -22,6 +23,7 @@ export default function AddSongModal({ onClose, totalSongs }) {
     await addDoc(collection(db, 'songs'), {
       ...form,
       bpm: form.bpm ? Number(form.bpm) : null,
+      tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean),
       order: totalSongs,
       createdAt: serverTimestamp(),
     })
@@ -57,6 +59,10 @@ export default function AddSongModal({ onClose, totalSongs }) {
               <span>✓ Vídeo reconhecido</span>
             </div>
           )}
+          <label>
+            Tags <span style={{ opacity: 0.6 }}>(separadas por vírgula)</span>
+            <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="Ex: Acústico, Anos 80" />
+          </label>
           <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Notas..." rows={3} /></label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
