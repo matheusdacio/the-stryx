@@ -10,6 +10,7 @@
   --yellow: #f59e0b;
   --green: #10b981;
   --gray: #6b7280;
+  --accent: #6366f1;
   --text: #f0f0f0;
   --text-muted: #9ca3af;
   --radius: 8px;
@@ -252,6 +253,112 @@ body {
   border-left: 4px solid #3b82f6;
   border-radius: var(--radius); padding: 16px; margin-bottom: 4px;
 }
+.next-ensaio-card.apresentacao { border-left-color: #e11d48; border-color: #5c2a3a; }
+
+/* Tipo de evento */
+.event-type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
+.btn-event-type {
+  flex: 1; padding: 8px 12px; font-size: 0.85rem; font-weight: 600;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; transition: all 0.15s;
+}
+.btn-event-type.active { background: rgba(59,130,246,0.12); border-color: #3b82f6; color: #3b82f6; }
+.btn-event-type.active.apresentacao { background: rgba(225,29,72,0.12); border-color: #e11d48; color: #fb7185; }
+.event-type-badge {
+  font-size: 0.68rem; font-weight: 600; padding: 1px 8px;
+  border-radius: 10px; white-space: nowrap;
+  background: rgba(59,130,246,0.12); color: #60a5fa;
+}
+.event-type-badge.apresentacao { background: rgba(225,29,72,0.12); color: #fb7185; }
+
+/* Busca de músicas no modal de evento */
+.song-search-results {
+  display: flex; flex-direction: column; gap: 2px; margin-top: 6px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  overflow: hidden;
+}
+.song-search-item {
+  text-align: left; padding: 8px 10px; font-size: 0.82rem;
+  background: var(--surface2); border: none; color: var(--text);
+  cursor: pointer; transition: background 0.1s;
+}
+.song-search-item:hover { background: rgba(99,102,241,0.12); }
+.song-search-artist { color: var(--text-muted); font-size: 0.78rem; }
+
+/* Setlist do evento */
+.event-setlist { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
+.event-setlist-item {
+  display: flex; align-items: center; gap: 8px;
+  padding: 7px 10px; border-radius: var(--radius);
+  background: var(--surface2); border: 1px solid var(--border);
+  font-size: 0.82rem; cursor: grab;
+}
+.event-setlist-item:active { cursor: grabbing; }
+.drag-handle { color: var(--text-muted); opacity: 0.5; font-size: 0.9rem; cursor: grab; }
+.event-setlist-pos {
+  font-weight: 700; font-size: 0.75rem; color: var(--text-muted);
+  min-width: 18px; text-align: center;
+}
+.event-setlist-title { flex: 1; min-width: 0; }
+.event-setlist-bpm { color: var(--text-muted); font-size: 0.75rem; }
+.event-setlist-actions { display: flex; gap: 3px; align-items: center; }
+
+/* Lista numerada de músicas no card do evento */
+.event-songs-list { margin: 0; padding-left: 22px; font-size: 0.82rem; display: flex; flex-direction: column; gap: 3px; }
+
+/* ─── MODO PALCO ─── */
+.perf-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: #0a0a0f;
+  display: flex; flex-direction: column;
+  padding: 16px; gap: 12px;
+}
+.perf-top { display: flex; align-items: center; justify-content: space-between; gap: 12px; }
+.perf-progress { font-size: 0.95rem; font-weight: 700; color: var(--text-muted); }
+.perf-event-name { font-size: 0.85rem; color: var(--text-muted); }
+.perf-close {
+  font-size: 1.1rem; padding: 6px 14px; border-radius: var(--radius);
+  background: transparent; border: 1px solid var(--border);
+  color: var(--text-muted); cursor: pointer;
+}
+.perf-close:hover { border-color: var(--red); color: var(--red); }
+.perf-current {
+  flex: 1; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; text-align: center;
+  cursor: pointer; gap: 8px; min-height: 0;
+}
+.perf-now-label {
+  font-size: 0.8rem; text-transform: uppercase; letter-spacing: 2px;
+  color: var(--green); font-weight: 700;
+}
+.perf-title {
+  font-size: clamp(2rem, 8vw, 4.5rem); font-weight: 800;
+  line-height: 1.1; color: #fff; margin: 0;
+}
+.perf-artist { font-size: clamp(1rem, 3vw, 1.6rem); color: var(--text-muted); }
+.perf-bpm { margin-top: 10px; }
+.perf-bpm .btn-metronome { font-size: 1rem; padding: 8px 20px; }
+.perf-next {
+  text-align: center; padding: 14px;
+  border: 1px solid var(--border); border-radius: var(--radius);
+  background: var(--surface);
+}
+.perf-next-label {
+  font-size: 0.7rem; text-transform: uppercase; letter-spacing: 1.5px;
+  color: var(--text-muted); margin-bottom: 4px;
+}
+.perf-next-title { font-size: 1.1rem; font-weight: 700; }
+.perf-next-artist { color: var(--text-muted); font-weight: 400; }
+.perf-next-bpm { color: var(--text-muted); font-weight: 400; font-size: 0.9rem; }
+.perf-nav { display: flex; gap: 10px; }
+.perf-nav-btn {
+  flex: 1; padding: 14px; font-size: 1rem; font-weight: 600;
+  border-radius: var(--radius); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer;
+}
+.perf-nav-btn.primary { background: var(--red); border-color: var(--red); color: #fff; }
+.perf-nav-btn:disabled { opacity: 0.35; cursor: default; }
 .next-ensaio-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .next-ensaio-label { font-size: 0.7rem; color: #60a5fa; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px; }
 .next-ensaio-date { font-weight: 700; font-size: 1rem; }
@@ -460,7 +567,7 @@ body {
 /* Score e rank nos cards de sugestão */
 .sug-rank-badge {
   font-size: 0.7rem; font-weight: 700;
-  color: var(--text-muted); background: var(--bg-card);
+  color: var(--text-muted); background: var(--surface2);
   border: 1px solid var(--border);
   border-radius: 4px; padding: 1px 5px;
   white-space: nowrap;
