@@ -5,6 +5,7 @@ import {
 } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
+import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -100,6 +101,7 @@ export default function MembrosPage() {
 
   const [members, setMembers] = useState([])
   const [deduping, setDeduping] = useState(false)
+  const [merging, setMerging] = useState(false)
   const [msg, setMsg] = useState('')
 
   useEffect(() => {
@@ -114,7 +116,8 @@ export default function MembrosPage() {
     await deleteDoc(doc(db, 'members', member.id))
   }
 
-  // Remove membros duplicados (mesmo nome) — mantém o que tem mais dados
+  // Remove membros duplicados — agrupa por nome aproximado
+  // ("Albano" e "Albano Borba" são a mesma pessoa), mantém o que tem mais dados
   const handleDedup = async () => {
     setDeduping(true)
     setMsg('')
@@ -122,26 +125,24 @@ export default function MembrosPage() {
       const snap = await getDocs(collection(db, 'members'))
       const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
 
-      // Agrupa por nome normalizado
-      const groups = {}
+      const groups = []
       all.forEach(m => {
-        const key = (m.name || '').toLowerCase().trim()
-        if (!groups[key]) groups[key] = []
-        groups[key].push(m)
+        const group = groups.find(g => g.some(x => namesMatch(x.name, m.name)))
+        if (group) group.push(m)
+        else groups.push([m])
       })
 
       const batch = writeBatch(db)
       let removed = 0
 
-      Object.values(groups).forEach(group => {
+      groups.forEach(group => {
         if (group.length < 2) return
-        // Ordena: prioriza quem tem firebaseUid, email, mergedAt
+        // Prioriza quem tem firebaseUid, email, mergedAt — e nome mais completo
         group.sort((a, b) => {
           const scoreA = (a.firebaseUid ? 4 : 0) + (a.email ? 2 : 0) + (a.mergedAt ? 1 : 0)
           const scoreB = (b.firebaseUid ? 4 : 0) + (b.email ? 2 : 0) + (b.mergedAt ? 1 : 0)
-          return scoreB - scoreA
+          return scoreB - scoreA || (b.name || '').length - (a.name || '').length
         })
-        // Mantém o primeiro, remove os demais
         group.slice(1).forEach(dup => {
           batch.delete(doc(db, 'members', dup.id))
           removed++
@@ -160,6 +161,23 @@ export default function MembrosPage() {
     setDeduping(false)
   }
 
+  // Funde votos importados do Glissandoo com os votos reais (matching por nome aproximado)
+  const handleMergeVotes = async () => {
+    setMerging(true)
+    setMsg('')
+    try {
+      const { merged, removed } = await mergeAllImportedVotes()
+      if (merged + removed > 0) {
+        setMsg(`✅ ${merged} voto(s) vinculado(s) e ${removed} duplicata(s) removida(s).`)
+      } else {
+        setMsg('✅ Nenhum voto pendente de fusão.')
+      }
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setMerging(false)
+  }
+
   const linkedCount = members.filter(m => m.firebaseUid).length
 
   return (
@@ -174,8 +192,11 @@ export default function MembrosPage() {
       {/* Ferramentas admin */}
       {isAdmin && (
         <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleDedup} disabled={deduping}>
+          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleDedup} disabled={deduping || merging}>
             {deduping ? 'Removendo...' : '🧹 Remover duplicatas'}
+          </button>
+          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={deduping || merging}>
+            {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
           </button>
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>

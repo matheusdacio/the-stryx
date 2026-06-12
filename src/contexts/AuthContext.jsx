@@ -1,43 +1,13 @@
 import { createContext, useContext, useEffect, useState } from 'react'
 import { onAuthStateChanged, signInWithPopup, signOut } from 'firebase/auth'
 import {
-  collection, query, where, getDocs, updateDoc, writeBatch,
-  deleteField, setDoc, addDoc, doc, serverTimestamp,
+  collection, query, where, getDocs, updateDoc,
+  setDoc, addDoc, doc, serverTimestamp,
 } from 'firebase/firestore'
 import { auth, googleProvider, db } from '../firebase/config'
+import { mergeAllImportedVotes } from '../utils/votes'
 
 const AuthContext = createContext(null)
-
-// Funde votos importados (import_Nome) com o UID real do Firebase
-async function mergeImportedVotes(memberName, firebaseUid) {
-  const importKey = `import_${memberName.trim().replace(/\s+/g, '_')}`
-  try {
-    const snap = await getDocs(collection(db, 'sugestoes'))
-    if (snap.empty) return
-
-    const batch = writeBatch(db)
-    let count = 0
-
-    snap.forEach((docSnap) => {
-      const opinoes = docSnap.data().opinoes || {}
-      if (!opinoes[importKey]) return
-
-      if (!opinoes[firebaseUid]) {
-        batch.update(docSnap.ref, {
-          [`opinoes.${firebaseUid}`]: { ...opinoes[importKey], userName: memberName.trim() },
-          [`opinoes.${importKey}`]: deleteField(),
-        })
-      } else {
-        batch.update(docSnap.ref, { [`opinoes.${importKey}`]: deleteField() })
-      }
-      count++
-    })
-
-    if (count > 0) await batch.commit()
-  } catch (e) {
-    console.warn('mergeImportedVotes:', e)
-  }
-}
 
 export function AuthProvider({ children }) {
   const [user, setUser] = useState(null)
@@ -94,9 +64,15 @@ export function AuthProvider({ children }) {
         if (!data.displayName) updates.displayName = u.displayName
         if (Object.keys(updates).length) await updateDoc(memberDoc.ref, updates)
 
-        // Funde os votos importados (só uma vez)
+        // Funde os votos importados (só uma vez por membro).
+        // Usa matching por nome aproximado (ignora acentos e aceita nome parcial)
+        // e limpa os votos de toda a banda, não só deste membro.
         if (!data.mergedAt) {
-          await mergeImportedVotes(data.name, u.uid)
+          try {
+            await mergeAllImportedVotes()
+          } catch (e) {
+            console.warn('mergeAllImportedVotes:', e)
+          }
           await updateDoc(memberDoc.ref, { mergedAt: new Date().toISOString() })
         }
       } catch (e) {
