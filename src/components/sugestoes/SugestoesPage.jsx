@@ -417,6 +417,7 @@ export default function SugestoesPage() {
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('score')
+  const [onlyUnvoted, setOnlyUnvoted] = useState(false)
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
 
@@ -434,7 +435,9 @@ export default function SugestoesPage() {
     if (fresh) setModal(fresh)
   }, [sugestoes])
 
-  const filtered = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
+  const byStatus = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
+  const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
+  const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
   const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
 
   // ── Ordenação ──────────────────────────────────────────────────────
@@ -489,7 +492,7 @@ export default function SugestoesPage() {
         })}
       </div>
 
-      {/* Ordenação */}
+      {/* Ordenação + filtro de não votadas */}
       <div className="sort-bar">
         <span className="sort-label">Ordenar:</span>
         {SORTS.map((s) => (
@@ -501,12 +504,25 @@ export default function SugestoesPage() {
             {s.label}
           </button>
         ))}
+        <button
+          className={`btn-unvoted ${onlyUnvoted ? 'active' : ''}`}
+          onClick={() => setOnlyUnvoted(!onlyUnvoted)}
+          title="Mostrar só as músicas que você ainda não votou"
+        >
+          🗳 Não votei <span className="count">{unvotedCount}</span>
+        </button>
       </div>
 
       {displayed.length === 0 ? (
         <div className="empty-state">
-          <p>{filter === 'aberta' ? 'Nenhuma sugestão em aberto.' : 'Nenhuma sugestão aqui.'}</p>
-          {filter !== 'rejeitada' && <button className="btn-primary" onClick={() => setAddModal(true)}>Fazer primeira sugestão</button>}
+          {onlyUnvoted ? (
+            <p>🎉 Você já votou em todas as músicas daqui!</p>
+          ) : (
+            <>
+              <p>{filter === 'aberta' ? 'Nenhuma sugestão em aberto.' : 'Nenhuma sugestão aqui.'}</p>
+              {filter !== 'rejeitada' && <button className="btn-primary" onClick={() => setAddModal(true)}>Fazer primeira sugestão</button>}
+            </>
+          )}
         </div>
       ) : (
         <div className="sug-list">
