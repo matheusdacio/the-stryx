@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc, getDocs, updateDoc, query, orderBy, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
+import { normalizeName } from '../../utils/votes'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -139,6 +140,8 @@ export default function ImportPage() {
   const [savingEmails, setSavingEmails] = useState(false)
   const [mergingVotes, setMergingVotes] = useState(false)
   const [mergeMsg, setMergeMsg] = useState('')
+  const [dedupingSug, setDedupingSug] = useState(false)
+  const [dedupMsg, setDedupMsg] = useState('')
 
   useEffect(() => {
     getDocs(query(collection(db, 'members'), orderBy('name'))).then(snap => {
@@ -256,6 +259,48 @@ export default function ImportPage() {
     setMergingVotes(false)
   }
 
+  // Remove sugestões duplicadas (mesmo título+artista) — mantém a melhor cópia:
+  // a que tem mais votos reais vinculados; empate → a mais antiga (primeira importada).
+  const handleDedupSugestoes = async () => {
+    if (!confirm('Vai manter UMA cópia de cada sugestão e apagar as duplicadas. A cópia com votos reais vinculados é preservada. Continuar?')) return
+    setDedupingSug(true)
+    setDedupMsg('')
+    try {
+      const snap = await getDocs(collection(db, 'sugestoes'))
+      const all = snap.docs.map(d => ({ id: d.id, ref: d.ref, ...d.data() }))
+
+      const keyOf = (s) => `${normalizeName(s.title)}|${normalizeName(s.artist)}`
+      const groups = {}
+      all.forEach(s => { (groups[keyOf(s)] = groups[keyOf(s)] || []).push(s) })
+
+      // Score: prioriza votos reais (não-import), depois total de votos
+      const scoreOf = (s) => {
+        const keys = Object.keys(s.opinoes || {})
+        const real = keys.filter(k => !k.startsWith('import_')).length
+        return real * 1000 + keys.length
+      }
+      const createdMs = (s) => (s.createdAt?.seconds ? s.createdAt.seconds * 1000 : 0)
+
+      const batch = writeBatch(db)
+      let removed = 0
+      Object.values(groups).forEach(group => {
+        if (group.length < 2) return
+        group.sort((a, b) => scoreOf(b) - scoreOf(a) || createdMs(a) - createdMs(b))
+        group.slice(1).forEach(dup => { batch.delete(dup.ref); removed++ })
+      })
+
+      if (removed > 0) {
+        await batch.commit()
+        setDedupMsg(`✅ ${removed} sugestão(ões) duplicada(s) removida(s).`)
+      } else {
+        setDedupMsg('✅ Nenhuma duplicata encontrada.')
+      }
+    } catch (e) {
+      setDedupMsg(`❌ Erro: ${e.message}`)
+    }
+    setDedupingSug(false)
+  }
+
   if (user.email !== ADMIN_EMAIL) {
     return <div className="page"><div className="empty-state"><p>Acesso restrito ao administrador.</p></div></div>
   }
@@ -314,6 +359,23 @@ export default function ImportPage() {
     <div className="page">
       <div className="page-header">
         <h2>Importar do Glissandoo</h2>
+      </div>
+
+      {/* Limpeza de duplicatas */}
+      <div className="import-section" style={{ marginBottom: 16 }}>
+        <p className="section-label">🧹 Limpeza</p>
+        <p className="import-desc" style={{ marginBottom: 10 }}>
+          Importou as sugestões duas vezes sem querer? Este botão mantém uma cópia de cada
+          (preservando a que já tem votos vinculados) e remove as repetidas.
+        </p>
+        <button className="btn-secondary" onClick={handleDedupSugestoes} disabled={dedupingSug}>
+          {dedupingSug ? 'Limpando...' : '🧹 Remover sugestões duplicadas'}
+        </button>
+        {dedupMsg && (
+          <p style={{ marginTop: 8, fontSize: '0.85rem', color: dedupMsg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+            {dedupMsg}
+          </p>
+        )}
       </div>
 
       {/* Vincular Membros ao Google */}
