@@ -291,7 +291,7 @@ const FILTERS = [
 ]
 
 const SORTS = [
-  { value: 'score',  label: '⭐ Pontuação' },
+  { value: 'media',  label: '⭐ Média' },
   { value: 'votes',  label: '🗳 Votos' },
   { value: 'recent', label: '🕐 Recentes' },
 ]
@@ -324,11 +324,11 @@ function calcSongScore(opinoes) {
 }
 
 function exportToExcel(sugestoes, filterLabel) {
-  // ── 1. Ordena por pontuação decrescente para o ranking ──
+  // ── 1. Ordena por média decrescente (desempate: mais votos) ──
   const sorted = [...sugestoes].sort((a, b) => {
     const sa = calcSongScore(a.opinoes)
     const sb = calcSongScore(b.opinoes)
-    return sb.soma - sa.soma || sb.total - sa.total
+    return sb.media - sa.media || sb.total - sa.total || sb.soma - sa.soma
   })
 
   // ── 2. Coleta membros únicos (ordem: mais votantes primeiro) ──
@@ -416,7 +416,7 @@ export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('aberta')
-  const [sortBy, setSortBy] = useState('score')
+  const [sortBy, setSortBy] = useState('media')
   const [onlyUnvoted, setOnlyUnvoted] = useState(false)
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
@@ -442,15 +442,17 @@ export default function SugestoesPage() {
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
-    if (sortBy === 'score') {
+    if (sortBy === 'media') {
+      // Ordena pela MÉDIA entre quem votou (quem não votou não entra na conta).
+      // Desempate: mais votos primeiro, depois maior soma.
       const sa = calcSongScore(a.opinoes)
       const sb = calcSongScore(b.opinoes)
-      return sb.soma - sa.soma || sb.total - sa.total
+      return sb.media - sa.media || sb.total - sa.total || sb.soma - sa.soma
     }
     if (sortBy === 'votes') {
       const ta = Object.keys(a.opinoes || {}).length
       const tb = Object.keys(b.opinoes || {}).length
-      return tb - ta || calcSongScore(b.opinoes).soma - calcSongScore(a.opinoes).soma
+      return tb - ta || calcSongScore(b.opinoes).media - calcSongScore(a.opinoes).media
     }
     // 'recent' — já vem do Firestore por createdAt desc, mantém ordem original
     return 0
@@ -541,7 +543,7 @@ export default function SugestoesPage() {
                 <div className="sug-card-body">
                   <div className="sug-card-top">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {sortBy === 'score' && showScore && (
+                      {sortBy === 'media' && showScore && (
                         <span className="sug-rank-badge">#{rank + 1}</span>
                       )}
                       <div>
@@ -551,8 +553,8 @@ export default function SugestoesPage() {
                     </div>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       {showScore && (
-                        <span className="sug-score-chip" title={`Soma: ${soma} · Média: ${media} · ${total} voto(s)`}>
-                          ⭐ {soma.toFixed(1)} <span className="sug-score-avg">({media.toFixed(2)})</span>
+                        <span className="sug-score-chip" title={`Média ${media.toFixed(2)} · Soma ${soma.toFixed(1)} · ${total} voto(s)`}>
+                          ⭐ {media.toFixed(2)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
                         </span>
                       )}
                       {s.status !== 'aberta' && (
