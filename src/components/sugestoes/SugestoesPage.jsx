@@ -631,10 +631,15 @@ export default function SugestoesPage() {
                         {s.artist && <span className="sug-card-artist"> — {s.artist}</span>}
                       </div>
                     </div>
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                       {showScore && (
                         <span className="sug-score-chip" title={`Média ${media.toFixed(2)} · Soma ${soma.toFixed(1)} · ${total} voto(s)`}>
                           ⭐ {media.toFixed(2)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
+                        </span>
+                      )}
+                      {diffLabel && (
+                        <span className="sug-diff-chip" style={{ color: diffLabel.color, borderColor: diffLabel.color }}>
+                          🎯 {diffLabel.label}
                         </span>
                       )}
                       {s.status !== 'aberta' && (
@@ -645,14 +650,7 @@ export default function SugestoesPage() {
                     </div>
                   </div>
                   <p className="sug-card-by">por {s.suggestedBy}</p>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
-                    <OpinionSummary opinoes={s.opinoes} />
-                    {diffLabel && (
-                      <span className="diff-pill" style={{ color: diffLabel.color, background: diffLabel.bg }}>
-                        🎯 {diffLabel.label}
-                      </span>
-                    )}
-                  </div>
+                  <OpinionSummary opinoes={s.opinoes} />
                   {myVote && (
                     <p className="my-vote-label">
                       Sua opinião:{' '}

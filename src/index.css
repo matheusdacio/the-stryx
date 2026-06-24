@@ -804,6 +804,13 @@ button { font-family: inherit; }
 }
 .sug-score-avg { font-weight: 400; color: var(--text-muted); }
 
+/* Chip de dificuldade no card de sugestão — vazado, pra não confundir com as opiniões */
+.sug-diff-chip {
+  font-size: 0.68rem; font-weight: 600; white-space: nowrap;
+  padding: 1px 8px; border-radius: 10px;
+  border: 1px solid currentColor; background: transparent;
+}
+
 /* Modal de sugestão */
 .yt-thumb-wrap {
   display: block; position: relative; margin-bottom: 16px;

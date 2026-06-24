@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.23.1] — 2026-06-24
+- _fix:_ chip de dificuldade movido pro canto superior (junto da nota) e com estilo vazado, pra não confundir com as opiniões
+
 ## [1.23.0] — 2026-06-24
 - Voto de **dificuldade nas sugestões** (Fácil / Ok / Difícil) + ordenação **🎯 Dificuldade** e chip de dificuldade no card
 
