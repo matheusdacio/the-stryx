@@ -1,9 +1,18 @@
 import { useState } from 'react'
-import { doc, updateDoc, deleteDoc } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
 
 const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
+
+// Níveis de dificuldade (votados por cada membro nas músicas em Ensaiando)
+const DIFFICULTIES = [
+  { value: 'de_boa',   label: 'De boa',             short: 'De boa',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'ok',       label: 'OK',                 short: 'OK',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'sofrendo', label: 'Estou sofrendo',     short: 'Sofrendo',   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  { value: 'travado',  label: 'Preciso de um tempo', short: 'Travado',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+]
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -11,7 +20,10 @@ function getYouTubeId(url) {
   return match ? match[1] : null
 }
 
+const firstName = (n) => (n || '').trim().split(' ')[0]
+
 export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position }) {
+  const { user } = useAuth()
   const [editing, setEditing] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
@@ -20,6 +32,24 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   const [tags, setTags] = useState(song.tags || [])
   const [newTag, setNewTag] = useState('')
   const ref = doc(db, 'songs', song.id)
+
+  // Dificuldade — voto de cada membro (mapa keyed por uid)
+  const dificuldade = song.dificuldade || {}
+  const myDiff = dificuldade[user.uid]?.level
+  const voteDiff = (level) => {
+    if (myDiff === level) {
+      // Clicou no mesmo nível → remove o voto
+      updateDoc(ref, { [`dificuldade.${user.uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`dificuldade.${user.uid}`]: {
+          userName: user.displayName || user.email,
+          level,
+          at: new Date().toISOString(),
+        },
+      })
+    }
+  }
 
   const changeStatus = (status) => updateDoc(ref, { status })
   const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
@@ -70,6 +100,39 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           </button>
         ))}
       </div>
+
+      {/* Dificuldade — só nas músicas em Ensaiando */}
+      {song.status === 'ensaiando' && (
+        <div className="difficulty-section">
+          <p className="section-label">Como tá pra você?</p>
+          <div className="difficulty-btns">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.value}
+                className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
+                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                onClick={() => voteDiff(d.value)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+
+          {Object.keys(dificuldade).length > 0 && (
+            <div className="difficulty-summary">
+              {DIFFICULTIES.map((d) => {
+                const voters = Object.values(dificuldade).filter((v) => v.level === d.value)
+                if (!voters.length) return null
+                return (
+                  <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                    {d.short}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* BPM, metrônomo e vídeo */}
       <div className="song-meta-bar">
