@@ -1,5 +1,6 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
+import { APP_VERSION } from '../version'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -9,7 +10,10 @@ export default function Navbar() {
 
   return (
     <nav className="navbar">
-      <span className="navbar-brand">THE STRYX</span>
+      <span className="navbar-brand">
+        THE STRYX
+        <span className="navbar-version">v{APP_VERSION}</span>
+      </span>
       <div className="navbar-user">
         {isAdmin && (
           <>
