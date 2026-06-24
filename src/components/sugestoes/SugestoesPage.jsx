@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import {
   collection, onSnapshot, orderBy, query,
-  addDoc, updateDoc, doc, serverTimestamp
+  addDoc, updateDoc, doc, serverTimestamp, deleteField
 } from 'firebase/firestore'
 import * as XLSX from 'xlsx'
 import { db } from '../../firebase/config'
@@ -16,6 +16,32 @@ const OPINIONS = [
   { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
   { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
 ]
+
+// Dificuldade da música (votada por cada membro na sugestão)
+const DIFFICULTIES = [
+  { value: 'facil',   label: 'Fácil',   weight: 1, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'ok',      label: 'Ok',      weight: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'dificil', label: 'Difícil', weight: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+]
+const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
+
+const firstName = (n) => (n || '').trim().split(' ')[0]
+
+// Média de dificuldade entre quem votou; avg null se ninguém votou
+function calcDifficulty(dificuldade) {
+  const list = Object.values(dificuldade || {})
+  if (!list.length) return { avg: null, total: 0 }
+  const sum = list.reduce((acc, v) => acc + (DIFF_BY_VALUE[v.level]?.weight || 0), 0)
+  return { avg: sum / list.length, total: list.length }
+}
+
+// Mapeia a média num dos 3 rótulos (pro chip do card)
+function avgDifficultyLabel(avg) {
+  if (avg === null) return null
+  if (avg < 1.67) return DIFF_BY_VALUE.facil
+  if (avg < 2.34) return DIFF_BY_VALUE.ok
+  return DIFF_BY_VALUE.dificil
+}
 
 // opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
@@ -71,6 +97,19 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
   const saveNotes = async () => {
     await updateDoc(ref, { notes: notes.trim() })
     setEditingNotes(false)
+  }
+
+  // Voto de dificuldade (mapa keyed por uid)
+  const dificuldade = sugestao.dificuldade || {}
+  const myDiff = dificuldade[userId]?.level
+  const voteDiff = (level) => {
+    if (myDiff === level) {
+      updateDoc(ref, { [`dificuldade.${userId}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`dificuldade.${userId}`]: { userName, level, at: new Date().toISOString() },
+      })
+    }
   }
 
   const submitOpinion = async () => {
@@ -148,6 +187,36 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
             {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
           </p>
         )}
+
+        {/* Dificuldade pra tocar */}
+        <div className="difficulty-section" style={{ marginBottom: 12 }}>
+          <p className="section-label">Dificuldade pra tocar</p>
+          <div className="difficulty-btns">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.value}
+                className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
+                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                onClick={() => voteDiff(d.value)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {Object.keys(dificuldade).length > 0 && (
+            <div className="difficulty-summary">
+              {DIFFICULTIES.map((d) => {
+                const voters = Object.values(dificuldade).filter((v) => v.level === d.value)
+                if (!voters.length) return null
+                return (
+                  <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </div>
 
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
@@ -291,9 +360,10 @@ const FILTERS = [
 ]
 
 const SORTS = [
-  { value: 'media',  label: '⭐ Média' },
-  { value: 'votes',  label: '🗳 Votos' },
-  { value: 'recent', label: '🕐 Recentes' },
+  { value: 'media',       label: '⭐ Média' },
+  { value: 'votes',       label: '🗳 Votos' },
+  { value: 'dificuldade', label: '🎯 Dificuldade' },
+  { value: 'recent',      label: '🕐 Recentes' },
 ]
 
 // ── Pontuação por tipo de opinião ─────────────────────────────────────
@@ -454,6 +524,15 @@ export default function SugestoesPage() {
       const tb = Object.keys(b.opinoes || {}).length
       return tb - ta || calcSongScore(b.opinoes).media - calcSongScore(a.opinoes).media
     }
+    if (sortBy === 'dificuldade') {
+      // Mais fácil → mais difícil; sem votos de dificuldade vai pro fim
+      const da = calcDifficulty(a.dificuldade).avg
+      const db_ = calcDifficulty(b.dificuldade).avg
+      if (da === null && db_ === null) return 0
+      if (da === null) return 1
+      if (db_ === null) return -1
+      return da - db_
+    }
     // 'recent' — já vem do Firestore por createdAt desc, mantém ordem original
     return 0
   })
@@ -533,6 +612,7 @@ export default function SugestoesPage() {
             const myVote = (s.opinoes || {})[user.uid]
             const { soma, media, total } = calcSongScore(s.opinoes)
             const showScore = total > 0
+            const diffLabel = avgDifficultyLabel(calcDifficulty(s.dificuldade).avg)
             return (
               <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
                 {videoId && (
@@ -565,7 +645,14 @@ export default function SugestoesPage() {
                     </div>
                   </div>
                   <p className="sug-card-by">por {s.suggestedBy}</p>
-                  <OpinionSummary opinoes={s.opinoes} />
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
+                    <OpinionSummary opinoes={s.opinoes} />
+                    {diffLabel && (
+                      <span className="diff-pill" style={{ color: diffLabel.color, background: diffLabel.bg }}>
+                        🎯 {diffLabel.label}
+                      </span>
+                    )}
+                  </div>
                   {myVote && (
                     <p className="my-vote-label">
                       Sua opinião:{' '}

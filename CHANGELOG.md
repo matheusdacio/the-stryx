@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.23.0] — 2026-06-24
+- Voto de **dificuldade nas sugestões** (Fácil / Ok / Difícil) + ordenação **🎯 Dificuldade** e chip de dificuldade no card
+
 ## [1.22.0] — 2026-06-24
 - Cards do setlist **recolhidos por padrão** com setinha pra expandir; recolhido mostra um resumo compacto (status, BPM, vídeo, tags, votos de dificuldade, observações)
 
