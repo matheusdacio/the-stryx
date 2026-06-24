@@ -19,13 +19,14 @@ const ENSAIANDO_SORTS = [
 ]
 
 // Peso de cada nível de dificuldade (mesma ordem do "Como tá pra você?")
+// 'nao_vi' não está aqui de propósito: é neutro e não entra na média.
 const DIFF_WEIGHT = { de_boa: 1, ok: 2, sofrendo: 3, travado: 4, moises: 5 }
 
-// Média de dificuldade da banda; null se ninguém votou ainda
+// Média de dificuldade da banda; null se ninguém deu um voto que conte
 function avgDifficulty(song) {
-  const votes = Object.values(song.dificuldade || {})
+  const votes = Object.values(song.dificuldade || {}).filter((v) => DIFF_WEIGHT[v.level])
   if (!votes.length) return null
-  return votes.reduce((acc, v) => acc + (DIFF_WEIGHT[v.level] || 0), 0) / votes.length
+  return votes.reduce((acc, v) => acc + DIFF_WEIGHT[v.level], 0) / votes.length
 }
 
 export default function SetlistPage() {

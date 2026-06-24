@@ -7,7 +7,9 @@ import MetronomeButton from './MetronomeButton'
 const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
 
 // Níveis de dificuldade (votados por cada membro nas músicas em Ensaiando)
+// 'nao_vi' é neutro: não conta na média de dificuldade (ver avgDifficulty na SetlistPage)
 const DIFFICULTIES = [
+  { value: 'nao_vi',   label: 'Ainda não vi',       short: 'Não viu',    color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
   { value: 'de_boa',   label: 'De boa',             short: 'De boa',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
   { value: 'ok',       label: 'OK',                 short: 'OK',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { value: 'sofrendo', label: 'Estou sofrendo',     short: 'Sofrendo',   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
