@@ -12,6 +12,7 @@ const DIFFICULTIES = [
   { value: 'ok',       label: 'OK',                 short: 'OK',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { value: 'sofrendo', label: 'Estou sofrendo',     short: 'Sofrendo',   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
   { value: 'travado',  label: 'Preciso de um tempo', short: 'Travado',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  { value: 'moises',   label: 'Moisés, não consegue né', short: 'Moisés', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
 ]
 
 function getYouTubeId(url) {
