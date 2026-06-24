@@ -7,40 +7,104 @@ Convenção [semver](https://semver.org/lang/pt-BR/): `MAJOR.MINOR.PATCH`
 
 A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `package.json`).
 
+> As versões abaixo foram **reconstruídas retroativamente** a partir do histórico de
+> commits (o versionamento formal começou na 1.21.0). Cada `feat` virou um *minor*,
+> cada `fix` um *patch*, partindo da 1.0.0 no primeiro commit.
+
 ---
 
-## [1.0.0] — 2026-06-24
+## [1.21.0] — 2026-06-24
+- Nível neutro **"Ainda não vi"** no "Como tá pra você?" (não conta na média de dificuldade)
 
-Primeira versão oficial versionada. Reúne tudo o que foi construído até aqui.
+## [1.20.0]
+- Ordenações no filtro Ensaiando: **📅 Mais antigas** e **🎯 Mais fáceis** (pela média da banda)
 
-### Setlist
-- Status das músicas: Ensaiando, Pronta, Extra
-- Campo de BPM com **metrônomo** embutido (Web Audio API)
-- Link de vídeo do YouTube no card
-- **Tags personalizadas** com filtro
-- **Voto de dificuldade** ("Como tá pra você?"): Ainda não vi · De boa · OK · Estou sofrendo · Preciso de um tempo · Moisés, não consegue né
-- Ordenações no filtro Ensaiando: Padrão, 📅 Mais antigas, 🎯 Mais fáceis (pela média da banda; "Ainda não vi" não conta)
+## [1.19.0]
+- 5º nível de dificuldade: **"Moisés, não consegue né"** 😄
 
-### Sugestões
-- Votação com pontuação: Hino (1,2) · Escopo (1) · Ajustar (0,6) · Fora (0,2) · Não curti (0)
-- Ranking pela **média** entre quem votou (quem não votou não influencia)
-- Ordenar por Média / Votos / Recentes e filtro "Não votei"
-- Observações por sugestão; aprovação leva vídeo e notas pro repertório
-- Exportação para planilha Excel
+## [1.18.0]
+- **Voto de dificuldade** nas músicas em Ensaiando ("Como tá pra você?")
 
-### Eventos
-- Tipos 🎸 Ensaio e 🎤 Apresentação
-- Setlist do evento com ordenação por drag-and-drop (e setas no celular)
-- **Modo Palco** em tela cheia: música atual, próxima e metrônomo
+## [1.17.0]
+- Limpeza de **sugestões duplicadas** na página Importar
 
-### Banda
-- Página de membros com auto-cadastro no login Google
-- Cada membro edita o próprio instrumento
-- Fusão de votos importados por nome aproximado; remoção de duplicatas
+## [1.16.2]
+- _fix:_ ranking das sugestões passa a usar a **média** (não a soma)
 
-### Importação
-- Importador do Glissandoo (músicas, sugestões, membros, ensaios)
-- Limpeza de sugestões duplicadas
+## [1.16.1]
+- _fix:_ corrige votos duplicados (importado vs login Google), com match de nome aproximado
 
-### Visual
-- Repaginada geral: tipografia, gradientes, glassmorphism na navegação
+## [1.16.0]
+- Filtro **"Não votei"** nas sugestões
+
+## [1.15.1]
+- _fix:_ remove emoji de raio do voto "Hino"
+
+## [1.15.0]
+- **Tags personalizadas** no repertório + **repaginada visual** geral
+
+## [1.14.0]
+- **Eventos** (🎸 Ensaio / 🎤 Apresentação) com setlist ordenável e **Modo Palco**
+
+## [1.13.0]
+- Feedback da banda: **BPM + metrônomo**, vídeo no repertório, observações nas sugestões, voto **Hino**
+
+## [1.12.0]
+- Sistema de **pontuação** das sugestões + planilha Excel reformatada
+
+## [1.11.0]
+- Exportação de sugestões para **planilha Excel**
+
+## [1.10.1]
+- _fix:_ remove botão "Descartada" dos cards
+
+## [1.10.0]
+- Página de Membros: remoção, deduplicação e **auto-cadastro no login**
+
+## [1.9.0]
+- Remove o filtro "Descartadas" do setlist
+
+## [1.8.0]
+- Redesign da página de Ensaios; extrator captura eventos passados e futuros
+
+## [1.7.0]
+- Categoria **Extras** no setlist
+
+## [1.6.1]
+- _fix:_ fusão busca UID em `users/{uid}` quando o membro não tem `firebaseUid`
+
+## [1.6.0]
+- Página de **Membros da banda** com vinculação automática ao Google
+
+## [1.5.0]
+- Vincula membros ao Google e funde votos importados
+
+## [1.4.1]
+- _fix:_ reescreve o extrator com a estrutura real validada do Glissandoo
+
+## [1.4.0]
+- Importação completa do Glissandoo (membros, músicas, sugestões, ensaios)
+
+## [1.3.0]
+- Página de **importação** + script extrator do Glissandoo
+
+## [1.2.3]
+- _fix:_ restringe aprovação de sugestões ao admin
+
+## [1.2.2]
+- _fix:_ mostra botões de aprovar/rejeitar a todos os membros logados
+
+## [1.2.1]
+- _fix:_ limita a 1 opinião por usuário (userId como chave)
+
+## [1.2.0]
+- Módulo de **Sugestões** com opiniões e aprovação manual
+
+## [1.1.0]
+- Módulos **Cifras, Ensaios e Rascunhos** + ordenação do setlist
+
+## [1.0.1]
+- _fix:_ ajuste no workflow de deploy (GitHub Pages)
+
+## [1.0.0]
+- Primeira versão: login Google, setlist e base do app
