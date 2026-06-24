@@ -27,6 +27,7 @@ const firstName = (n) => (n || '').trim().split(' ')[0]
 
 export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder }) {
   const { user } = useAuth()
+  const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
@@ -74,9 +75,10 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
 
   const videoId = getYouTubeId(song.videoUrl)
+  const diffCount = Object.keys(dificuldade).length
 
   return (
-    <div className={`song-card status-${song.status}`}>
+    <div className={`song-card status-${song.status} ${expanded ? 'expanded' : ''}`}>
       <div className="song-header">
         <div className="song-order-wrap">
           <span className="song-position">{position}</span>
@@ -87,13 +89,35 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
             </div>
           )}
         </div>
-        <div className="song-info">
+        <div className="song-info" onClick={() => setExpanded(!expanded)} title={expanded ? 'Recolher' : 'Ver detalhes'}>
           <span className="song-title">{song.title}</span>
           {song.artist && <span className="song-artist"> — {song.artist}</span>}
         </div>
+        <button
+          className={`song-expand-btn ${expanded ? 'open' : ''}`}
+          onClick={() => setExpanded(!expanded)}
+          title={expanded ? 'Recolher' : 'Ver detalhes'}
+        >
+          ›
+        </button>
         <button className="btn-remove" onClick={remove} title="Remover">✕</button>
       </div>
 
+      {/* Resumo compacto — aparece só quando recolhido */}
+      {!expanded && (
+        <div className="song-collapsed" onClick={() => setExpanded(true)}>
+          <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
+          {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
+          {videoId && <span className="mini-chip">▶ vídeo</span>}
+          {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
+          {song.status === 'ensaiando' && diffCount > 0 && (
+            <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
+          )}
+          {song.notes && <span className="mini-chip">📝</span>}
+        </div>
+      )}
+
+      {expanded && <>
       <div className="song-status-bar">
         {Object.keys(STATUS_LABELS).map((s) => (
           <button
@@ -217,6 +241,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
         </p>
       )}
+      </>}
     </div>
   )
 }

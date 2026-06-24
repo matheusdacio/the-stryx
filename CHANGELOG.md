@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.22.0] — 2026-06-24
+- Cards do setlist **recolhidos por padrão** com setinha pra expandir; recolhido mostra um resumo compacto (status, BPM, vídeo, tags, votos de dificuldade, observações)
+
 ## [1.21.0] — 2026-06-24
 - Nível neutro **"Ainda não vi"** no "Como tá pra você?" (não conta na média de dificuldade)
 
