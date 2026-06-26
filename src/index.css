@@ -1022,6 +1022,9 @@ button { font-family: inherit; }
 }
 .member-role:hover { color: var(--red); }
 .member-admin-info { display: flex; flex-direction: column; gap: 4px; margin-top: 4px; }
+.member-aliases { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.alias-label { font-size: 0.68rem; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
+.alias-chips { display: flex; flex-wrap: wrap; gap: 4px; }
 .member-email { font-size: 0.75rem; color: var(--text-muted); word-break: break-all; }
 .merge-badge {
   display: inline-block; font-size: 0.7rem; padding: 2px 7px;

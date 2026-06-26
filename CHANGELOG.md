@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.24.0] — 2026-06-24
+- **Apelidos / nomes antigos** por membro na página Banda: permite fundir votos importados de quem usou outro sobrenome no Glissandoo (ex: "Marcio Braz" → Marcio). A fusão de votos passa a considerar esses apelidos.
+
 ## [1.23.1] — 2026-06-24
 - _fix:_ chip de dificuldade movido pro canto superior (junto da nota) e com estilo vazado, pra não confundir com as opiniões
 

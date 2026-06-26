@@ -19,15 +19,28 @@ const INSTRUMENTS = [
 function MemberCard({ member, isAdmin, currentUid, onRemove }) {
   const [editingRole, setEditingRole] = useState(false)
   const [role, setRole] = useState(member.role || '')
+  const [newAlias, setNewAlias] = useState('')
 
   const linked  = !!member.firebaseUid
   const photo   = member.photoURL || null
   // Admin edita qualquer um; membro edita o próprio instrumento
   const canEdit = isAdmin || (linked && member.firebaseUid === currentUid)
+  const aliases = member.aliases || []
 
   const saveRole = async () => {
     await updateDoc(doc(db, 'members', member.id), { role })
     setEditingRole(false)
+  }
+
+  // Apelidos / nomes antigos do Glissandoo (pra fundir votos de quem usou outro sobrenome)
+  const addAlias = async () => {
+    const a = newAlias.trim()
+    if (!a || aliases.some((x) => x.toLowerCase() === a.toLowerCase())) { setNewAlias(''); return }
+    await updateDoc(doc(db, 'members', member.id), { aliases: [...aliases, a] })
+    setNewAlias('')
+  }
+  const removeAlias = async (a) => {
+    await updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) })
   }
 
   return (
@@ -79,6 +92,33 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
             ) : (
               <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)' }}>Não logou ainda</span>
             )}
+            {/* Apelidos / nomes antigos do Glissandoo */}
+            <div className="member-aliases">
+              <span className="alias-label" title="Nomes que essa pessoa usou no Glissandoo, pra fundir votos antigos">
+                Nomes antigos (Glissandoo)
+              </span>
+              {aliases.length > 0 && (
+                <div className="alias-chips">
+                  {aliases.map((a) => (
+                    <span key={a} className="song-tag editable">
+                      {a}
+                      <button type="button" className="tag-remove" onClick={() => removeAlias(a)}>✕</button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <div className="tag-edit-row">
+                <input
+                  value={newAlias}
+                  onChange={(e) => setNewAlias(e.target.value)}
+                  onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAlias())}
+                  placeholder="Ex: Marcio Braz"
+                  style={{ fontSize: '0.78rem' }}
+                />
+                <button type="button" className="btn-primary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
+              </div>
+            </div>
+
             <button
               className="btn-ghost-danger"
               style={{ marginTop: 6, fontSize: '0.72rem', padding: '2px 8px' }}

@@ -46,9 +46,14 @@ export async function mergeAllImportedVotes() {
       if (!key.startsWith('import_')) return
       const importName = key.slice(7).replace(/_/g, ' ')
 
-      const matches = linked.filter(
-        (m) => namesMatch(importName, m.name) || namesMatch(importName, m.displayName)
-      )
+      const matches = linked.filter((m) => {
+        if (namesMatch(importName, m.name) || namesMatch(importName, m.displayName)) return true
+        // Apelidos / nomes antigos do Glissandoo (definidos manualmente pelo admin).
+        // Aqui aceitamos também igualdade exata normalizada, pois é explícito.
+        return (m.aliases || []).some(
+          (a) => namesMatch(importName, a) || normalizeName(importName) === normalizeName(a)
+        )
+      })
       const uids = [...new Set(matches.map((m) => m.firebaseUid))]
       if (uids.length !== 1) return // 0 = ninguém logou ainda; >1 = ambíguo, não arrisca
 
