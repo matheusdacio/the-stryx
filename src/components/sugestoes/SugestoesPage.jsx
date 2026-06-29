@@ -316,6 +316,16 @@ function AddSugestaoModal({ onClose, userId, userName }) {
       suggestedById: userId,
       createdAt: serverTimestamp(),
     })
+    // Enfileira notificação para os outros membros votarem
+    await addDoc(collection(db, 'notification_queue'), {
+      tipo: 'nova_sugestao',
+      titulo: form.title.trim(),
+      artista: form.artist?.trim() || '',
+      suggestedBy: userName,
+      suggestedById: userId,
+      processado: false,
+      criadoEm: serverTimestamp(),
+    })
     onClose()
   }
 
