@@ -26,7 +26,6 @@ async function main() {
   // Busca itens não processados na fila
   const filaSnap = await db.collection('notification_queue')
     .where('processado', '==', false)
-    .orderBy('criadoEm', 'asc')
     .get()
 
   if (filaSnap.empty) {
