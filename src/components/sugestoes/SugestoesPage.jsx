@@ -137,6 +137,10 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
       videoUrl: sugestao.videoUrl || '',
       status: 'ensaiando',
       notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
+      bpm: sugestao.bpm || null,
+      tags: sugestao.tags || [],
+      // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
+      sugestaoId: sugestao.id,
       order: Date.now(),
       createdAt: serverTimestamp(),
     })

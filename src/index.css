@@ -654,6 +654,17 @@ button { font-family: inherit; }
   cursor: pointer; transition: all 0.2s;
 }
 .btn-secondary:hover { background: var(--border); border-color: var(--border-strong); }
+.song-card-footer {
+  display: flex; justify-content: flex-end;
+  margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border);
+}
+.btn-back-sug {
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  padding: 5px 12px; border-radius: var(--radius); font-size: 0.78rem;
+  cursor: pointer; transition: all 0.2s;
+}
+.btn-back-sug:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface2); }
+
 .btn-remove {
   background: none; border: none; color: var(--text-muted);
   cursor: pointer; font-size: 0.82rem; padding: 2px 6px;

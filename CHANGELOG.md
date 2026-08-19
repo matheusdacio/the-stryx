@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.25.0] — 2026-08-18
+- **Voltar pras sugestões**: botão no card do setlist que tira a música da lista e devolve pra aba de Sugestões. Se a música tinha vindo de uma sugestão aprovada, a sugestão original é reaberta com as opiniões preservadas; senão nasce uma sugestão nova em aberto. Os votos de dificuldade do setlist (5 níveis) são convertidos pros 3 da sugestão, e BPM/tags viajam junto nos dois sentidos.
+
 ## [1.24.0] — 2026-06-24
 - **Apelidos / nomes antigos** por membro na página Banda: permite fundir votos importados de quem usou outro sobrenome no Glissandoo (ex: "Marcio Braz" → Marcio). A fusão de votos passa a considerar esses apelidos.
 

@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { doc, updateDoc, deleteDoc, deleteField } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
@@ -16,6 +16,16 @@ const DIFFICULTIES = [
   { value: 'travado',  label: 'Preciso de um tempo', short: 'Travado',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
   { value: 'moises',   label: 'Moisés, não consegue né', short: 'Moisés', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
 ]
+
+// Volta pras sugestões: o setlist tem 5 níveis de dificuldade e a sugestão só 3.
+// 'nao_vi' é neutro e não vira voto lá.
+const DIFF_TO_SUGESTAO = {
+  de_boa: 'facil',
+  ok: 'ok',
+  sofrendo: 'dificil',
+  travado: 'dificil',
+  moises: 'dificil',
+}
 
 function getYouTubeId(url) {
   if (!url) return null
@@ -73,6 +83,56 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   }
   const removeTag = (t) => setTags(tags.filter((x) => x !== t))
   const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
+
+  // Tira a música do setlist e devolve pra aba de Sugestões.
+  // Se ela veio de uma sugestão aprovada, reabre a original (preserva as opiniões);
+  // senão cria uma sugestão nova em aberto.
+  const backToSuggestions = async () => {
+    if (!confirm(`Tirar "${song.title}" do setlist e mandar de volta pras sugestões?`)) return
+
+    const dificuldadeSug = {}
+    Object.entries(dificuldade).forEach(([uid, v]) => {
+      const level = DIFF_TO_SUGESTAO[v.level]
+      if (level) dificuldadeSug[uid] = { userName: v.userName, level, at: v.at }
+    })
+
+    let reopened = false
+    if (song.sugestaoId) {
+      const sugRef = doc(db, 'sugestoes', song.sugestaoId)
+      const snap = await getDoc(sugRef)
+      if (snap.exists()) {
+        await updateDoc(sugRef, {
+          status: 'aberta',
+          ...(song.notes ? { notes: song.notes } : {}),
+          ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
+          bpm: song.bpm || null,
+          tags: song.tags || [],
+          dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldadeSug },
+        })
+        reopened = true
+      }
+    }
+
+    if (!reopened) {
+      await addDoc(collection(db, 'sugestoes'), {
+        title: song.title,
+        artist: song.artist || '',
+        videoUrl: song.videoUrl || '',
+        description: '',
+        notes: song.notes || '',
+        bpm: song.bpm || null,
+        tags: song.tags || [],
+        status: 'aberta',
+        opinoes: {},
+        dificuldade: dificuldadeSug,
+        suggestedBy: user.displayName || user.email,
+        suggestedById: user.uid,
+        createdAt: serverTimestamp(),
+      })
+    }
+
+    await deleteDoc(ref)
+  }
 
   const videoId = getYouTubeId(song.videoUrl)
   const diffCount = Object.keys(dificuldade).length
@@ -241,6 +301,12 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
         </p>
       )}
+
+      <div className="song-card-footer">
+        <button className="btn-back-sug" onClick={backToSuggestions} title="Tirar do setlist e devolver pras sugestões">
+          ↩ Voltar pras sugestões
+        </button>
+      </div>
       </>}
     </div>
   )
