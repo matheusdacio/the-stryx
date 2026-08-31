@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.26.1] — 2026-08-31
+- _fix:_ arrastar pra reordenar passa a funcionar também nos filtros Ensaiando/Prontas/Extras, com tag e com busca ativa (soltar em cima de uma música move a arrastada pra posição dela na lista completa). Continua desligado só nas ordenações "Mais antigas" e "Mais fáceis"
+
 ## [1.26.0] — 2026-08-31
 - **Busca com lupa** no Setlist e nas Sugestões: ícone discreto no header que expande num campo de busca por título/artista, ignorando acentos e maiúsculas (Esc ou ✕ fecha)
 - **Arrastar pra reordenar** o setlist: segure a bolinha da posição e arraste (no celular, segure ~250ms). Disponível no filtro "Todas" sem tag/busca ativa; as setinhas continuam funcionando em qualquer filtro

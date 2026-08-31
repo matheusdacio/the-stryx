@@ -123,9 +123,10 @@ export default function SetlistPage() {
   // Aplica a ordenação extra só no filtro "Ensaiando"
   const sortActive = filter === 'ensaiando' && ensaiandoSort !== 'manual'
 
-  // Arrastar só quando a lista completa está na ordem manual —
-  // reordenar um recorte filtrado seria ambíguo (setinhas continuam valendo)
-  const dragEnabled = filter === 'all' && !tagFilter && !search.trim()
+  // Arrastar vale em qualquer filtro/tag/busca: soltar em cima de uma música
+  // move a arrastada pra posição global dela. Só desliga nas ordenações
+  // automáticas (Mais antigas / Mais fáceis), onde ordem manual não se aplica.
+  const dragEnabled = !sortActive
   let displayed = filtered
   if (sortActive) {
     displayed = [...filtered].sort((a, b) => {
@@ -229,37 +230,33 @@ export default function SetlistPage() {
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
           <SortableContext items={displayed.map((s) => s.id)} strategy={verticalListSortingStrategy}>
             <div className="song-list">
-              {displayed.map((song, i) => (
-                <SortableSongCard
-                  key={song.id}
-                  song={song}
-                  onMoveUp={() => moveUp(i)}
-                  onMoveDown={() => moveDown(i)}
-                  isFirst={i === 0}
-                  isLast={i === songs.length - 1}
-                  position={i + 1}
-                />
-              ))}
+              {displayed.map((song) => {
+                const globalIndex = songs.findIndex((s) => s.id === song.id)
+                return (
+                  <SortableSongCard
+                    key={song.id}
+                    song={song}
+                    onMoveUp={() => moveUp(globalIndex)}
+                    onMoveDown={() => moveDown(globalIndex)}
+                    isFirst={globalIndex === 0}
+                    isLast={globalIndex === songs.length - 1}
+                    position={globalIndex + 1}
+                  />
+                )
+              })}
             </div>
           </SortableContext>
         </DndContext>
       ) : (
         <div className="song-list">
-          {displayed.map((song, i) => {
-            const globalIndex = songs.findIndex((s) => s.id === song.id)
-            return (
-              <SongCard
-                key={song.id}
-                song={song}
-                onMoveUp={() => moveUp(globalIndex)}
-                onMoveDown={() => moveDown(globalIndex)}
-                isFirst={globalIndex === 0}
-                isLast={globalIndex === songs.length - 1}
-                position={sortActive ? i + 1 : globalIndex + 1}
-                hideReorder={sortActive}
-              />
-            )
-          })}
+          {displayed.map((song, i) => (
+            <SongCard
+              key={song.id}
+              song={song}
+              position={i + 1}
+              hideReorder
+            />
+          ))}
         </div>
       )}
 
