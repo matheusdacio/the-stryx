@@ -13,6 +13,10 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.26.0] — 2026-08-31
+- **Busca com lupa** no Setlist e nas Sugestões: ícone discreto no header que expande num campo de busca por título/artista, ignorando acentos e maiúsculas (Esc ou ✕ fecha)
+- **Arrastar pra reordenar** o setlist: segure a bolinha da posição e arraste (no celular, segure ~250ms). Disponível no filtro "Todas" sem tag/busca ativa; as setinhas continuam funcionando em qualquer filtro
+
 ## [1.25.0] — 2026-08-18
 - **Voltar pras sugestões**: botão no card do setlist que tira a música da lista e devolve pra aba de Sugestões. Se a música tinha vindo de uma sugestão aprovada, a sugestão original é reaberta com as opiniões preservadas; senão nasce uma sugestão nova em aberto. Os votos de dificuldade do setlist (5 níveis) são convertidos pros 3 da sugestão, e BPM/tags viajam junto nos dois sentidos.
 

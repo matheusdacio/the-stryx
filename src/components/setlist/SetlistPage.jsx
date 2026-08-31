@@ -1,8 +1,16 @@
 import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query, writeBatch, doc } from 'firebase/firestore'
+import {
+  DndContext, closestCenter,
+  PointerSensor, TouchSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
 import SongCard from './SongCard'
 import AddSongModal from './AddSongModal'
+import SearchLupa from '../SearchLupa'
+import { matchesSearch } from '../../utils/search'
 
 const FILTERS = [
   { value: 'all',       label: 'Todas' },
@@ -29,12 +37,35 @@ function avgDifficulty(song) {
   return votes.reduce((acc, v) => acc + DIFF_WEIGHT[v.level], 0) / votes.length
 }
 
+// Wrapper sortable: liga o card ao dnd-kit e passa o handle (a bolinha da posição)
+function SortableSongCard({ song, ...props }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging ? { zIndex: 5, position: 'relative' } : {}),
+  }
+  return (
+    <div ref={setNodeRef} style={style} className={isDragging ? 'dragging' : ''}>
+      <SongCard song={song} dragHandleProps={{ ...attributes, ...listeners }} {...props} />
+    </div>
+  )
+}
+
 export default function SetlistPage() {
   const [songs, setSongs] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
   const [ensaiandoSort, setEnsaiandoSort] = useState('manual')
+  const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+
+  // Pointer: arrasta depois de mover 6px (clique normal continua funcionando).
+  // Touch: segurar 250ms pra começar a arrastar (scroll normal continua funcionando).
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  )
 
   useEffect(() => {
     const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
@@ -64,17 +95,37 @@ export default function SetlistPage() {
     await batch.commit()
   }
 
+  // Arrastou e soltou: reordena a lista inteira e normaliza order = índice
+  const handleDragEnd = async ({ active, over }) => {
+    if (!over || active.id === over.id) return
+    const oldIndex = songs.findIndex((s) => s.id === active.id)
+    const newIndex = songs.findIndex((s) => s.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const reordered = arrayMove(songs, oldIndex, newIndex)
+    setSongs(reordered)
+    const batch = writeBatch(db)
+    reordered.forEach((s, i) => {
+      if (s.order !== i) batch.update(doc(db, 'songs', s.id), { order: i })
+    })
+    await batch.commit()
+  }
+
   const allTags = [...new Set(songs.flatMap((s) => s.tags || []))].sort((a, b) =>
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
   )
 
   const filtered = songs.filter((s) =>
     (filter === 'all' || s.status === filter) &&
-    (!tagFilter || (s.tags || []).includes(tagFilter))
+    (!tagFilter || (s.tags || []).includes(tagFilter)) &&
+    matchesSearch(search, s.title, s.artist)
   )
 
   // Aplica a ordenação extra só no filtro "Ensaiando"
   const sortActive = filter === 'ensaiando' && ensaiandoSort !== 'manual'
+
+  // Arrastar só quando a lista completa está na ordem manual —
+  // reordenar um recorte filtrado seria ambíguo (setinhas continuam valendo)
+  const dragEnabled = filter === 'all' && !tagFilter && !search.trim()
   let displayed = filtered
   if (sortActive) {
     displayed = [...filtered].sort((a, b) => {
@@ -103,7 +154,10 @@ export default function SetlistPage() {
     <div className="page">
       <div className="page-header">
         <h2>Setlist</h2>
-        <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
+        <div className="page-header-actions">
+          <SearchLupa value={search} onChange={setSearch} />
+          <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
+        </div>
       </div>
 
       <div className="filter-bar">
@@ -158,13 +212,37 @@ export default function SetlistPage() {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <p>Nenhuma música aqui ainda.</p>
-          {filter === 'all' && (
-            <button className="btn-primary" onClick={() => setShowModal(true)}>
-              Adicionar primeira música
-            </button>
+          {search.trim() ? (
+            <p>Nenhuma música encontrada pra "{search.trim()}".</p>
+          ) : (
+            <>
+              <p>Nenhuma música aqui ainda.</p>
+              {filter === 'all' && (
+                <button className="btn-primary" onClick={() => setShowModal(true)}>
+                  Adicionar primeira música
+                </button>
+              )}
+            </>
           )}
         </div>
+      ) : dragEnabled ? (
+        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+          <SortableContext items={displayed.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+            <div className="song-list">
+              {displayed.map((song, i) => (
+                <SortableSongCard
+                  key={song.id}
+                  song={song}
+                  onMoveUp={() => moveUp(i)}
+                  onMoveDown={() => moveDown(i)}
+                  isFirst={i === 0}
+                  isLast={i === songs.length - 1}
+                  position={i + 1}
+                />
+              ))}
+            </div>
+          </SortableContext>
+        </DndContext>
       ) : (
         <div className="song-list">
           {displayed.map((song, i) => {

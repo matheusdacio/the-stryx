@@ -6,6 +6,8 @@ import {
 import * as XLSX from 'xlsx'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
+import SearchLupa from '../SearchLupa'
+import { matchesSearch } from '../../utils/search'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -502,6 +504,7 @@ export default function SugestoesPage() {
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('media')
   const [onlyUnvoted, setOnlyUnvoted] = useState(false)
+  const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
 
@@ -519,7 +522,8 @@ export default function SugestoesPage() {
     if (fresh) setModal(fresh)
   }, [sugestoes])
 
-  const byStatus = filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter)
+  const byStatus = (filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter))
+    .filter((s) => matchesSearch(search, s.title, s.artist))
   const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
   const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
   const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
@@ -565,7 +569,8 @@ export default function SugestoesPage() {
           Sugestões
           {pendingCount > 0 && <span className="pending-badge">{pendingCount}</span>}
         </h2>
-        <div style={{ display: 'flex', gap: 8 }}>
+        <div className="page-header-actions">
+          <SearchLupa value={search} onChange={setSearch} />
           {isAdmin && filtered.length > 0 && (
             <button className="btn-secondary" onClick={handleExport} title="Exportar para Excel">
               📊 Exportar
@@ -610,7 +615,9 @@ export default function SugestoesPage() {
 
       {displayed.length === 0 ? (
         <div className="empty-state">
-          {onlyUnvoted ? (
+          {search.trim() ? (
+            <p>Nenhuma sugestão encontrada pra "{search.trim()}".</p>
+          ) : onlyUnvoted ? (
             <p>🎉 Você já votou em todas as músicas daqui!</p>
           ) : (
             <>

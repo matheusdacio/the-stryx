@@ -35,7 +35,7 @@ function getYouTubeId(url) {
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder }) {
+export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder, dragHandleProps }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -141,7 +141,13 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
     <div className={`song-card status-${song.status} ${expanded ? 'expanded' : ''}`}>
       <div className="song-header">
         <div className="song-order-wrap">
-          <span className="song-position">{position}</span>
+          <span
+            className={`song-position ${dragHandleProps ? 'drag-handle' : ''}`}
+            title={dragHandleProps ? 'Arraste para reordenar' : undefined}
+            {...(dragHandleProps || {})}
+          >
+            {position}
+          </span>
           {!hideReorder && (
             <div className="order-btns">
               <button className="btn-order" onClick={onMoveUp} disabled={isFirst} title="Mover para cima">▲</button>
