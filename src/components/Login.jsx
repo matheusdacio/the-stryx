@@ -18,6 +18,12 @@ export default function Login() {
           Entrar com Google
         </button>
       </div>
+
+      {/* Atribuição exigida pelo GetSongBPM. Fica na tela de login porque é a
+          única página pública do app — o resto exige conta Google */}
+      <p className="login-credito">
+        Tom e BPM por <a href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>
+      </p>
     </div>
   )
 }

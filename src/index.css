@@ -51,6 +51,7 @@ button { font-family: inherit; }
 
 /* ─── LOGIN ─── */
 .login-page {
+  position: relative;
   display: flex; align-items: center; justify-content: center;
   min-height: 100vh;
   background:
@@ -1107,3 +1108,11 @@ button { font-family: inherit; }
   opacity: 0.95; border-color: var(--red);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+
+/* Crédito na tela de login (atribuição do GetSongBPM) */
+.login-credito {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  text-align: center; font-size: 0.72rem; color: var(--text-muted);
+}
+.login-credito a { color: var(--text-muted); }
+.login-credito a:hover { color: var(--text); }

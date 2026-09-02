@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.26.2] — 2026-09-02
+- Crédito "Tom e BPM por GetSongBPM" no rodapé da tela de login. É a atribuição exigida pelo serviço pra liberar a chave da API que vai sugerir tom e BPM ao cadastrar música, e ela precisa estar publicada antes do pedido. A tela de login é a única página pública do app
+
 ## [1.26.1] — 2026-08-31
 - _fix:_ arrastar pra reordenar passa a funcionar também nos filtros Ensaiando/Prontas/Extras, com tag e com busca ativa (soltar em cima de uma música move a arrastada pra posição dela na lista completa). Continua desligado só nas ordenações "Mais antigas" e "Mais fáceis"
 
