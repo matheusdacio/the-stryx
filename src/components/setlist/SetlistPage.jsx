@@ -174,6 +174,7 @@ export default function SetlistPage() {
           🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
         </button>
       </div>
+      <p className="filter-hint">O nível da música é o de quem está menos pronto nela.</p>
 
       {/* Ordenação extra */}
       {(

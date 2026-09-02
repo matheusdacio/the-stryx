@@ -111,7 +111,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
     const dominio = {}
     bandMembers.forEach((m) => {
       if (!m.firebaseUid) return
-      dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString() }
+      dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString(), seeded: true }
     })
 
     await addDoc(collection(db, 'songs'), {

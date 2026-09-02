@@ -61,6 +61,11 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
     }
   }
   const piorDominio = dominioPorPeso(calcDominio(dominio).pior)
+  // "Crua" semeada pra todo mundo ao aprovar (ninguém ensaiou ainda) não é
+  // voto de verdade — enquanto só houver semeados, nem selo nem pill devem
+  // afirmar um voto que não aconteceu
+  const dominioVotos = Object.values(dominio)
+  const soSemeados = dominioVotos.length > 0 && dominioVotos.every((v) => v.seeded)
 
   // Opinião da banda sobre a música. A votação vive aqui também porque as
   // 32 músicas importadas nunca passaram por sugestão — sem isso elas nunca
@@ -222,7 +227,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         <div className="song-collapsed" onClick={() => setExpanded(true)}>
           {piorDominio ? (
             <span className="status-dot" style={{ color: piorDominio.color, background: piorDominio.bg }}>
-              {piorDominio.label}
+              {soSemeados ? `${piorDominio.label} (ninguém votou ainda)` : piorDominio.label}
             </span>
           ) : (
             <span className="status-dot status-sem-voto">Sem voto</span>
@@ -256,10 +261,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
           ))}
         </div>
 
-        {Object.keys(dominio).length > 0 && (
+        {dominioVotos.length > 0 && (
           <div className="difficulty-summary">
             {DOMINIOS.map((d) => {
-              const voters = Object.values(dominio).filter((v) => v.level === d.value)
+              const voters = dominioVotos.filter((v) => v.level === d.value && !v.seeded)
               if (!voters.length) return null
               return (
                 <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
@@ -267,6 +272,11 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
                 </span>
               )
             })}
+            {dominioVotos.some((v) => v.seeded) && (
+              <span className="diff-pill diff-pill-seeded">
+                Ainda não disseram: {dominioVotos.filter((v) => v.seeded).map((v) => firstName(v.userName)).join(', ')}
+              </span>
+            )}
           </div>
         )}
       </div>

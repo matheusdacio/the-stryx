@@ -73,7 +73,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const trazerCruas = () => {
     const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, setlist.map((s) => s.id))
     if (!escolhidas.length) {
-      setAvisoCruas('Nenhuma música com voto de domínio fora deste evento.')
+      setAvisoCruas('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
       return
     }
     setSetlist([...setlist, ...escolhidas.map((song) => ({

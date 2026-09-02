@@ -349,6 +349,8 @@ button { font-family: inherit; }
 .diff-pill {
   font-size: 0.7rem; padding: 2px 9px; border-radius: 10px; font-weight: 600;
 }
+.diff-pill-seeded { color: var(--text-muted); background: var(--surface2); }
+.filter-hint { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 14px; }
 
 .song-notes {
   font-size: 0.82rem; color: var(--text-muted); cursor: pointer;
