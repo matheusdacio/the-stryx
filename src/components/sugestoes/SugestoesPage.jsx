@@ -568,7 +568,21 @@ export default function SugestoesPage() {
   // Push de sugestão nova chega com ?ordem=recentes&naovotei=1 — quem toca
   // no aviso cai já olhando a música anunciada, não no fim da lista padrão
   const [filter, setFilter] = useState(() => searchParams.get('naovotei') === '1' ? 'falta_meu_voto' : 'aberta')
-  const [sortBy, setSortBy] = useState(() => searchParams.get('ordem') || 'balanceada')
+  // Ordenação persiste (dura semanas — quem prefere "Recentes" reescolheria
+  // toda vez), mas o link do push sempre manda: sugestão nova precisa
+  // aparecer perto do topo, não onde a pessoa deixou salvo
+  const [sortBy, setSortBy] = useState(() => {
+    if (searchParams.get('ordem')) return searchParams.get('ordem')
+    try {
+      return localStorage.getItem('stryx-sugestoes-sortby') || 'balanceada'
+    } catch {
+      return 'balanceada'
+    }
+  })
+  const mudarSortBy = (v) => {
+    setSortBy(v)
+    try { localStorage.setItem('stryx-sugestoes-sortby', v) } catch { /* localStorage indisponível */ }
+  }
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
@@ -734,7 +748,7 @@ export default function SugestoesPage() {
           <button
             key={s.value}
             className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
-            onClick={() => setSortBy(s.value)}
+            onClick={() => mudarSortBy(s.value)}
           >
             {s.label}
           </button>

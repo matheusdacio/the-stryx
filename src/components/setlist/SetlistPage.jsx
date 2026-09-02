@@ -11,6 +11,7 @@ import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { calcDifficulty } from '../../utils/dificuldade'
 import { todosVotaram } from '../../utils/rejeicao'
+import { usePersistedState } from '../../hooks/usePersistedState'
 
 // O setlist é organizado pelo domínio da banda, no pior cenário votado:
 // basta uma pessoa insegura pra música contar como precisando de ensaio.
@@ -56,7 +57,10 @@ export default function SetlistPage() {
   const [loaded, setLoaded] = useState(false)
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
-  const [tagFilter, setTagFilter] = useState(null)
+  // Dura semanas (ex.: a tag de um show específico) — vale sobreviver a
+  // fechar o app. Filtro de nível não: o padrão (Todas) é o que a pessoa
+  // quer na maioria das visitas
+  const [tagFilter, setTagFilter] = usePersistedState('stryx-setlist-tagfilter', null)
   // Música recém-votada continua na lista até o filtro mudar, mesmo que o
   // novo voto não bata mais no filtro ativo — senão ela some debaixo do
   // dedo e a próxima sobe pro lugar exato do toque
@@ -134,6 +138,10 @@ export default function SetlistPage() {
   const allTags = [...new Set(songs.flatMap((s) => s.tags || []))].sort((a, b) =>
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
   )
+  // Tag guardada de uma visita anterior pode não existir mais (a música que
+  // tinha essa tag saiu, ou a tag foi removida) — sem isso a lista ficava
+  // vazia sem explicação nenhuma
+  const tagFilterValida = tagFilter && allTags.includes(tagFilter) ? tagFilter : null
 
   // Falta EU indicar algo nessa música: domínio (pronto pra tocar),
   // dificuldade (é fácil?) ou opinião (vale tocar — só conta enquanto a
@@ -147,7 +155,7 @@ export default function SetlistPage() {
 
   const filtered = songs.filter((s) =>
     (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter) || fixados.has(s.id)) &&
-    (!tagFilter || (s.tags || []).includes(tagFilter)) &&
+    (!tagFilterValida || (s.tags || []).includes(tagFilterValida)) &&
     (!eventoChip || (eventoChip === 'ultimo' ? idsUltimoEnsaio : idsProximoEnsaio).has(s.id)) &&
     matchesSearch(search, s.title, s.artist)
   )
@@ -273,7 +281,7 @@ export default function SetlistPage() {
               <span className="count">{songs.filter((s) => (s.tags || []).includes(t)).length}</span>
             </button>
           ))}
-          {tagFilter && (
+          {tagFilterValida && (
             <button className="btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => mudarTagFilter(null)}>
               ✕ limpar
             </button>
