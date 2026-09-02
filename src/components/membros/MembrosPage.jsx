@@ -9,6 +9,7 @@ import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
 import { normalizeEventMembers } from '../../utils/members'
 import { migrateEventPresence } from '../../utils/presenca'
 import { verificarIntegridade } from '../../utils/integridade'
+import { dedupSugestoes } from '../../utils/dedupSugestoes'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -319,6 +320,73 @@ function IntegridadeTool() {
   )
 }
 
+// ── Ferramenta: sugestões duplicadas ──────────────────────────────────
+function DedupSugestoesTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await dedupSugestoes({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhuma sugestão duplicada.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { updated } = await dedupSugestoes()
+      setMsg(`✅ ${updated} duplicata(s) resolvida(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🎵 Fundir sugestões duplicadas'}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} música(s) com sugestão repetida</p>
+          {pending.map((c) => (
+            <p key={c.fica.id} className="event-normalize-item">
+              <strong>{c.titulo}</strong>
+              <br />
+              {c.fica.votosAntes} voto(s) + {c.saem.map((s) => `${s.votos}`).join(' + ')}
+              {' → '}<strong>{c.resultado.votos} voto(s)</strong>, {c.resultado.status}
+              {c.repontar.length > 0 && ` · ${c.repontar.length} música do setlist repontada`}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length}`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -425,6 +493,7 @@ export default function MembrosPage() {
           <EventNormalizeTool />
           <PresenceMigrateTool />
           <IntegridadeTool />
+          <DedupSugestoesTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}
