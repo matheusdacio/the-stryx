@@ -38,7 +38,7 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
           <div style={{ display: 'flex', gap: 8 }}>
             {cifra && !editing && <button className="btn-secondary" onClick={() => setEditing(true)}>Editar</button>}
             {onRemove && <button className="btn-ghost-danger" onClick={onRemove}>Remover</button>}
-            <button className="btn-secondary" onClick={onClose}>Fechar</button>
+            {!editing && <button className="btn-secondary" onClick={onClose}>Fechar</button>}
           </div>
         </div>
 
