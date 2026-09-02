@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
 import { normalizeEventMembers } from '../../utils/members'
 import { migrateEventPresence } from '../../utils/presenca'
+import { migrarExtrasParaTag, TAG_SEM_SENTIDO } from '../../utils/setlist'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -273,6 +274,69 @@ function PresenceMigrateTool() {
   )
 }
 
+// ── Ferramenta: status "Extra" vira tag ───────────────────────────────
+function ExtrasTagTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await migrarExtrasParaTag({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhuma música marcada como Extra.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { updated } = await migrarExtrasParaTag()
+      setMsg(`✅ ${updated} música(s) marcada(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : `🏷 Extras viram tag "${TAG_SEM_SENTIDO}"`}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} música(s) marcada(s) como Extra</p>
+          {pending.map((c) => (
+            <p key={c.id} className="event-normalize-item">
+              <strong>{c.title}</strong>{c.artist ? ` — ${c.artist}` : ''} → tag {TAG_SEM_SENTIDO}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length} música(s)`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -378,6 +442,7 @@ export default function MembrosPage() {
           </button>
           <EventNormalizeTool />
           <PresenceMigrateTool />
+          <ExtrasTagTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}

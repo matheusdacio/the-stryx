@@ -1,9 +1,10 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, writeBatch } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
+import { calcDominio, dominioPorPeso } from '../../utils/dominio'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 
@@ -167,8 +168,8 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
 
-  // O que foi realmente ensaiado neste evento — vira o gatilho pra promover a
-  // música de "Ensaiando" pra "Pronta" no setlist
+  // Registro do que foi realmente tocado no ensaio. Quem diz se a música ficou
+  // pronta é o voto de domínio de cada um, não esta marcação
   const ensaiadas = ensaio.ensaiadas || []
   const toggleEnsaiada = (id) => {
     if (!id) return
@@ -178,16 +179,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
   const podeMarcar = jaComecou(ensaio.date)
   const passado = jaPassou(ensaio.date)
-  const promoviveis = !podeMarcar ? [] : (ensaio.setlist || []).filter(
-    (s) => s.id && ensaiadas.includes(s.id) && songs[s.id]?.status === 'ensaiando'
-  )
-  const promover = async () => {
-    const nomes = promoviveis.map((s) => s.title).join(', ')
-    if (!confirm(`Marcar como prontas no setlist: ${nomes}?`)) return
-    const batch = writeBatch(db)
-    promoviveis.forEach((s) => batch.update(doc(db, 'songs', s.id), { status: 'pronta' }))
-    await batch.commit()
-  }
+
   const hasNotes   = !!ensaio.notes
   const hasSetlist = ensaio.setlist?.length > 0
 
@@ -228,13 +220,17 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <p className="section-label">Músicas ({ensaio.setlist.length})</p>
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
-                  const status = songs[s.id]?.status
+                  const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio).pior)
                   const texto = (
                     <span>
                       {s.title}
                       {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                       {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                      {status === 'pronta' && <span className="mini-chip" style={{ marginLeft: 6 }}>✓ pronta</span>}
+                      {nivel && (
+                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                          {nivel.label}
+                        </span>
+                      )}
                     </span>
                   )
                   return (
@@ -254,11 +250,6 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                   )
                 })}
               </ol>
-              {promoviveis.length > 0 && (
-                <button className="btn-secondary" style={{ fontSize: '0.78rem', marginTop: 8 }} onClick={promover}>
-                  ✓ Marcar {promoviveis.length} como {promoviveis.length === 1 ? 'pronta' : 'prontas'} no setlist
-                </button>
-              )}
             </div>
           )}
 

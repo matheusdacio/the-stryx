@@ -1271,3 +1271,6 @@ button { font-family: inherit; }
 }
 .trazer-cruas .btn-secondary { font-size: 0.78rem; padding: 5px 12px; }
 .trazer-cruas-aviso { color: var(--green); }
+
+/* Música que ainda não recebeu voto de domínio */
+.status-dot.status-sem-voto { background: rgba(107,114,128,0.14); color: var(--text-muted); }

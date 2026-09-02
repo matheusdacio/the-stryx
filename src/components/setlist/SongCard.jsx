@@ -6,7 +6,6 @@ import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 
-const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
 
 // Níveis de dificuldade (votados por cada membro nas músicas em Ensaiando)
 // 'nao_vi' é neutro: não conta na média de dificuldade (ver avgDifficulty na SetlistPage)
@@ -80,7 +79,6 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
   }
   const piorDominio = dominioPorPeso(calcDominio(dominio).pior)
 
-  const changeStatus = (status) => updateDoc(ref, { status })
   const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
   const saveMeta = async () => {
     await updateDoc(ref, {
@@ -158,7 +156,10 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
   const diffCount = Object.keys(dificuldade).length
 
   return (
-    <div className={`song-card status-${song.status} ${expanded ? 'expanded' : ''}`}>
+    <div
+      className={`song-card ${expanded ? 'expanded' : ''}`}
+      style={{ borderLeftColor: piorDominio?.color || 'var(--border)' }}
+    >
       <div className="song-header">
         <div className="song-order-wrap">
           <span
@@ -197,7 +198,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
               {piorDominio.label}
             </span>
           ) : (
-            <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
+            <span className="status-dot status-sem-voto">Sem voto</span>
           )}
           {nota && (
             <span className="mini-chip" title={`Média ${nota.media} · ${nota.total} voto(s) da banda`}>
@@ -208,7 +209,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
           {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
           {videoId && <span className="mini-chip">▶ vídeo</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
-          {song.status === 'ensaiando' && diffCount > 0 && (
+          {diffCount > 0 && (
             <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
           )}
           {song.notes && <span className="mini-chip">📝</span>}
@@ -248,20 +249,10 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
       </div>
 
       {expanded && <>
-      <div className="song-status-bar">
-        {Object.keys(STATUS_LABELS).map((s) => (
-          <button
-            key={s}
-            className={`btn-status ${song.status === s ? 'active' : ''} status-btn-${s}`}
-            onClick={() => changeStatus(s)}
-          >
-            {STATUS_LABELS[s]}
-          </button>
-        ))}
-      </div>
 
-      {/* Dificuldade — só nas músicas em Ensaiando */}
-      {song.status === 'ensaiando' && (
+      {/* Dificuldade pra tocar — o quanto a música é difícil, não o quanto a
+          banda já a domina (isso é o bloco de cima) */}
+      {(
         <div className="difficulty-section">
           <p className="section-label">Como tá pra você?</p>
           <div className="difficulty-btns">

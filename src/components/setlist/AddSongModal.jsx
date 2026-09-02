@@ -4,7 +4,7 @@ import { db } from '../../firebase/config'
 import { getYouTubeId } from '../../utils/youtube'
 
 export default function AddSongModal({ onClose, totalSongs }) {
-  const [form, setForm] = useState({ title: '', artist: '', notes: '', status: 'ensaiando', tom: '', bpm: '', videoUrl: '' })
+  const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', bpm: '', videoUrl: '' })
   const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
@@ -34,13 +34,6 @@ export default function AddSongModal({ onClose, totalSongs }) {
           <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus /></label>
           <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
           <div className="form-row">
-            <label>Status
-              <select name="status" value={form.status} onChange={handleChange}>
-                <option value="ensaiando">Ensaiando</option>
-                <option value="pronta">Pronta</option>
-                <option value="extra">Extra</option>
-              </select>
-            </label>
             <label>Tom
               <input name="tom" value={form.tom} onChange={handleChange} placeholder="Ex: Sol, Am" />
             </label>

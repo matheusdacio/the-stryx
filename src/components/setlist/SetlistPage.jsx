@@ -12,15 +12,19 @@ import { notasPorMusica } from '../../utils/score'
 import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
 import { matchesSearch } from '../../utils/search'
+import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 
+// O setlist é organizado pelo domínio da banda, no pior cenário votado:
+// basta uma pessoa insegura pra música contar como precisando de ensaio
 const FILTERS = [
-  { value: 'all',       label: 'Todas' },
-  { value: 'ensaiando', label: 'Ensaiando' },
-  { value: 'pronta',    label: 'Prontas' },
-  { value: 'extra',     label: 'Extras' },
+  { value: 'all', label: 'Todas' },
+  ...[...DOMINIOS].reverse().map((d) => ({ value: d.value, label: d.label })),
+  { value: 'sem_voto', label: 'Sem voto' },
 ]
 
-// Ordenações extras dentro do filtro "Ensaiando"
+// Nível da música pra filtro e contagem
+const nivelDe = (song) => dominioPorPeso(calcDominio(song.dominio).pior)?.value || 'sem_voto'
+
 const ENSAIANDO_SORTS = [
   { value: 'manual',      label: 'Padrão' },
   { value: 'data',        label: '📅 Mais antigas' },
@@ -127,13 +131,12 @@ export default function SetlistPage() {
   )
 
   const filtered = songs.filter((s) =>
-    (filter === 'all' || s.status === filter) &&
+    (filter === 'all' || nivelDe(s) === filter) &&
     (!tagFilter || (s.tags || []).includes(tagFilter)) &&
     matchesSearch(search, s.title, s.artist)
   )
 
-  // Aplica a ordenação extra só no filtro "Ensaiando"
-  const sortActive = filter === 'ensaiando' && ensaiandoSort !== 'manual'
+  const sortActive = ensaiandoSort !== 'manual'
 
   // Arrastar vale em qualquer filtro/tag/busca: soltar em cima de uma música
   // move a arrastada pra posição global dela. Só desliga nas ordenações
@@ -156,12 +159,12 @@ export default function SetlistPage() {
     })
   }
 
-  const counts = {
-    all:       songs.length,
-    ensaiando: songs.filter((s) => s.status === 'ensaiando').length,
-    pronta:    songs.filter((s) => s.status === 'pronta').length,
-    extra:     songs.filter((s) => s.status === 'extra').length,
-  }
+  const counts = FILTERS.reduce((acc, f) => {
+    acc[f.value] = f.value === 'all'
+      ? songs.length
+      : songs.filter((s) => nivelDe(s) === f.value).length
+    return acc
+  }, {})
 
   return (
     <div className="page">
@@ -185,8 +188,8 @@ export default function SetlistPage() {
         ))}
       </div>
 
-      {/* Ordenação extra — só no filtro Ensaiando */}
-      {filter === 'ensaiando' && (
+      {/* Ordenação extra */}
+      {(
         <div className="sort-bar">
           <span className="sort-label">Ordenar:</span>
           {ENSAIANDO_SORTS.map((s) => (

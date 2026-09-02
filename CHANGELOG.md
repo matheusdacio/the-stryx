@@ -14,6 +14,10 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 ---
 
 ## [1.29.0] — 2026-09-02
+- **O setlist passa a ser organizado pelo domínio**, não mais por "Ensaiando / Pronta / Extra". Os filtros do topo viraram Crua, Quase lá, Enferrujada, Dominada e Sem voto, o selo e a borda do card seguem o pior voto, e o botão de status sai do card e do cadastro de música
+- **O status "Extra" foi aposentado** e as 16 músicas que o tinham ganharam a tag **"Não faz sentido"**, que continua filtrável na barra de tags. O campo `status` não foi apagado dos documentos — só deixou de ser usado, então dá pra voltar atrás
+- Como consequência, o botão do evento que promovia música ensaiada pra "Pronta" saiu: quem diz que a música está pronta agora é o voto de domínio de cada um. A marcação de "ensaiada" no evento continua, como registro do que foi tocado
+- A votação de dificuldade (5 níveis), que só aparecia nas músicas em "Ensaiando", agora aparece em todas — ela dependia do status que deixou de existir
 - **Nota da banda no setlist**: a pontuação das opiniões (⭐), que existia só nas sugestões, agora aparece no card da música. Ela é lida da sugestão que originou a música — pelo vínculo da aprovação ou, nas antigas, pelo título + artista
 - **O selo do card passa a ser o domínio**, no pior cenário votado, no lugar de "Ensaiando / Pronta / Extra". Enquanto ninguém tiver votado o domínio de uma música, o selo antigo continua aparecendo, pra lista não ficar sem informação nenhuma
 - _fix:_ na aba "Presença pendente" os cards ficam compactos — a pergunta "Você vai?" vem primeiro e o repertório aparece só como prévia (3 músicas + quantas faltam), em vez das 28 linhas que empurravam os botões pra fora da tela
