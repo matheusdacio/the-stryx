@@ -6,7 +6,7 @@
 // mas dá menos trabalho do que uma que a pessoa ainda não pegou.
 export const DOMINIOS = [
   { value: 'dominada',    label: 'Dominada',    weight: 4, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'enferrujada', label: 'Enferrujada', weight: 3, color: '#60a5fa', bg: 'rgba(96,165,250,0.12)' },
+  { value: 'enferrujada', label: 'Enferrujada', weight: 3, color: '#22d3ee', bg: 'rgba(34,211,238,0.12)' },
   { value: 'quase',       label: 'Quase lá',    weight: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
   { value: 'crua',        label: 'Crua',        weight: 1, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 ]

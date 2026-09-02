@@ -200,15 +200,21 @@ export default function SetlistPage() {
       </div>
 
       <div className="filter-bar">
-        {FILTERS.map((f) => (
-          <button
-            key={f.value}
-            className={`btn-filter ${filter === f.value ? 'active' : ''}`}
-            onClick={() => mudarFiltro(f.value)}
-          >
-            {f.label} <span className="count">{counts[f.value]}</span>
-          </button>
-        ))}
+        {FILTERS.map((f) => {
+          const d = DOMINIOS.find((x) => x.value === f.value)
+          const active = filter === f.value
+          return (
+            <button
+              key={f.value}
+              className={`btn-filter ${active ? 'active' : ''}`}
+              style={d && active ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              onClick={() => mudarFiltro(f.value)}
+            >
+              {d && <span className="filter-dot" style={{ background: d.color }} />}
+              {f.label} <span className="count">{counts[f.value]}</span>
+            </button>
+          )
+        })}
         <button
           className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}

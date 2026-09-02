@@ -351,6 +351,7 @@ button { font-family: inherit; }
 }
 .diff-pill-seeded { color: var(--text-muted); background: var(--surface2); }
 .filter-hint { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 14px; }
+.filter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
 
 .song-notes {
   font-size: 0.82rem; color: var(--text-muted); cursor: pointer;

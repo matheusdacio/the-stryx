@@ -107,15 +107,20 @@ export default function RascunhosPage() {
         <button className={`btn-filter ${filterType === 'all' ? 'active' : ''}`} onClick={() => setFilterType('all')}>
           Todos <span className="count">{rascunhos.length}</span>
         </button>
-        {TYPES.map((t) => (
-          <button
-            key={t.value}
-            className={`btn-filter ${filterType === t.value ? 'active' : ''}`}
-            onClick={() => setFilterType(t.value)}
-          >
-            {t.label} <span className="count">{rascunhos.filter((r) => r.type === t.value).length}</span>
-          </button>
-        ))}
+        {TYPES.map((t) => {
+          const active = filterType === t.value
+          return (
+            <button
+              key={t.value}
+              className={`btn-filter ${active ? 'active' : ''}`}
+              style={active ? { background: t.color + '33', borderColor: t.color, color: t.color } : {}}
+              onClick={() => setFilterType(t.value)}
+            >
+              <span className="filter-dot" style={{ background: t.color }} />
+              {t.label} <span className="count">{rascunhos.filter((r) => r.type === t.value).length}</span>
+            </button>
+          )
+        })}
       </div>
 
       {filtered.length === 0 ? (
