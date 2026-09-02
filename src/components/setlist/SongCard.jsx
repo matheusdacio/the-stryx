@@ -7,11 +7,13 @@ import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { DIFFICULTIES } from '../../utils/dificuldade'
+import { OPINIONS } from '../../utils/score'
+import { todosVotaram } from '../../utils/rejeicao'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, nota, position }) {
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -59,6 +61,26 @@ export default function SongCard({ song, nota, position }) {
     }
   }
   const piorDominio = dominioPorPeso(calcDominio(dominio).pior)
+
+  // Opinião da banda sobre a música. A votação vive aqui também porque as
+  // 32 músicas importadas nunca passaram por sugestão — sem isso elas nunca
+  // teriam nota. O voto dado aqui vence o que veio da sugestão de origem.
+  const minhaOpiniao = opinoes[user.uid]?.opinion
+  const bandaJaOpinou = todosVotaram({ opinoes }, bandMembers)
+  const votarOpiniao = (opinion) => {
+    if (minhaOpiniao === opinion) {
+      updateDoc(ref, { [`opinoes.${user.uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`opinoes.${user.uid}`]: {
+          userName: user.displayName || user.email,
+          opinion,
+          comment: '',
+          at: new Date().toISOString(),
+        },
+      })
+    }
+  }
 
   const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
   const saveMeta = async () => {
@@ -207,6 +229,41 @@ export default function SongCard({ song, nota, position }) {
       </div>
 
       {expanded && <>
+
+      {/* Opinião da banda — fecha quando todos já opinaram */}
+      <div className="difficulty-section">
+        <p className="section-label">
+          {bandaJaOpinou ? 'A banda toda já opinou' : 'O que você acha dessa música?'}
+        </p>
+        {!bandaJaOpinou && (
+          <div className="difficulty-btns">
+            {OPINIONS.map((o) => (
+              <button
+                key={o.value}
+                className={`btn-diff ${minhaOpiniao === o.value ? 'active' : ''}`}
+                style={minhaOpiniao === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
+                onClick={() => votarOpiniao(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {Object.keys(opinoes).length > 0 && (
+          <div className="difficulty-summary">
+            {OPINIONS.map((o) => {
+              const voters = Object.values(opinoes).filter((v) => v.opinion === o.value)
+              if (!voters.length) return null
+              return (
+                <span key={o.value} className="diff-pill" style={{ color: o.color, background: o.bg }}>
+                  {o.label.replace(/^[^\w]+\s*/, '')}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* Dificuldade pra tocar — o quanto a música é difícil, não o quanto a
           banda já a domina (isso é o bloco de cima) */}

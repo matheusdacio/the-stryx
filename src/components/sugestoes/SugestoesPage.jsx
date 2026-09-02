@@ -11,7 +11,7 @@ import MusicLookup from '../MusicLookup'
 import VideoInline from '../VideoInline'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
-import { calcSongScore, chaveMusica } from '../../utils/score'
+import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram } from '../../utils/rejeicao'
@@ -19,13 +19,6 @@ import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
-const OPINIONS = [
-  { value: 'hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
-  { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-]
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
@@ -230,7 +223,13 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         )}
 
-        {sugestao.status === 'aberta' && (
+        {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) && (
+          <p className="lookup-aviso">
+            A banda toda já opinou — a votação desta música está encerrada.
+          </p>
+        )}
+
+        {sugestao.status === 'aberta' && !todosVotaram(sugestao, bandMembers) && (
           <div className="opinion-form">
             <p className="section-label">{existing ? 'Alterar minha opinião' : 'Deixar minha opinião'}</p>
             {existing && (

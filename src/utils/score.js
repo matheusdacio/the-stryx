@@ -1,4 +1,14 @@
-import { normalizeName } from './votes'
+import { namesMatch, normalizeName } from './votes'
+
+// O que a banda acha da música. Vale na sugestão e no setlist: música
+// importada nunca passou por votação, e é aqui que ela ganha nota
+export const OPINIONS = [
+  { value: 'hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
+  { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
+  { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
+]
 
 // Pontuação por tipo de opinião da banda sobre a música
 export const SCORES = { hino: 1.2, escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
@@ -17,20 +27,45 @@ export function calcSongScore(opinoes) {
 export const chaveMusica = (titulo, artista) =>
   `${normalizeName(titulo)}|${normalizeName(artista)}`
 
+// Junta dois mapas de voto sem deixar a mesma pessoa entrar duas vezes —
+// nem quando votou com nome importado ("import_Nome") de um lado e com login
+// do outro. O que vem em `preferido` vence.
+export function fundirVotos(base, preferido) {
+  const out = { ...(preferido || {}) }
+  Object.entries(base || {}).forEach(([chave, voto]) => {
+    const jaTem =
+      out[chave] !== undefined ||
+      Object.values(out).some((v) => v.userName && voto.userName && namesMatch(v.userName, voto.userName))
+    if (!jaTem) out[chave] = voto
+  })
+  return out
+}
+
 // Nota da música do setlist: as opiniões vivem na sugestão que a originou.
 // Casa pelo vínculo gravado na aprovação e, pras aprovadas antigas que não
 // têm esse vínculo, pelo título + artista.
-export function notasPorMusica(sugestoes) {
+export function opinioesPorMusica(sugestoes) {
   const porId = {}
   const porChave = {}
   ;(sugestoes || []).forEach((sug) => {
-    const score = calcSongScore(sug.opinoes)
-    if (!score.total) return
-    porId[sug.id] = score
-    porChave[chaveMusica(sug.title, sug.artist)] = score
+    porId[sug.id] = sug.opinoes || {}
+    porChave[chaveMusica(sug.title, sug.artist)] = sug.opinoes || {}
   })
-  return (song) =>
-    (song.sugestaoId && porId[song.sugestaoId]) ||
-    porChave[chaveMusica(song.title, song.artist)] ||
-    null
+
+  return (song) => {
+    const daSugestao =
+      (song.sugestaoId && porId[song.sugestaoId]) ||
+      porChave[chaveMusica(song.title, song.artist)] ||
+      {}
+    // Voto dado no setlist vence o que veio da sugestão: é o mais recente
+    return fundirVotos(daSugestao, song.opinoes)
+  }
+}
+
+export function notasPorMusica(sugestoes) {
+  const opinioesDe = opinioesPorMusica(sugestoes)
+  return (song) => {
+    const score = calcSongScore(opinioesDe(song))
+    return score.total ? score : null
+  }
 }

@@ -1,7 +1,6 @@
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../firebase/config'
-import { chaveMusica } from './score'
-import { namesMatch } from './votes'
+import { chaveMusica, fundirVotos } from './score'
 
 // Duas sugestões da mesma música deixam a nota ambígua e escondem votos: a que
 // não virou música some da lista levando as opiniões junto.
@@ -28,18 +27,6 @@ export async function dedupSugestoes({ dryRun = false } = {}) {
 
   const conta = (mapa) => Object.keys(mapa || {}).length
 
-  // Junta dois mapas de voto sem deixar a mesma pessoa entrar duas vezes
-  const fundirVotos = (base, extra) => {
-    const out = { ...(base || {}) }
-    const jaTem = (chave, voto) =>
-      out[chave] !== undefined ||
-      Object.values(out).some((v) => v.userName && voto.userName && namesMatch(v.userName, voto.userName))
-    Object.entries(extra || {}).forEach(([chave, voto]) => {
-      if (!jaTem(chave, voto)) out[chave] = voto
-    })
-    return out
-  }
-
   const changes = []
   Object.values(grupos).forEach((grupo) => {
     if (grupo.length < 2) return
@@ -51,8 +38,8 @@ export async function dedupSugestoes({ dryRun = false } = {}) {
     let dificuldade = fica.dificuldade || {}
     const preencher = {}
     saem.forEach((s) => {
-      opinoes = fundirVotos(opinoes, s.opinoes)
-      dificuldade = fundirVotos(dificuldade, s.dificuldade)
+      opinoes = fundirVotos(s.opinoes, opinoes)
+      dificuldade = fundirVotos(s.dificuldade, dificuldade)
       // Campo que só a duplicada tinha não se perde
       ;['videoUrl', 'notes', 'description', 'tom'].forEach((campo) => {
         if (!fica[campo] && !preencher[campo] && s[campo]) preencher[campo] = s[campo]

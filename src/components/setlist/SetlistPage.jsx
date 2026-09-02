@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import SongCard from './SongCard'
-import { notasPorMusica } from '../../utils/score'
+import { notasPorMusica, opinioesPorMusica } from '../../utils/score'
 import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
 import SetPlayer from '../SetPlayer'
@@ -50,6 +50,7 @@ export default function SetlistPage() {
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
   const [tocando, setTocando] = useState(false)
+  const [bandMembers, setBandMembers] = useState([])
 
   useEffect(() => {
     const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
@@ -64,7 +65,18 @@ export default function SetlistPage() {
     )
   }, [])
 
+  useEffect(() => {
+    return onSnapshot(collection(db, 'members'), (snap) =>
+      setBandMembers(snap.docs.map((d) => ({
+        name: d.data().name,
+        aliases: d.data().aliases || [],
+        firebaseUid: d.data().firebaseUid || null,
+      })))
+    )
+  }, [])
+
   const notaDe = notasPorMusica(sugestoes)
+  const opinioesDe = opinioesPorMusica(sugestoes)
 
   const allTags = [...new Set(songs.flatMap((s) => s.tags || []))].sort((a, b) =>
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
@@ -201,6 +213,8 @@ export default function SetlistPage() {
           {displayed.map((song, i) => (
             <SongCard
               nota={notaDe(song)}
+              opinoes={opinioesDe(song)}
+              bandMembers={bandMembers}
               key={song.id}
               song={song}
               position={i + 1}
