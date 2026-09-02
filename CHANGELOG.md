@@ -13,6 +13,17 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.30.0] — 2026-09-02
+- **Instalar na tela inicial**: o app ganha manifest e ícones (192/512px) — no Android/Chrome aparece "Instalar app"; no iPhone o Safari aceita "Adicionar à Tela de Início", que é o que destrava push no Safari 16.4+
+- Notificação em segundo plano não duplica mais (o service worker ficou só com o essencial) e o toque nela passa a focar o app aberto em vez de abrir aba nova sempre; com o app já aberto, sugestão nova ou lembrete de ensaio agora aparecem de verdade (antes não aparecia nada)
+- **Sino de notificação não mente mais**: só acende 🔔 depois de confirmar que o token foi salvo de verdade; se ativar falhar (sem internet, navegador bloqueou), o ícone continua 🔕 e a Navbar explica o motivo
+- Banner dispensável convida a ativar avisos (ou, no iPhone, a instalar o app) e um banner de boas-vindas guia quem ainda não escolheu instrumento pelos três primeiros passos: instrumento, sino, voto de domínio
+- **Contador de Sugestões no rodapé e no título mostra só o que falta você votar**, não mais tudo que está em aberto
+- **"Falta meu voto" é o mesmo filtro, com o mesmo nome, no Setlist e nas Sugestões** — no Setlist cobre os três votos do card (domínio, dificuldade, opinião); nas Sugestões, opinião e dificuldade. Escolher esse filtro desliga o filtro de status, e vice-versa
+- Push de sugestão nova leva pra ela de verdade: cai ordenado por Recentes e filtrado em "Falta meu voto", em vez de cair no fim da ordenação padrão
+- Rajada de sugestões cadastradas de uma vez vira uma notificação por pessoa, não uma por música
+- Evento novo, cancelado ou remarcado agora avisa quem não abre o app (cancelado avisa só quem tinha confirmado presença); ensaio marcado com menos de 3 dias de antecedência deixa de ficar sem nenhum lembrete
+
 ## [1.29.2] — 2026-09-02
 - _fix:_ Pacote 0 (fundação): cache do Firestore fica persistente — setlist, eventos e sugestões abrem do cache sem rede (inclusive o Modo palco no ensaio), e um voto ou presença dado sem sinal não some mais se a aba fechar antes da rede voltar; as três telas principais mostram "Carregando..." em vez do estado vazio piscando enquanto o primeiro snapshot não chega; formulários (Adicionar Música, Nova Sugestão, Evento, Cifra, Rascunho, Enviar opinião, Salvar do card) não travam mais em "Salvando..." sem internet — disparam a gravação, fecham na hora e avisam se falhar; campo de título passa a ser obrigatório de verdade nos quatro cadastros; index.html com lang pt-BR, título "The Stryx" e metas pra instalar melhor na tela inicial; rota desconhecida volta pro Setlist em vez de tela em branco; evento de hoje não some da aba Próximos ao meio-dia; campos de texto em 16px no celular pra não dar zoom automático no iOS; tela não apaga mais no Modo palco (Wake Lock); animações respeitam "reduzir movimento" do sistema; editor de tom/BPM/tags/observação do card do setlist não abre mais com dado velho nem reverte edição de outro membro; comentário da opinião nasce com o que a pessoa já tinha escrito; marcar música ensaiada e salvar evento não pisam mais em edição simultânea de outro membro
 
