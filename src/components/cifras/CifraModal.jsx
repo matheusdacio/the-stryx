@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
   const isView = cifra && !cifra._editing
@@ -26,6 +27,8 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
     if (mexeu && !confirm('Descartar o que você digitou?')) return
     onClose()
   }
+
+  useFecharComVoltar(cancelar)
 
   const handleSave = (e) => {
     e.preventDefault()

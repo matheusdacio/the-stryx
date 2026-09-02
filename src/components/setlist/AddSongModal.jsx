@@ -3,8 +3,10 @@ import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { getYouTubeId } from '../../utils/youtube'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 export default function AddSongModal({ onClose, totalSongs, acervo }) {
+  useFecharComVoltar(onClose)
   const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', bpm: '', videoUrl: '' })
   const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)

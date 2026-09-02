@@ -2,10 +2,25 @@ import { useState, useEffect, useCallback } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 export default function PerformanceMode({ event, onClose }) {
+  useFecharComVoltar(onClose)
   const [repertorio, setRepertorio] = useState(null)
-  const [idx, setIdx] = useState(0)
+  // Volta pra onde parou: sair (ou cair da tela) no meio do set e reabrir
+  // não deveria empurrar de volta pra música 1
+  const [idx, setIdx] = useState(() => {
+    try {
+      const salvo = sessionStorage.getItem(`perf-idx-${event.id}`)
+      return salvo ? Number(salvo) : 0
+    } catch {
+      return 0
+    }
+  })
+
+  useEffect(() => {
+    try { sessionStorage.setItem(`perf-idx-${event.id}`, String(idx)) } catch { /* sem storage, segue sem lembrar */ }
+  }, [idx, event.id])
 
   // O evento guarda um retrato das músicas (título, artista, BPM) de quando
   // foi montado. Tom e observações mudam no repertório, então lemos de lá e
@@ -20,22 +35,24 @@ export default function PerformanceMode({ event, onClose }) {
 
   const setlist = (event.setlist || []).map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
 
-  const current = setlist[idx]
-  const next = setlist[idx + 1] || null
+  // idx restaurado do sessionStorage pode não caber mais (o repertório
+  // encolheu desde a última vez) — nunca deixa current vir undefined
+  const idxAtual = Math.max(0, Math.min(idx, setlist.length - 1))
+  const current = setlist[idxAtual]
+  const next = setlist[idxAtual + 1] || null
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
   const goPrev = useCallback(() => setIdx((i) => Math.max(i - 1, 0)), [])
 
-  // Teclado: setas navegam, Esc sai
+  // Teclado: setas navegam (Esc sai via useFecharComVoltar)
   useEffect(() => {
     const onKey = (e) => {
       if (e.key === 'ArrowRight' || e.key === ' ') goNext()
       else if (e.key === 'ArrowLeft') goPrev()
-      else if (e.key === 'Escape') onClose()
     }
     window.addEventListener('keydown', onKey)
     return () => window.removeEventListener('keydown', onKey)
-  }, [goNext, goPrev, onClose])
+  }, [goNext, goPrev])
 
   // Tenta fullscreen do navegador (melhor no palco); ignora se bloqueado
   useEffect(() => {
@@ -75,7 +92,7 @@ export default function PerformanceMode({ event, onClose }) {
     <div className="perf-overlay">
       {/* Topo: progresso e sair */}
       <div className="perf-top">
-        <span className="perf-progress">{idx + 1} / {setlist.length}</span>
+        <span className="perf-progress">{idxAtual + 1} / {setlist.length}</span>
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {event.location || ''}
         </span>
@@ -117,8 +134,8 @@ export default function PerformanceMode({ event, onClose }) {
 
       {/* Navegação */}
       <div className="perf-nav">
-        <button className="perf-nav-btn" onClick={goPrev} disabled={idx === 0}>‹ Anterior</button>
-        <button className="perf-nav-btn primary" onClick={goNext} disabled={idx === setlist.length - 1}>Próxima ›</button>
+        <button className="perf-nav-btn" onClick={goPrev} disabled={idxAtual === 0}>‹ Anterior</button>
+        <button className="perf-nav-btn primary" onClick={goNext} disabled={idxAtual === setlist.length - 1}>Próxima ›</button>
       </div>
     </div>
   )

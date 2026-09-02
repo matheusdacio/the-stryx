@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { menosDominadas } from '../../utils/dominio'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 function toInputDate(ts) {
   if (!ts) return ''
@@ -66,6 +67,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     if (mexeu && !confirm('Descartar o que você digitou?')) return
     onClose()
   }
+
+  useFecharComVoltar(cancelar)
 
   const addPauta = () => {
     if (!newItem.trim()) return

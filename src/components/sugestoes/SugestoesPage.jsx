@@ -18,6 +18,7 @@ import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/di
 import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
 import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -60,6 +61,7 @@ function OpinionSummary({ opinoes }) {
 }
 
 function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou }) {
+  useFecharComVoltar(onClose)
   const [saving, setSaving] = useState(false)
   const [reopening, setReopening] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
@@ -357,6 +359,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 }
 
 function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente }) {
+  useFecharComVoltar(onClose)
   // tom e bpm não têm campo no formulário: vêm da busca automática quando
   // disponível e viajam pro setlist se a sugestão for aprovada
   const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })

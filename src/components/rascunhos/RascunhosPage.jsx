@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 const TYPES = [
   { value: 'ideia', label: 'Ideia', color: '#a855f7' },
@@ -27,6 +28,7 @@ function RascunhoCard({ r, onEdit }) {
 }
 
 function RascunhoModal({ rascunho, onClose, onRemove }) {
+  useFecharComVoltar(onClose)
   const { user } = useAuth()
   const [form, setForm] = useState({ title: rascunho?.title || '', type: rascunho?.type || 'ideia', content: rascunho?.content || '' })
   const [saving, setSaving] = useState(false)
