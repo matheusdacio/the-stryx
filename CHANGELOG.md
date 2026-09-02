@@ -13,6 +13,18 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.31.0] — 2026-09-02
+- **Card do Setlist fica menos poluído**: ✕ de apagar some do cabeçalho (virou "Remover" no rodapé do card aberto, ao lado de "↩ Voltar pras sugestões", com confirm explicando o que se perde); a lista de quem votou cada nível de domínio só aparece com o card aberto; domínio continua em caixa cheia, opinião e dificuldade viram "vazados" — os três paravam de parecer a mesma pergunta três vezes
+- Botões de voto (domínio, dificuldade, opinião, presença) sobem de ~24px pra 40px de altura — é o gesto mais frequente do app, e um toque errado no vizinho trocava ou apagava o voto sem aviso; voto marcado ganha um anel, não só cor (daltonismo, leitor de tela)
+- Selo do domínio explica o que significa (é sempre o pior voto da banda) numa linha fixa sob os filtros; "Crua" semeada pra todo mundo ao aprovar uma sugestão não finge mais ser voto de alguém — vira "Ainda não disseram" até a pessoa votar de verdade
+- **Filtro "Falta meu voto" chega no Setlist** cobrindo domínio, dificuldade e opinião, com o mesmo nome do filtro que já existia em Sugestões; "Sem voto" (agregado da banda) sai, porque virou redundante
+- Chips de nível no Setlist e de tipo em Rascunhos ganham a cor que o próprio card já usa (antes todos ficavam cinza/vermelho); a rampa de domínio deixa de ter um azul "neutro" entre o verde e o âmbar
+- Votar com um filtro de nível ativo não faz mais a música sumir debaixo do dedo — ela fica visível até o filtro mudar, em vez do próximo card subir pro lugar exato do toque (mesma proteção nas Sugestões)
+- Dois chips novos no Setlist: "🎸 Último ensaio" e "Próximo ensaio" — filtram só as músicas do repertório desse evento, pra atualizar o domínio sem cruzar Eventos e Setlist música a música
+- Tag do Setlist e ordenação de Sugestões sobrevivem a trocar de aba (o resto do filtro continua voltando ao padrão de propósito)
+- Modal "Adicionar Música" deixa claro que propor música nova é em Sugerir, não ali
+- Cabeçalho do evento troca "✓ 2 · ✕ 1" por "2 vão · 1 não"; Cifras e Rascunhos também movem "Remover" do card pro modal, com confirm avisando que não dá pra desfazer
+
 ## [1.30.0] — 2026-09-02
 - **Instalar na tela inicial**: o app ganha manifest e ícones (192/512px) — no Android/Chrome aparece "Instalar app"; no iPhone o Safari aceita "Adicionar à Tela de Início", que é o que destrava push no Safari 16.4+
 - Notificação em segundo plano não duplica mais (o service worker ficou só com o essencial) e o toque nela passa a focar o app aberto em vez de abrir aba nova sempre; com o app já aberto, sugestão nova ou lembrete de ensaio agora aparecem de verdade (antes não aparecia nada)
