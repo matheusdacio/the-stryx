@@ -376,10 +376,10 @@ const FILTERS = [
 ]
 
 const SORTS = [
+  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
   { value: 'media',       label: '⭐ Média' },
   { value: 'votes',       label: '🗳 Votos' },
   { value: 'dificuldade', label: '🎯 Dificuldade' },
-  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
   { value: 'recent',      label: '🕐 Recentes' },
 ]
 
@@ -518,7 +518,7 @@ export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('aberta')
-  const [sortBy, setSortBy] = useState('media')
+  const [sortBy, setSortBy] = useState('balanceada')
   const [onlyUnvoted, setOnlyUnvoted] = useState(false)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)

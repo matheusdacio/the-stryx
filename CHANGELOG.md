@@ -14,7 +14,7 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 ---
 
 ## [1.27.0] — 2026-09-02
-- **Ordenação "Melhores e fáceis"** nas Sugestões: combina a nota das opiniões com a dificuldade votada, pra deixar no topo o que a banda gostou mais e toca mais fácil. A nota é a base e a dificuldade entra como desconto (Fácil não desconta, Ok ×0,85, Difícil ×0,7), então música difícil precisa ser bem melhor avaliada pra passar na frente de uma fácil. Quem ainda não tem voto de dificuldade conta como Ok. O badge de posição (#1, #2…) agora aparece também nessa ordenação
+- **Ordenação "Melhores e fáceis"** nas Sugestões, agora a **padrão** ao abrir a página e primeira da barra: combina a nota das opiniões com a dificuldade votada, pra deixar no topo o que a banda gostou mais e toca mais fácil. A nota é a base e a dificuldade entra como desconto (Fácil não desconta, Ok ×0,85, Difícil ×0,7), então música difícil precisa ser bem melhor avaliada pra passar na frente de uma fácil. Quem ainda não tem voto de dificuldade conta como Ok. O badge de posição (#1, #2…) agora aparece também nessa ordenação
 - _fix:_ o chip de dificuldade no card da sugestão passa a mostrar o **nível mais alto votado** em vez da média: se alguém disse que é difícil, aparece Difícil. A ordenação "Dificuldade" segue o mesmo critério, pra lista e chip não se contradizerem
 
 ## [1.26.1] — 2026-08-31
