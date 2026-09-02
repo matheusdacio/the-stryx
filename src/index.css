@@ -51,6 +51,7 @@ button { font-family: inherit; }
 
 /* ─── LOGIN ─── */
 .login-page {
+  position: relative;
   display: flex; align-items: center; justify-content: center;
   min-height: 100vh;
   background:
@@ -1307,3 +1308,11 @@ button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer;
 .set-player-nav { display: flex; gap: 8px; margin-top: 8px; }
 .set-player-nav .btn-secondary { font-size: 0.78rem; flex: 1; }
 .song-collapsed .video-inline { flex-basis: 100%; }
+
+/* Crédito na tela de login (atribuição do GetSongBPM) */
+.login-credito {
+  position: absolute; bottom: 18px; left: 0; right: 0;
+  text-align: center; font-size: 0.72rem; color: var(--text-muted);
+}
+.login-credito a { color: var(--text-muted); }
+.login-credito a:hover { color: var(--text); }
