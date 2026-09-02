@@ -31,7 +31,7 @@ const DIFF_TO_SUGESTAO = {
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder, dragHandleProps }) {
+export default function SongCard({ song, nota, position }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -162,19 +162,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
     >
       <div className="song-header">
         <div className="song-order-wrap">
-          <span
-            className={`song-position ${dragHandleProps ? 'drag-handle' : ''}`}
-            title={dragHandleProps ? 'Arraste para reordenar' : undefined}
-            {...(dragHandleProps || {})}
-          >
-            {position}
-          </span>
-          {!hideReorder && (
-            <div className="order-btns">
-              <button className="btn-order" onClick={onMoveUp} disabled={isFirst} title="Mover para cima">▲</button>
-              <button className="btn-order" onClick={onMoveDown} disabled={isLast} title="Mover para baixo">▼</button>
-            </div>
-          )}
+          <span className="song-position">{position}</span>
         </div>
         <div className="song-info" onClick={() => setExpanded(!expanded)} title={expanded ? 'Recolher' : 'Ver detalhes'}>
           <span className="song-title">{song.title}</span>
