@@ -12,6 +12,7 @@ export default function SetPlayer({ setlist, onFechar }) {
   const playerRef = useRef(null)
   const containerRef = useRef(null)
   const totalRef = useRef(0)
+  const videoIdRef = useRef(null)
 
   // O evento guarda só um retrato da música (título, artista, BPM) — o link do
   // vídeo vive no repertório, então é de lá que ele vem
@@ -34,6 +35,15 @@ export default function SetPlayer({ setlist, onFechar }) {
 
   useEffect(() => { totalRef.current = faixas.length }, [faixas.length])
 
+  // Este efeito vem antes do que cria o player de propósito: é ele que deixa
+  // o id da primeira faixa disponível na hora da criação. Sem isso o player
+  // nascia vazio e só começava a tocar quando alguém clicava em "Próxima"
+  useEffect(() => {
+    videoIdRef.current = videoId
+    const player = playerRef.current
+    if (videoId && player?.loadVideoById) player.loadVideoById(videoId)
+  }, [videoId])
+
   // O player só nasce quando o repertório chegou e existe faixa pra tocar —
   // antes disso o container ainda nem está na tela
   const pronto = !!repertorio && faixas.length > 0
@@ -44,8 +54,10 @@ export default function SetPlayer({ setlist, onFechar }) {
     loadYouTubeApi().then((YT) => {
       if (cancelado || !containerRef.current) return
       playerRef.current = new YT.Player(containerRef.current, {
+        videoId: videoIdRef.current || undefined,
         playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
         events: {
+          onReady: (e) => e.target.playVideo?.(),
           onStateChange: (e) => {
             if (e.data !== YT.PlayerState.ENDED) return
             setIdx((i) => (i + 1 < totalRef.current ? i + 1 : i))
@@ -61,10 +73,6 @@ export default function SetPlayer({ setlist, onFechar }) {
     }
   }, [pronto])
 
-  useEffect(() => {
-    const player = playerRef.current
-    if (videoId && player?.loadVideoById) player.loadVideoById(videoId)
-  }, [videoId])
 
   if (!repertorio) return <p className="lookup-aviso">Carregando o repertório…</p>
   if (!faixas.length) {
