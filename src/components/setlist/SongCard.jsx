@@ -82,14 +82,20 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
     }
   }
 
-  const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
-  const saveMeta = async () => {
-    await updateDoc(ref, {
+  // Fecha a caixa na hora: esperar o await deixava a caixa aberta sem
+  // resposta quando não tinha sinal, e o botão Salvar continuava clicável
+  const erroSalvar = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+  const saveNotes = () => {
+    updateDoc(ref, { notes }).catch(erroSalvar)
+    setEditing(false)
+  }
+  const saveMeta = () => {
+    updateDoc(ref, {
       tom: tom.trim(),
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
       tags,
-    })
+    }).catch(erroSalvar)
     setEditingMeta(false)
   }
   const addTag = () => {

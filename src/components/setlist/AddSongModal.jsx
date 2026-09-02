@@ -15,18 +15,21 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim() || bloqueio) return
     setSaving(true)
-    await addDoc(collection(db, 'songs'), {
+    // Fecha na hora: o Firestore já aplica a escrita localmente e a lista se
+    // atualiza sozinha (onSnapshot). Esperar o await deixava o botão preso em
+    // "Salvando..." pra sempre sem internet, mesmo com a música já na tela
+    addDoc(collection(db, 'songs'), {
       ...form,
       tom: form.tom.trim(),
       bpm: form.bpm ? Number(form.bpm) : null,
       tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean),
       order: totalSongs,
       createdAt: serverTimestamp(),
-    })
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     onClose()
   }
 

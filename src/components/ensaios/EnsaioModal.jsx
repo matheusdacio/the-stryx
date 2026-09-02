@@ -112,7 +112,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
       ).slice(0, 6)
     : []
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault()
     if (!form.date) return
     setSaving(true)
@@ -122,11 +122,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
       setlist,
       date: Timestamp.fromDate(new Date(form.date + 'T12:00:00')),
     }
+    // Fecha na hora — sem sinal, esperar o await deixava o modal preso e,
+    // se a pessoa fechasse e tentasse de novo, salvava duas vezes
+    const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (editando) {
-      await updateDoc(doc(db, 'ensaios', ensaio.id), data)
+      updateDoc(doc(db, 'ensaios', ensaio.id), data).catch(erro)
     } else {
       // Evento novo (inclusive cópia) nasce sem presença
-      await addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() })
+      addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() }).catch(erro)
     }
     onClose()
   }

@@ -16,14 +16,16 @@ export default function CifraModal({ cifra, onClose, KEYS }) {
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
+    // Fecha na hora — sem sinal, o await deixava o modal preso em "Salvando..."
+    const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (cifra) {
-      await updateDoc(doc(db, 'cifras', cifra.id), form)
+      updateDoc(doc(db, 'cifras', cifra.id), form).catch(erro)
     } else {
-      await addDoc(collection(db, 'cifras'), { ...form, createdAt: serverTimestamp() })
+      addDoc(collection(db, 'cifras'), { ...form, createdAt: serverTimestamp() }).catch(erro)
     }
     onClose()
   }

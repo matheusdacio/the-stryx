@@ -74,7 +74,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
     }
   }
 
-  const submitOpinion = async () => {
+  const submitOpinion = () => {
     if (!myOpinion) return
     setSaving(true)
     // Chave é o userId — sobrescreve automaticamente opinião anterior
@@ -90,7 +90,10 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       update.rejeitadaPor = 'veto'
     }
 
-    await updateDoc(ref, update)
+    // Não espera o servidor confirmar: sem sinal, o await de updateDoc fica
+    // pendente indefinidamente (é assim que o SDK do Firestore funciona,
+    // mesmo com cache persistente) e o botão ficava preso em "Enviando..."
+    updateDoc(ref, update).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setSaving(false)
     setMyOpinion(null)
     setComment('')
@@ -321,20 +324,22 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
     setAchado(dados)
   }
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = (e) => {
     e.preventDefault()
     if (!form.title.trim() || bloqueio) return
     setSaving(true)
-    await addDoc(collection(db, 'sugestoes'), {
+    // Fecha na hora — não espera nenhuma das duas gravações. A fila de
+    // notificação é só um "avise a banda" por trás, nunca deve travar quem
+    // está sugerindo esperando o mesmo tempo que o processamento do lote
+    addDoc(collection(db, 'sugestoes'), {
       ...form,
       status: 'aberta',
       opinoes: {},
       suggestedBy: userName,
       suggestedById: userId,
       createdAt: serverTimestamp(),
-    })
-    // Enfileira notificação para os outros membros votarem
-    await addDoc(collection(db, 'notification_queue'), {
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    addDoc(collection(db, 'notification_queue'), {
       tipo: 'nova_sugestao',
       titulo: form.title.trim(),
       artista: form.artist?.trim() || '',
@@ -342,7 +347,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
       suggestedById: userId,
       processado: false,
       criadoEm: serverTimestamp(),
-    })
+    }).catch(() => {})
     onClose()
   }
 
