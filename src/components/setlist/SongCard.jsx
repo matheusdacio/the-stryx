@@ -13,6 +13,7 @@ import { showToast } from '../../utils/toast'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
+const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Explica por que uma música sem votação nenhuma aparece lá no topo de
 // "Recentes" — sem o chip parece só ordem aleatória
@@ -256,8 +257,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
             <span className="status-dot status-sem-voto">Sem voto</span>
           )}
           {nota && (
-            <span className="mini-chip" title={`Média ${nota.media} · ${nota.total} voto(s) da banda`}>
-              ⭐ {nota.media.toFixed(2)}
+            <span className="mini-chip" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
+              ⭐ {formatarNota(nota.media)}
             </span>
           )}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
@@ -337,7 +338,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
               if (!voters.length) return null
               return (
                 <span key={o.value} className="diff-pill" style={{ color: o.color, background: o.bg }}>
-                  {o.label.replace(/^[^\w]+\s*/, '')}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                  {o.short}: {voters.map((v) => firstName(v.userName)).join(', ')}
                 </span>
               )
             })}

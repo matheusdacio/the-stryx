@@ -27,6 +27,8 @@ const firstName = (n) => (n || '').trim().split(' ')[0]
 
 // Sugestão nova sem voto nenhum ia pro fim de "Melhores e fáceis", empatada
 // em 0 com as reprovadas — o chip explica por que ela aparece lá em cima
+const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 const ehNovo = (createdAt) => {
   if (!createdAt) return false
@@ -49,7 +51,7 @@ function OpinionSummary({ opinoes }) {
         if (!count) return null
         return (
           <span key={o.value} className="opinion-pill" style={{ color: o.color, background: o.bg }}>
-            {o.label.split(' ')[0]} {count}
+            {o.short} {count}
           </span>
         )
       })}
@@ -478,11 +480,11 @@ const FILTERS = [
 ]
 
 const SORTS = [
-  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
-  { value: 'media',       label: '⭐ Média' },
-  { value: 'votes',       label: '🗳 Votos' },
-  { value: 'dificuldade', label: '🎯 Dificuldade' },
-  { value: 'recent',      label: '🕐 Recentes' },
+  { value: 'balanceada',  label: '⚖️ Melhores e fáceis', hint: 'Melhores e fáceis: nota da banda, descontada se a galera achou difícil' },
+  { value: 'media',       label: '⭐ Média', hint: 'Média: nota de 0 a 1,2 — Hino vale 1,2, Não curti vale 0' },
+  { value: 'votes',       label: '👥 Mais votadas', hint: 'Mais votadas: quem recebeu mais opiniões aparece primeiro' },
+  { value: 'dificuldade', label: '🎯 Dificuldade', hint: 'Dificuldade: da mais fácil pra mais difícil, pelo nível mais votado' },
+  { value: 'recent',      label: '🕐 Recentes', hint: 'Recentes: quem foi sugerida por último aparece primeiro' },
 ]
 
 // Labels com score para as células da planilha (ex: "1 - Escopo")
@@ -828,6 +830,7 @@ export default function SugestoesPage() {
           </button>
         ))}
       </div>
+      <p className="filter-hint">{SORTS.find((s) => s.value === sortBy)?.hint}</p>
 
       {!loaded ? (
         <p className="empty-state">Carregando as sugestões...</p>
@@ -882,8 +885,8 @@ export default function SugestoesPage() {
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                       {showScore && (
-                        <span className="sug-score-chip" title={`Média ${media.toFixed(2)} · Soma ${soma.toFixed(1)} · ${total} voto(s)`}>
-                          ⭐ {media.toFixed(2)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
+                        <span className="sug-score-chip" title={`Média ${formatarNota(media)} · Soma ${soma.toLocaleString('pt-BR')} · ${total} voto(s)`}>
+                          ⭐ {formatarNota(media)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
                         </span>
                       )}
                       {diffLabel && (

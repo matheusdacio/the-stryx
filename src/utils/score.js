@@ -3,11 +3,11 @@ import { namesMatch, normalizeName } from './votes'
 // O que a banda acha da música. Vale na sugestão e no setlist: música
 // importada nunca passou por votação, e é aqui que ela ganha nota
 export const OPINIONS = [
-  { value: 'hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
-  { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'fora',     label: '✕ Não faz sentido · tira da fila', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  { value: 'nao_gosto',label: '– Não curti · tira da fila',       color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  { value: 'hino',     short: 'Hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
+  { value: 'escopo',   short: 'Escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'ajustar',  short: 'Ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'fora',     short: 'Fora',     label: '✕ Não faz sentido · tira da fila', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  { value: 'nao_gosto',short: 'Não curti',label: '– Não curti · tira da fila',       color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 ]
 
 // Pontuação por tipo de opinião da banda sobre a música
