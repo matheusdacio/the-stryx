@@ -7,7 +7,10 @@ import * as XLSX from 'xlsx'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchLupa from '../SearchLupa'
+import MusicLookup from '../MusicLookup'
+import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
+import { normalizeName } from '../../utils/votes'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -29,6 +32,11 @@ const DIFFICULTIES = [
 const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
+
+// Identidade da música pra cruzar sugestão com setlist sem depender de acento
+// ou caixa. Título e artista juntos: só o título casaria versões diferentes
+const chaveMusica = (titulo, artista) =>
+  `${normalizeName(titulo)}|${normalizeName(artista)}`
 
 // Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
 // votado (usado no chip do card). avg/max null se ninguém votou
@@ -300,11 +308,27 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
 }
 
 function AddSugestaoModal({ onClose, userId, userName }) {
-  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '' })
+  // tom e bpm não têm campo no formulário: vêm da busca automática quando
+  // disponível e viajam pro setlist se a sugestão for aprovada
+  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })
+  const [achado, setAchado] = useState(null)
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+
+  // Preenche com o que a busca trouxe, sem apagar o que a pessoa já escreveu
+  const aplicarAchado = (dados) => {
+    setForm((f) => ({
+      ...f,
+      title: dados.title || f.title,
+      artist: f.artist.trim() || dados.artist || '',
+      videoUrl: f.videoUrl.trim() || dados.videoUrl || '',
+      tom: f.tom || dados.tom || '',
+      bpm: f.bpm || dados.bpm || null,
+    }))
+    setAchado(dados)
+  }
 
   const handleSubmit = async (e) => {
     e.preventDefault()
@@ -340,6 +364,16 @@ function AddSugestaoModal({ onClose, userId, userName }) {
             <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus /></label>
             <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
           </div>
+
+          <MusicLookup titulo={form.title} onPick={aplicarAchado} />
+          {(achado?.tom || achado?.bpm) && (
+            <p className="lookup-aviso">
+              Da gravação original{achado.tom ? `, tom ${achado.tom}` : ''}{achado.bpm ? `, ${achado.bpm} BPM` : ''} — confira antes de confiar, a banda pode tocar em outro tom.
+              {buscaTomAtiva && (
+                <> Dados de <a href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>.</>
+              )}
+            </p>
+          )}
           <label>
             Link do YouTube
             <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." />
@@ -513,6 +547,7 @@ function exportToExcel(sugestoes, filterLabel) {
 export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
+  const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('balanceada')
   const [onlyUnvoted, setOnlyUnvoted] = useState(false)
@@ -521,6 +556,22 @@ export default function SugestoesPage() {
   const [addModal, setAddModal] = useState(false)
 
   const isAdmin = user.email === ADMIN_EMAIL
+
+  useEffect(() => {
+    // Quem já está no setlist não aparece mais aqui — o lugar dela agora é lá.
+    // Casa pelo vínculo gravado na aprovação e, pras aprovadas antigas que não
+    // têm esse vínculo, pelo título + artista normalizados
+    return onSnapshot(collection(db, 'songs'), (snap) => {
+      const ids = new Set()
+      const chaves = new Set()
+      snap.docs.forEach((d) => {
+        const song = d.data()
+        if (song.sugestaoId) ids.add(song.sugestaoId)
+        chaves.add(chaveMusica(song.title, song.artist))
+      })
+      setNoSetlist({ ids, chaves })
+    })
+  }, [])
 
   useEffect(() => {
     const q = query(collection(db, 'sugestoes'), orderBy('createdAt', 'desc'))
@@ -534,11 +585,15 @@ export default function SugestoesPage() {
     if (fresh) setModal(fresh)
   }, [sugestoes])
 
-  const byStatus = (filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter))
+  const visiveis = sugestoes.filter(
+    (s) => !noSetlist.ids.has(s.id) && !noSetlist.chaves.has(chaveMusica(s.title, s.artist))
+  )
+
+  const byStatus = (filter === 'all' ? visiveis : visiveis.filter((s) => s.status === filter))
     .filter((s) => matchesSearch(search, s.title, s.artist))
   const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
   const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
-  const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
+  const pendingCount = visiveis.filter((s) => s.status === 'aberta').length
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
@@ -603,7 +658,7 @@ export default function SugestoesPage() {
       {/* Filtros de status */}
       <div className="filter-bar">
         {FILTERS.map((f) => {
-          const count = f.value === 'all' ? sugestoes.length : sugestoes.filter((s) => s.status === f.value).length
+          const count = f.value === 'all' ? visiveis.length : visiveis.filter((s) => s.status === f.value).length
           return (
             <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => setFilter(f.value)}>
               {f.label} <span className="count">{count}</span>

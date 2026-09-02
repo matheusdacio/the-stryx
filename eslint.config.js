@@ -18,4 +18,9 @@ export default defineConfig([
       parserOptions: { ecmaFeatures: { jsx: true } },
     },
   },
+  {
+    // Scripts das notificações rodam no Node (GitHub Actions), não no navegador
+    files: ['.github/scripts/**/*.js'],
+    languageOptions: { globals: globals.node, sourceType: 'commonjs' },
+  },
 ])

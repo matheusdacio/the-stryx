@@ -1,0 +1,30 @@
+name: Lembretes de eventos
+
+on:
+  schedule:
+    # 13:00 UTC = 10:00 no horário de Brasília. Uma vez por dia basta:
+    # o script marca no evento o que já avisou e não repete
+    - cron: '0 13 * * *'
+  workflow_dispatch:
+
+jobs:
+  lembrar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'npm'
+          cache-dependency-path: .github/scripts/package.json
+
+      - name: Instalar dependências
+        run: npm install
+        working-directory: .github/scripts
+
+      - name: Enviar lembretes dos eventos
+        run: node lembrar-eventos.js
+        working-directory: .github/scripts
+        env:
+          FIREBASE_SERVICE_ACCOUNT_STRYX: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_STRYX }}

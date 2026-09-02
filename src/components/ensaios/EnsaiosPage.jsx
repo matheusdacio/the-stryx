@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, writeBatch } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
@@ -142,16 +142,35 @@ function TypeBadge({ type }) {
 
 // ── Card expandível ───────────────────────────────────────────────────
 
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user }) {
-  const [open, setOpen] = useState(false)
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs }) {
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
+
+  // O que foi realmente ensaiado neste evento — vira o gatilho pra promover a
+  // música de "Ensaiando" pra "Pronta" no setlist
+  const ensaiadas = ensaio.ensaiadas || []
+  const toggleEnsaiada = (id) => {
+    if (!id) return
+    const next = ensaiadas.includes(id) ? ensaiadas.filter((x) => x !== id) : [...ensaiadas, id]
+    updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: next })
+  }
+
+  const promoviveis = (ensaio.setlist || []).filter(
+    (s) => s.id && ensaiadas.includes(s.id) && songs[s.id]?.status === 'ensaiando'
+  )
+  const promover = async () => {
+    const nomes = promoviveis.map((s) => s.title).join(', ')
+    if (!confirm(`Marcar como prontas no setlist: ${nomes}?`)) return
+    const batch = writeBatch(db)
+    promoviveis.forEach((s) => batch.update(doc(db, 'songs', s.id), { status: 'pronta' }))
+    await batch.commit()
+  }
   const hasNotes   = !!ensaio.notes
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
-    <div className={`ensaio-row ${open ? 'open' : ''}`}>
-      <div className="ensaio-row-header" onClick={() => setOpen(!open)}>
+    <div className="ensaio-row open">
+      <div className="ensaio-row-header">
         <div className="ensaio-row-left">
           <span className="ensaio-row-date">{formatDateShort(ensaio.date)}</span>
           <TypeBadge type={ensaio.type} />
@@ -161,24 +180,41 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
           {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
           {vao.length > 0 && <span className="ensaio-row-members presenca-vai">✓ {vao.length}</span>}
           {nao.length > 0 && <span className="ensaio-row-members presenca-nao">✕ {nao.length}</span>}
-          <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>
         </div>
       </div>
 
-      {open && (
-        <div className="ensaio-row-body">
+      <div className="ensaio-row-body">
           {hasSetlist && (
             <div className="pauta-block">
               <p className="section-label">Músicas ({ensaio.setlist.length})</p>
               <ol className="event-songs-list">
-                {ensaio.setlist.map((s, i) => (
-                  <li key={i}>
-                    {s.title}
-                    {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                    {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                  </li>
-                ))}
+                {ensaio.setlist.map((s, i) => {
+                  const status = songs[s.id]?.status
+                  return (
+                    <li key={s.id || i}>
+                      <label className="song-ensaiada">
+                        <input
+                          type="checkbox"
+                          checked={ensaiadas.includes(s.id)}
+                          onChange={() => toggleEnsaiada(s.id)}
+                          title="Marcar como ensaiada neste evento"
+                        />
+                        <span>
+                          {s.title}
+                          {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                          {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                          {status === 'pronta' && <span className="mini-chip" style={{ marginLeft: 6 }}>✓ pronta</span>}
+                        </span>
+                      </label>
+                    </li>
+                  )
+                })}
               </ol>
+              {promoviveis.length > 0 && (
+                <button className="btn-secondary" style={{ fontSize: '0.78rem', marginTop: 8 }} onClick={promover}>
+                  ✓ Marcar {promoviveis.length} como {promoviveis.length === 1 ? 'pronta' : 'prontas'} no setlist
+                </button>
+              )}
             </div>
           )}
 
@@ -214,8 +250,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             <button className="btn-secondary" onClick={() => onCopy(ensaio)}>⧉ Copiar</button>
             <button className="btn-ghost-danger" onClick={() => onRemove(ensaio)}>Remover</button>
           </div>
-        </div>
-      )}
+      </div>
     </div>
   )
 }
@@ -223,7 +258,6 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 // ── Card destaque — próximo evento ────────────────────────────────────
 
 function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }) {
-  const [open, setOpen] = useState(false)
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
@@ -254,22 +288,9 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
 
-      {hasSetlist && !open && <SetlistPreview setlist={ensaio.setlist} />}
+      {hasSetlist && <SetlistPreview setlist={ensaio.setlist} />}
 
-      {hasSetlist && open && (
-        <div className="pauta-block" style={{ marginTop: 10 }}>
-          <ol className="event-songs-list">
-            {ensaio.setlist.map((s, i) => (
-              <li key={i}>
-                {s.title}
-                {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {ensaio.pauta?.length > 0 && open && (
+      {ensaio.pauta?.length > 0 && (
         <div className="pauta-block" style={{ marginTop: 8 }}>
           <p className="section-label">Pauta</p>
           {ensaio.pauta.map((item, i) => (
@@ -285,11 +306,6 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         {hasSetlist && (
           <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => onPerform(ensaio)}>
             🎤 Modo palco
-          </button>
-        )}
-        {(hasSetlist || ensaio.pauta?.length > 0) && (
-          <button className="btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setOpen(!open)}>
-            {open ? '▲ Fechar detalhes' : '▼ Ver detalhes'}
           </button>
         )}
         <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onEdit(ensaio)}>
@@ -316,6 +332,7 @@ export default function EnsaiosPage() {
   const { user } = useAuth()
   const [ensaios, setEnsaios] = useState([])
   const [bandMembers, setBandMembers] = useState([])
+  const [songs, setSongs] = useState({})
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
   const [performing, setPerforming] = useState(null)
@@ -323,6 +340,14 @@ export default function EnsaiosPage() {
   useEffect(() => {
     const q = query(collection(db, 'ensaios'), orderBy('date', 'asc'))
     return onSnapshot(q, (snap) => setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'songs'), (snap) => {
+      const map = {}
+      snap.docs.forEach((d) => { map[d.id] = d.data() })
+      setSongs(map)
+    })
   }, [])
 
   useEffect(() => {
@@ -422,6 +447,7 @@ export default function EnsaiosPage() {
                     onPerform={setPerforming}
                     bandMembers={bandMembers}
                     user={user}
+                    songs={songs}
                   />
                 ))}
               </div>
@@ -454,6 +480,7 @@ export default function EnsaiosPage() {
                   onPerform={setPerforming}
                   bandMembers={bandMembers}
                   user={user}
+                  songs={songs}
                 />
               ))}
             </div>
