@@ -14,6 +14,15 @@ import { showToast } from '../../utils/toast'
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
+// Explica por que uma música sem votação nenhuma aparece lá no topo de
+// "Recentes" — sem o chip parece só ordem aleatória
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
+const ehNovo = (createdAt) => {
+  if (!createdAt) return false
+  const d = createdAt.toDate ? createdAt.toDate() : new Date(createdAt)
+  return Date.now() - d.getTime() < SETE_DIAS
+}
+
 export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
@@ -254,6 +263,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
+          {ehNovo(song.createdAt) && <span className="mini-chip" title="Adicionada nos últimos 7 dias">🆕</span>}
         </div>
       )}
 

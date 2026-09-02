@@ -25,6 +25,15 @@ const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
+// Sugestão nova sem voto nenhum ia pro fim de "Melhores e fáceis", empatada
+// em 0 com as reprovadas — o chip explica por que ela aparece lá em cima
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
+const ehNovo = (createdAt) => {
+  if (!createdAt) return false
+  const d = createdAt.toDate ? createdAt.toDate() : new Date(createdAt)
+  return Date.now() - d.getTime() < SETE_DIAS
+}
+
 // opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
 function opinoesArray(opinoes) {
@@ -121,7 +130,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   }
 
   const approve = async () => {
-    if (!confirm(`Enviar "${sugestao.title}" pro setlist?`)) return
+    if (!confirm(`Enviar "${sugestao.title}" pro setlist? Ela some daqui e entra como Crua pra todo mundo.`)) return
     setSaving(true)
 
     // Música nova entra crua pra todo mundo: ninguém ensaiou ainda. Cada um
@@ -151,7 +160,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         createdAt: serverTimestamp(),
       })
       await updateDoc(ref, { status: 'aprovada' })
-      showToast('Foi pro setlist ✓')
+      showToast('Foi pro setlist, marcada Crua pra geral')
       onClose()
     } catch {
       alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
@@ -715,6 +724,11 @@ export default function SugestoesPage() {
       // mais votos, depois maior soma
       const ba = calcBalancedScore(a.opinoes, a.dificuldade)
       const bb = calcBalancedScore(b.opinoes, b.dificuldade)
+      // Sem nenhuma opinião ainda não é "nota zero" — é diferente de uma
+      // reprovada; vai pro topo, não empata em 0 com quem já foi mal avaliada
+      if (ba.total === 0 && bb.total === 0) return 0
+      if (ba.total === 0) return -1
+      if (bb.total === 0) return 1
       return bb.valor - ba.valor || bb.total - ba.total || bb.soma - ba.soma
     }
     if (sortBy === 'dificuldade') {
@@ -836,6 +850,7 @@ export default function SugestoesPage() {
                       <div>
                         <span className="sug-card-title">{s.title}</span>
                         {s.artist && <span className="sug-card-artist"> — {s.artist}</span>}
+                        {ehNovo(s.createdAt) && <span className="mini-chip" title="Sugerida nos últimos 7 dias">🆕</span>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
