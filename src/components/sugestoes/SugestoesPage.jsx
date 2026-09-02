@@ -650,9 +650,16 @@ export default function SugestoesPage() {
             </button>
           )
         })}
+        <button
+          className={`btn-filter ${onlyUnvoted ? 'active' : ''}`}
+          onClick={() => setOnlyUnvoted(!onlyUnvoted)}
+          title="Mostrar só as músicas que você ainda não votou"
+        >
+          🗳 Não votei <span className="count">{unvotedCount}</span>
+        </button>
       </div>
 
-      {/* Ordenação + filtro de não votadas */}
+      {/* Ordenação */}
       <div className="sort-bar">
         <span className="sort-label">Ordenar:</span>
         {SORTS.map((s) => (
@@ -664,13 +671,6 @@ export default function SugestoesPage() {
             {s.label}
           </button>
         ))}
-        <button
-          className={`btn-unvoted ${onlyUnvoted ? 'active' : ''}`}
-          onClick={() => setOnlyUnvoted(!onlyUnvoted)}
-          title="Mostrar só as músicas que você ainda não votou"
-        >
-          🗳 Não votei <span className="count">{unvotedCount}</span>
-        </button>
       </div>
 
       {displayed.length === 0 ? (

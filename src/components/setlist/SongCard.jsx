@@ -153,7 +153,6 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
   }
 
   const videoId = getYouTubeId(song.videoUrl)
-  const diffCount = Object.keys(dificuldade).length
 
   return (
     <div
@@ -206,12 +205,8 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
             </span>
           )}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
-          {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
           {videoId && <span className="mini-chip">▶ vídeo</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
-          {diffCount > 0 && (
-            <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
-          )}
           {song.notes && <span className="mini-chip">📝</span>}
         </div>
       )}
@@ -307,7 +302,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
         ))}
-        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)} title="Editar BPM, vídeo e tags">✎</button>
+        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)}>✏️ Editar</button>
       </div>
 
       {editingMeta && (

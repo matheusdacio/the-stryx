@@ -14,8 +14,11 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 ---
 
 ## [1.29.0] — 2026-09-02
+- **Ordenações no setlist**, iguais às das sugestões: ⚖️ Melhores e fáceis (nota com desconto pela dificuldade), ⭐ Média, 🎯 Dificuldade, 📅 Antigas e 🕐 Recentes, além do Padrão que mantém a ordem manual e o arrastar. Nas ordenações por nota, música sem nenhuma avaliação vai pro fim
+- **Card do setlist mais limpo**: BPM e contagem de votos saem do resumo (seguem visíveis ao abrir a música), e o antigo ✎ apagadinho virou um botão **✏️ Editar** legível
+- Nas sugestões, o **"🗳 Não votei" foi pra barra de filtros**, ao lado de Rejeitadas, que é o que ele de fato é
 - **O setlist passa a ser organizado pelo domínio**, não mais por "Ensaiando / Pronta / Extra". Os filtros do topo viraram Crua, Quase lá, Enferrujada, Dominada e Sem voto, o selo e a borda do card seguem o pior voto, e o botão de status sai do card e do cadastro de música
-- **O status "Extra" foi aposentado** e as 16 músicas que o tinham ganharam a tag **"Não faz sentido"**, que continua filtrável na barra de tags. O campo `status` não foi apagado dos documentos — só deixou de ser usado, então dá pra voltar atrás
+- **O status "Extra" foi aposentado.** Em vez de virar rótulo, a separação passa a ser a própria **nota da banda**: quem tem nota alta sobe nas ordenações e quem nunca foi avaliado fica no fim. O campo `status` não foi apagado dos documentos — só deixou de ser usado, então dá pra voltar atrás
 - Como consequência, o botão do evento que promovia música ensaiada pra "Pronta" saiu: quem diz que a música está pronta agora é o voto de domínio de cada um. A marcação de "ensaiada" no evento continua, como registro do que foi tocado
 - A votação de dificuldade (5 níveis), que só aparecia nas músicas em "Ensaiando", agora aparece em todas — ela dependia do status que deixou de existir
 - **Nota da banda no setlist**: a pontuação das opiniões (⭐), que existia só nas sugestões, agora aparece no card da música. Ela é lida da sugestão que originou a música — pelo vínculo da aprovação ou, nas antigas, pelo título + artista

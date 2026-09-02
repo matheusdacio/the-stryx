@@ -25,10 +25,13 @@ const FILTERS = [
 // Nível da música pra filtro e contagem
 const nivelDe = (song) => dominioPorPeso(calcDominio(song.dominio).pior)?.value || 'sem_voto'
 
-const ENSAIANDO_SORTS = [
+const SORTS = [
   { value: 'manual',      label: 'Padrão' },
-  { value: 'data',        label: '📅 Mais antigas' },
-  { value: 'dificuldade', label: '🎯 Mais fáceis' },
+  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
+  { value: 'media',       label: '⭐ Média' },
+  { value: 'dificuldade', label: '🎯 Dificuldade' },
+  { value: 'data',        label: '📅 Antigas' },
+  { value: 'recentes',    label: '🕐 Recentes' },
 ]
 
 // Peso de cada nível de dificuldade (mesma ordem do "Como tá pra você?")
@@ -40,6 +43,14 @@ function avgDifficulty(song) {
   const votes = Object.values(song.dificuldade || {}).filter((v) => DIFF_WEIGHT[v.level])
   if (!votes.length) return null
   return votes.reduce((acc, v) => acc + DIFF_WEIGHT[v.level], 0) / votes.length
+}
+
+// Desconto pela dificuldade, no mesmo espírito da ordenação das sugestões:
+// a nota manda e a dificuldade só penaliza. De boa não desconta nada,
+// "Moisés" desconta 30%. Sem voto conta como o meio da escala.
+function facilidade(song) {
+  const peso = avgDifficulty(song) ?? 3
+  return 1 - (peso - 1) * 0.075
 }
 
 // Wrapper sortable: liga o card ao dnd-kit e passa o handle (a bolinha da posição)
@@ -144,11 +155,23 @@ export default function SetlistPage() {
   const dragEnabled = !sortActive
   let displayed = filtered
   if (sortActive) {
+    // Música sem nota vai pro fim nas ordenações por nota: quem nunca passou
+    // por votação não tem como competir com quem a banda avaliou
+    const porNota = (fator) => (a, b) => {
+      const na = notaDe(a)
+      const nb = notaDe(b)
+      if (!na && !nb) return 0
+      if (!na) return 1
+      if (!nb) return -1
+      return nb.media * fator(b) - na.media * fator(a)
+    }
+    const semDesconto = () => 1
+
     displayed = [...filtered].sort((a, b) => {
-      if (ensaiandoSort === 'data') {
-        // Mais antiga → mais nova
-        return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-      }
+      if (ensaiandoSort === 'balanceada') return porNota(facilidade)(a, b)
+      if (ensaiandoSort === 'media') return porNota(semDesconto)(a, b)
+      if (ensaiandoSort === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
+      if (ensaiandoSort === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
       // Dificuldade: mais fácil → mais difícil; sem votos vai pro fim
       const da = avgDifficulty(a)
       const db_ = avgDifficulty(b)
@@ -192,7 +215,7 @@ export default function SetlistPage() {
       {(
         <div className="sort-bar">
           <span className="sort-label">Ordenar:</span>
-          {ENSAIANDO_SORTS.map((s) => (
+          {SORTS.map((s) => (
             <button
               key={s.value}
               className={`btn-sort ${ensaiandoSort === s.value ? 'active' : ''}`}

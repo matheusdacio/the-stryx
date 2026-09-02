@@ -370,12 +370,13 @@ button { font-family: inherit; }
 }
 .btn-meta-add:hover { opacity: 1; border-color: var(--gray); }
 .btn-meta-edit {
-  font-size: 0.72rem; padding: 3px 7px;
-  border-radius: var(--radius-sm); border: none;
-  background: transparent; color: var(--text-muted); opacity: 0.5;
-  cursor: pointer; margin-left: auto;
+  font-size: 0.72rem; padding: 3px 11px;
+  border-radius: 20px; border: 1px solid var(--border-strong);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; margin-left: auto; white-space: nowrap;
+  transition: color 0.15s, border-color 0.15s;
 }
-.btn-meta-edit:hover { opacity: 1; }
+.btn-meta-edit:hover { color: var(--text); border-color: var(--gray); }
 .song-meta-edit { margin: 4px 0 10px; padding: 12px; background: var(--surface2); border-radius: var(--radius); border: 1px solid var(--border); }
 .song-meta-edit input {
   width: 100%; background: var(--surface); border: 1px solid var(--border);
@@ -785,21 +786,6 @@ button { font-family: inherit; }
   background: rgba(99, 102, 241, 0.14); border-color: var(--accent);
   color: #a5b4fc; font-weight: 600;
   box-shadow: 0 1px 10px rgba(99, 102, 241, 0.25);
-}
-
-/* Filtro "Não votei" */
-.btn-unvoted {
-  display: flex; align-items: center; gap: 5px;
-  font-size: 0.75rem; padding: 4px 11px; margin-left: auto;
-  border-radius: 20px; border: 1px dashed var(--border-strong);
-  background: transparent; color: var(--text-muted);
-  cursor: pointer; transition: all 0.15s; white-space: nowrap;
-}
-.btn-unvoted:hover { border-color: var(--yellow); color: var(--yellow); }
-.btn-unvoted.active {
-  background: rgba(245, 158, 11, 0.14); border: 1px solid var(--yellow);
-  color: var(--yellow); font-weight: 600;
-  box-shadow: 0 1px 10px rgba(245, 158, 11, 0.25);
 }
 
 /* Score e rank nos cards de sugestão */
