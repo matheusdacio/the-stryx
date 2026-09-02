@@ -8,6 +8,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
 import { normalizeEventMembers } from '../../utils/members'
 import { migrateEventPresence } from '../../utils/presenca'
+import { verificarIntegridade } from '../../utils/integridade'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -273,6 +274,51 @@ function PresenceMigrateTool() {
   )
 }
 
+// ── Ferramenta: conferir a integridade dos dados ──────────────────────
+// Só lê. Serve pra checar depois de uma migração se sobrou alguma ponta solta
+function IntegridadeTool() {
+  const [busy, setBusy] = useState(false)
+  const [itens, setItens] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const rodar = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      setItens(await verificarIntegridade())
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const alertas = (itens || []).filter((i) => !i.ok).length
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={rodar} disabled={busy}>
+        {busy ? 'Conferindo...' : '🔎 Conferir integridade dos dados'}
+      </button>
+      {msg && <span style={{ fontSize: '0.8rem', color: 'var(--red)' }}>{msg}</span>}
+      {itens && (
+        <div className="event-normalize-preview">
+          <p className="section-label">
+            {alertas === 0 ? '✅ Nenhum problema encontrado' : `⚠️ ${alertas} ponto(s) pra olhar`}
+          </p>
+          {itens.map((i) => (
+            <p key={i.titulo} className="event-normalize-item">
+              <strong style={{ color: i.ok ? 'var(--green)' : 'var(--red)' }}>{i.ok ? '✓' : '✕'} {i.titulo}</strong>
+              <br />
+              {i.detalhe.join(' · ')}
+              {i.total > 8 && ` … e mais ${i.total - 8}`}
+            </p>
+          ))}
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -378,6 +424,7 @@ export default function MembrosPage() {
           </button>
           <EventNormalizeTool />
           <PresenceMigrateTool />
+          <IntegridadeTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}
