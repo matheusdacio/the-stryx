@@ -14,6 +14,7 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 ---
 
 ## [1.29.0] — 2026-09-02
+- _fix:_ na aba "Presença pendente" os cards ficam compactos — a pergunta "Você vai?" vem primeiro e o repertório aparece só como prévia (3 músicas + quantas faltam), em vez das 28 linhas que empurravam os botões pra fora da tela
 - **Domínio da música**, votado por cada membro no card do setlist: **Dominada**, **Quase lá** ou **Crua** (clicar de novo desfaz). O chip do card mostra o **pior voto** — se uma pessoa está crua, a banda precisa ensaiar, mesmo que o resto esteja tranquilo. Os votos viajam junto se a música for pras sugestões e voltar
 - **"Trazer as N músicas menos dominadas"** no evento: escolhe a quantidade e o app puxa pro repertório do ensaio as músicas mais cruas, ignorando as que já estão no evento. A ordem é pelo pior voto, depois pela média e depois por quem tem mais votos. Música sem nenhum voto fica de fora: não há indício de que precise de ensaio
 

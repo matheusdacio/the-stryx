@@ -161,7 +161,9 @@ function TypeBadge({ type }) {
 
 // ── Card expandível ───────────────────────────────────────────────────
 
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs }) {
+// `compacto` é a aba de pendências: ali a tarefa é responder presença, então
+// ela vem primeiro e o repertório fica só como prévia
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false }) {
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
 
@@ -205,7 +207,23 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
       </div>
 
       <div className="ensaio-row-body">
-          {hasSetlist && (
+          {compacto && (
+            <div>
+              {!passado && (
+                <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+              )}
+              <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
+            </div>
+          )}
+
+          {hasSetlist && compacto && (
+            <div className="pauta-block">
+              <p className="section-label">Músicas ({ensaio.setlist.length})</p>
+              <SetlistPreview setlist={ensaio.setlist} limite={3} />
+            </div>
+          )}
+
+          {hasSetlist && !compacto && (
             <div className="pauta-block">
               <p className="section-label">Músicas ({ensaio.setlist.length})</p>
               <ol className="event-songs-list">
@@ -244,7 +262,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             </div>
           )}
 
-          {hasPauta && (
+          {hasPauta && !compacto && (
             <div className="pauta-block" style={{ marginTop: hasSetlist ? 10 : 0 }}>
               <p className="section-label">Pauta</p>
               {ensaio.pauta.map((item, i) => (
@@ -256,14 +274,16 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             </div>
           )}
 
-          <div style={{ marginTop: 10 }}>
-            {!passado && (
-              <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
-            )}
-            <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
-          </div>
+          {!compacto && (
+            <div style={{ marginTop: 10 }}>
+              {!passado && (
+                <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+              )}
+              <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
+            </div>
+          )}
 
-          {hasNotes && (
+          {hasNotes && !compacto && (
             <div style={{ marginTop: 10 }}>
               <p className="section-label">Observações</p>
               <p className="ensaio-notes">{ensaio.notes}</p>
@@ -509,6 +529,7 @@ export default function EnsaiosPage() {
                   bandMembers={bandMembers}
                   user={user}
                   songs={songs}
+                  compacto={tab === 'pendentes'}
                 />
               ))}
             </div>
