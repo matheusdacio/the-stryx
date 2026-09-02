@@ -33,6 +33,16 @@ const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
+// Opiniões que barram a música. Basta uma pessoa marcar uma delas pra
+// sugestão contar como rejeitada — quem não curte vai ter que tocar
+const VETOS = ['fora', 'nao_gosto']
+const temVeto = (sugestao) =>
+  Object.values(sugestao.opinoes || {}).some((v) => VETOS.includes(v.opinion))
+
+// Rejeitada por veto de alguém ou pela decisão do admin
+const estaRejeitada = (sugestao) =>
+  sugestao.status === 'rejeitada' || temVeto(sugestao)
+
 // Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
 // votado (usado no chip do card). avg/max null se ninguém votou
 function calcDifficulty(dificuldade) {
@@ -235,8 +245,14 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
-            {sugestao.status === 'aprovada' ? '✓ Aprovada — adicionada ao setlist' : '✕ Rejeitada'}
+            {sugestao.status === 'aprovada' ? '✓ Enviada pro setlist' : '✕ Rejeitada'}
             {isAdmin && <button className="btn-reopen" onClick={reopen}>Reabrir</button>}
+          </div>
+        )}
+
+        {sugestao.status === 'aberta' && temVeto(sugestao) && (
+          <div className="sug-status-banner sug-rejeitada">
+            ✕ Rejeitada — alguém marcou "Não curti" ou "Não faz sentido". As opiniões continuam abertas.
           </div>
         )}
 
@@ -591,11 +607,17 @@ export default function SugestoesPage() {
     (s) => !noSetlist.ids.has(s.id) && !noSetlist.chaves.has(chaveMusica(s.title, s.artist))
   )
 
-  const byStatus = (filter === 'all' ? visiveis : visiveis.filter((s) => s.status === filter))
+  const noFiltro = (s) => {
+    if (filter === 'all') return true
+    if (filter === 'rejeitada') return estaRejeitada(s)
+    return s.status === 'aberta' && !estaRejeitada(s)
+  }
+
+  const byStatus = visiveis.filter(noFiltro)
     .filter((s) => matchesSearch(search, s.title, s.artist))
   const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
   const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
-  const pendingCount = visiveis.filter((s) => s.status === 'aberta').length
+  const pendingCount = visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s)).length
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
@@ -660,7 +682,11 @@ export default function SugestoesPage() {
       {/* Filtros de status */}
       <div className="filter-bar">
         {FILTERS.map((f) => {
-          const count = f.value === 'all' ? visiveis.length : visiveis.filter((s) => s.status === f.value).length
+          const count = f.value === 'all'
+            ? visiveis.length
+            : f.value === 'rejeitada'
+              ? visiveis.filter(estaRejeitada).length
+              : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s)).length
           return (
             <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => setFilter(f.value)}>
               {f.label} <span className="count">{count}</span>
@@ -712,7 +738,11 @@ export default function SugestoesPage() {
             const showScore = total > 0
             const diffLabel = difficultyByWeight(calcDifficulty(s.dificuldade).max)
             return (
-              <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
+              <div
+                key={s.id}
+                className={`sug-card sug-card-${estaRejeitada(s) ? 'rejeitada' : s.status}`}
+                onClick={() => setModal(s)}
+              >
                 {videoId && (
                   <div className="sug-thumb-wrap">
                     <img src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt={s.title} className="sug-thumb" />

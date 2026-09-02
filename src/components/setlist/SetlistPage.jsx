@@ -25,34 +25,6 @@ const FILTERS = [
 // Nível da música pra filtro e contagem
 const nivelDe = (song) => dominioPorPeso(calcDominio(song.dominio).pior)?.value || 'sem_voto'
 
-const SORTS = [
-  { value: 'recentes',    label: '🕐 Recentes' },
-  { value: 'manual',      label: 'Padrão' },
-  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
-  { value: 'media',       label: '⭐ Média' },
-  { value: 'dificuldade', label: '🎯 Dificuldade' },
-  { value: 'data',        label: '📅 Antigas' },
-]
-
-// Peso de cada nível de dificuldade (mesma ordem do "Como tá pra você?")
-// 'nao_vi' não está aqui de propósito: é neutro e não entra na média.
-const DIFF_WEIGHT = { de_boa: 1, ok: 2, sofrendo: 3, travado: 4, moises: 5 }
-
-// Média de dificuldade da banda; null se ninguém deu um voto que conte
-function avgDifficulty(song) {
-  const votes = Object.values(song.dificuldade || {}).filter((v) => DIFF_WEIGHT[v.level])
-  if (!votes.length) return null
-  return votes.reduce((acc, v) => acc + DIFF_WEIGHT[v.level], 0) / votes.length
-}
-
-// Desconto pela dificuldade, no mesmo espírito da ordenação das sugestões:
-// a nota manda e a dificuldade só penaliza. De boa não desconta nada,
-// "Moisés" desconta 30%. Sem voto conta como o meio da escala.
-function facilidade(song) {
-  const peso = avgDifficulty(song) ?? 3
-  return 1 - (peso - 1) * 0.075
-}
-
 // Wrapper sortable: liga o card ao dnd-kit e passa o handle (a bolinha da posição)
 function SortableSongCard({ song, ...props }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id: song.id })
@@ -73,9 +45,6 @@ export default function SetlistPage() {
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
-  // Recentes por padrão: música nova é a que a banda está mexendo agora.
-  // "Padrão" continua na lista porque é a única em que dá pra arrastar
-  const [sortBy, setSortBy] = useState('recentes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
 
@@ -149,40 +118,10 @@ export default function SetlistPage() {
     matchesSearch(search, s.title, s.artist)
   )
 
-  const sortActive = sortBy !== 'manual'
-
-  // Arrastar vale em qualquer filtro/tag/busca: soltar em cima de uma música
-  // move a arrastada pra posição global dela. Só desliga nas ordenações
-  // automáticas (Mais antigas / Mais fáceis), onde ordem manual não se aplica.
-  const dragEnabled = !sortActive
-  let displayed = filtered
-  if (sortActive) {
-    // Música sem nota vai pro fim nas ordenações por nota: quem nunca passou
-    // por votação não tem como competir com quem a banda avaliou
-    const porNota = (fator) => (a, b) => {
-      const na = notaDe(a)
-      const nb = notaDe(b)
-      if (!na && !nb) return 0
-      if (!na) return 1
-      if (!nb) return -1
-      return nb.media * fator(b) - na.media * fator(a)
-    }
-    const semDesconto = () => 1
-
-    displayed = [...filtered].sort((a, b) => {
-      if (sortBy === 'balanceada') return porNota(facilidade)(a, b)
-      if (sortBy === 'media') return porNota(semDesconto)(a, b)
-      if (sortBy === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-      if (sortBy === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-      // Dificuldade: mais fácil → mais difícil; sem votos vai pro fim
-      const da = avgDifficulty(a)
-      const db_ = avgDifficulty(b)
-      if (da === null && db_ === null) return 0
-      if (da === null) return 1
-      if (db_ === null) return -1
-      return da - db_
-    })
-  }
+  // A ordem do setlist é a que a banda arrumou na mão: sem ordenação
+  // automática, arrastar vale em qualquer filtro, tag ou busca
+  const dragEnabled = true
+  const displayed = filtered
 
   const counts = FILTERS.reduce((acc, f) => {
     acc[f.value] = f.value === 'all'
@@ -212,22 +151,6 @@ export default function SetlistPage() {
           </button>
         ))}
       </div>
-
-      {/* Ordenação extra */}
-      {(
-        <div className="sort-bar">
-          <span className="sort-label">Ordenar:</span>
-          {SORTS.map((s) => (
-            <button
-              key={s.value}
-              className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
-              onClick={() => setSortBy(s.value)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
 
       {/* Filtro por tags customizadas */}
       {allTags.length > 0 && (
