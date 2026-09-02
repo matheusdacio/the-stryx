@@ -129,10 +129,11 @@ export default function SetlistPage() {
       <div className="page-header">
         <h2>Setlist</h2>
         <div className="page-header-actions">
-          <SearchLupa value={search} onChange={setSearch} />
           <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
         </div>
       </div>
+
+      <SearchLupa value={search} onChange={setSearch} placeholder="Filtrar por nome ou artista..." />
 
       <div className="filter-bar">
         {FILTERS.map((f) => (

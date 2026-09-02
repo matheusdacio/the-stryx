@@ -1,37 +1,19 @@
-import { useEffect, useRef, useState } from 'react'
-
-// Lupa discreta que expande num campo de busca; ✕ ou Esc limpa e recolhe
-export default function SearchLupa({ value, onChange, placeholder = 'Buscar música...' }) {
-  const [open, setOpen] = useState(false)
-  const inputRef = useRef(null)
-
-  useEffect(() => {
-    if (open) inputRef.current?.focus()
-  }, [open])
-
-  const close = () => {
-    onChange('')
-    setOpen(false)
-  }
-
-  if (!open) {
-    return (
-      <button className="btn-lupa" onClick={() => setOpen(true)} title="Buscar música">🔍</button>
-    )
-  }
-
+// Campo de busca por título/artista, sempre visível — não fica escondido
+// atrás de um ícone que precisa ser clicado pra aparecer
+export default function SearchLupa({ value, onChange, placeholder = 'Filtrar por nome ou artista...' }) {
   return (
     <div className="search-wrap">
       <span className="search-icon">🔍</span>
       <input
-        ref={inputRef}
         className="search-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
-        onKeyDown={(e) => e.key === 'Escape' && close()}
+        onKeyDown={(e) => e.key === 'Escape' && onChange('')}
         placeholder={placeholder}
       />
-      <button className="search-clear" onClick={close} title="Fechar busca">✕</button>
+      {value && (
+        <button className="search-clear" onClick={() => onChange('')} title="Limpar filtro">✕</button>
+      )}
     </div>
   )
 }

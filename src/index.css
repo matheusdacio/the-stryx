@@ -1056,24 +1056,16 @@ button { font-family: inherit; }
   display: flex; align-items: center; gap: 8px;
   flex: 1; justify-content: flex-end; min-width: 0; margin-left: 12px;
 }
-.btn-lupa {
-  width: 34px; height: 34px; flex-shrink: 0;
-  display: flex; align-items: center; justify-content: center;
-  background: var(--surface); border: 1px solid var(--border);
-  border-radius: 50%; color: var(--text-muted);
-  font-size: 0.85rem; cursor: pointer; transition: all 0.2s;
-}
-.btn-lupa:hover { border-color: var(--gray); color: var(--text); }
 .search-wrap {
-  display: flex; align-items: center; gap: 6px;
-  flex: 1; min-width: 0; max-width: 300px;
+  display: flex; align-items: center; gap: 8px;
+  width: 100%; margin-bottom: 14px;
   background: var(--surface); border: 1px solid var(--border-strong);
-  border-radius: 20px; padding: 5px 12px;
+  border-radius: 20px; padding: 8px 14px;
 }
-.search-icon { font-size: 0.8rem; opacity: 0.7; flex-shrink: 0; }
+.search-icon { font-size: 0.85rem; opacity: 0.7; flex-shrink: 0; }
 .search-input {
   flex: 1; min-width: 0; background: none; border: none; outline: none;
-  color: var(--text); font-size: 0.85rem;
+  color: var(--text); font-size: 0.88rem;
 }
 .search-input::placeholder { color: var(--text-muted); }
 .search-clear {
