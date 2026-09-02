@@ -47,7 +47,7 @@ function OpinionSummary({ opinoes }) {
   )
 }
 
-function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers }) {
+function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou }) {
   const [myOpinion, setMyOpinion] = useState(null)
   // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
   // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
@@ -69,6 +69,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   const dificuldade = sugestao.dificuldade || {}
   const myDiff = dificuldade[userId]?.level
   const voteDiff = (level) => {
+    // Fixa a sugestão na lista antes de votar: com "Falta meu voto" ativo,
+    // ela pode sair do filtro assim que grava, sumindo atrás do modal
+    onVotou?.(sugestao.id)
     if (myDiff === level) {
       updateDoc(ref, { [`dificuldade.${userId}`]: deleteField() })
     } else {
@@ -80,6 +83,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
   const submitOpinion = () => {
     if (!myOpinion) return
+    onVotou?.(sugestao.id)
     setSaving(true)
     // Chave é o userId — sobrescreve automaticamente opinião anterior
     const voto = { userName, opinion: myOpinion, comment: comment.trim(), at: new Date().toISOString() }
@@ -568,6 +572,11 @@ export default function SugestoesPage() {
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
+  // Sugestão recém-votada continua na lista até o filtro mudar — senão ela
+  // some da tela atrás do modal assim que deixa de faltar o voto
+  const [fixados, setFixados] = useState(new Set())
+  const mudarFiltro = (v) => { setFixados(new Set()); setFilter(v) }
+  const mudarSearch = (v) => { setFixados(new Set()); setSearch(v) }
 
   const isAdmin = user.email === ADMIN_EMAIL
 
@@ -625,7 +634,7 @@ export default function SugestoesPage() {
   const noFiltro = (s) => {
     if (filter === 'all') return true
     if (filter === 'rejeitada') return estaRejeitada(s, bandMembers)
-    if (filter === 'falta_meu_voto') return faltaVotar(s, user, noSetlist, bandMembers)
+    if (filter === 'falta_meu_voto') return faltaVotar(s, user, noSetlist, bandMembers) || fixados.has(s.id)
     return s.status === 'aberta' && !estaRejeitada(s, bandMembers)
   }
 
@@ -685,7 +694,7 @@ export default function SugestoesPage() {
           {pendingCount > 0 && <span className="pending-badge">{pendingCount}</span>}
         </h2>
         <div className="page-header-actions">
-          <SearchLupa value={search} onChange={setSearch} placeholder="Filtrar por nome ou artista..." />
+          <SearchLupa value={search} onChange={mudarSearch} placeholder="Filtrar por nome ou artista..." />
           {isAdmin && filtered.length > 0 && (
             <button className="btn-secondary" onClick={handleExport} title="Exportar para Excel">
               📊 Exportar
@@ -704,14 +713,14 @@ export default function SugestoesPage() {
               ? visiveis.filter((s) => estaRejeitada(s, bandMembers)).length
               : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
           return (
-            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => setFilter(f.value)}>
+            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => mudarFiltro(f.value)}>
               {f.label} <span className="count">{count}</span>
             </button>
           )
         })}
         <button
           className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
-          onClick={() => setFilter(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
+          onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
           🗳 Falta meu voto <span className="count">{pendingCount}</span>
@@ -824,6 +833,7 @@ export default function SugestoesPage() {
           bandMembers={bandMembers}
           userId={user.uid}
           userName={user.displayName}
+          onVotou={(id) => setFixados((prev) => new Set(prev).add(id))}
         />
       )}
       {addModal && (

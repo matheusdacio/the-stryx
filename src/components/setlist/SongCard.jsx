@@ -13,7 +13,7 @@ import { todosVotaram } from '../../utils/rejeicao'
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position, tocandoVideo = false, onTocarVideo }) {
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -48,6 +48,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
   const dominio = song.dominio || {}
   const myDominio = dominio[user.uid]?.level
   const voteDominio = (level) => {
+    // Fixa o card na lista antes de votar: com filtro por nível ativo, o
+    // card some da tela na hora (voto grava local, sem esperar o servidor)
+    // e o próximo sobe pro lugar do dedo — um segundo toque vota errado
+    onVotou?.(song.id)
     if (myDominio === level) {
       updateDoc(ref, { [`dominio.${user.uid}`]: deleteField() })
     } else {

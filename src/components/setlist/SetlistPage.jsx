@@ -49,6 +49,10 @@ export default function SetlistPage() {
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
+  // Música recém-votada continua na lista até o filtro mudar, mesmo que o
+  // novo voto não bata mais no filtro ativo — senão ela some debaixo do
+  // dedo e a próxima sobe pro lugar exato do toque
+  const [fixados, setFixados] = useState(new Set())
   // O setlist é um acervo, não uma sequência: a ordem vem sempre de um
   // critério. Montar sequência é papel do repertório do evento
   const [sortBy, setSortBy] = useState('recentes')
@@ -86,6 +90,12 @@ export default function SetlistPage() {
     )
   }, [])
 
+  // Muda o filtro/tag/busca solta os cards fixados: eles só existem pra
+  // não sumir debaixo do dedo dentro do MESMO filtro
+  const mudarFiltro = (v) => { setFixados(new Set()); setFilter(v) }
+  const mudarTagFilter = (v) => { setFixados(new Set()); setTagFilter(v) }
+  const mudarSearch = (v) => { setFixados(new Set()); setSearch(v) }
+
   const notaDe = notasPorMusica(sugestoes)
   const opinioesDe = opinioesPorMusica(sugestoes)
 
@@ -104,7 +114,7 @@ export default function SetlistPage() {
   }
 
   const filtered = songs.filter((s) =>
-    (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter)) &&
+    (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter) || fixados.has(s.id)) &&
     (!tagFilter || (s.tags || []).includes(tagFilter)) &&
     matchesSearch(search, s.title, s.artist)
   )
@@ -151,7 +161,7 @@ export default function SetlistPage() {
       <div className="page-header">
         <h2>Setlist</h2>
         <div className="page-header-actions">
-          <SearchLupa value={search} onChange={setSearch} placeholder="Filtrar por nome ou artista..." />
+          <SearchLupa value={search} onChange={mudarSearch} placeholder="Filtrar por nome ou artista..." />
           <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
         </div>
       </div>
@@ -161,14 +171,14 @@ export default function SetlistPage() {
           <button
             key={f.value}
             className={`btn-filter ${filter === f.value ? 'active' : ''}`}
-            onClick={() => setFilter(f.value)}
+            onClick={() => mudarFiltro(f.value)}
           >
             {f.label} <span className="count">{counts[f.value]}</span>
           </button>
         ))}
         <button
           className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
-          onClick={() => setFilter(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
+          onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam você indicar domínio, dificuldade ou opinião"
         >
           🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
@@ -200,14 +210,14 @@ export default function SetlistPage() {
             <button
               key={t}
               className={`btn-tag ${tagFilter === t ? 'active' : ''}`}
-              onClick={() => setTagFilter(tagFilter === t ? null : t)}
+              onClick={() => mudarTagFilter(tagFilter === t ? null : t)}
             >
               {t}
               <span className="count">{songs.filter((s) => (s.tags || []).includes(t)).length}</span>
             </button>
           ))}
           {tagFilter && (
-            <button className="btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => setTagFilter(null)}>
+            <button className="btn-ghost" style={{ fontSize: '0.75rem' }} onClick={() => mudarTagFilter(null)}>
               ✕ limpar
             </button>
           )}
@@ -259,6 +269,7 @@ export default function SetlistPage() {
               position={['balanceada', 'media', 'dificuldade'].includes(sortBy) ? i + 1 : null}
               tocandoVideo={tocandoId === song.id}
               onTocarVideo={setTocandoId}
+              onVotou={(id) => setFixados((prev) => new Set(prev).add(id))}
             />
           ))}
         </div>
