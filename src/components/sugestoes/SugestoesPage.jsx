@@ -112,6 +112,8 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       tom: sugestao.tom || '',
       bpm: sugestao.bpm || null,
       tags: sugestao.tags || [],
+      // Escala única desde 80191d4: não precisa converter, só copiar
+      dificuldade: sugestao.dificuldade || {},
       // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
       sugestaoId: sugestao.id,
       order: Date.now(),

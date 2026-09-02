@@ -49,7 +49,10 @@ export default function SetlistPage() {
   const [sortBy, setSortBy] = useState('recentes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
-  const [tocando, setTocando] = useState(false)
+  // Um id só: null = nada tocando, 'lista' = o SetPlayer da lista,
+  // ou o id da música cujo player inline está aberto. Ligar um sempre
+  // fecha o outro (D08) — nunca dois áudios ao mesmo tempo
+  const [tocandoId, setTocandoId] = useState(null)
   const [bandMembers, setBandMembers] = useState([])
 
   useEffect(() => {
@@ -186,10 +189,14 @@ export default function SetlistPage() {
 
       {comVideo.length > 0 && (
         <div style={{ marginBottom: 14 }}>
-          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setTocando(!tocando)}>
-            {tocando ? '■ Parar' : `▶ Tocar as ${comVideo.length} músicas da lista`}
+          <button
+            className="btn-secondary"
+            style={{ fontSize: '0.8rem' }}
+            onClick={() => setTocandoId(tocandoId === 'lista' ? null : 'lista')}
+          >
+            {tocandoId === 'lista' ? '■ Parar' : `▶ Tocar as ${comVideo.length} músicas da lista`}
           </button>
-          {tocando && <SetPlayer setlist={comVideo} onFechar={() => setTocando(false)} />}
+          {tocandoId === 'lista' && <SetPlayer setlist={comVideo} />}
         </div>
       )}
 
@@ -218,6 +225,8 @@ export default function SetlistPage() {
               key={song.id}
               song={song}
               position={i + 1}
+              tocandoVideo={tocandoId === song.id}
+              onTocarVideo={setTocandoId}
             />
           ))}
         </div>

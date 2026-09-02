@@ -6,7 +6,14 @@ import { getYouTubeId, loadYouTubeApi } from '../utils/youtube'
 // Toca o repertório do evento em sequência, emendando a próxima quando a
 // atual termina. Precisa da IFrame API: o embed simples não avisa o fim do
 // vídeo, e é esse aviso que encadeia o set.
-export default function SetPlayer({ setlist, onFechar }) {
+//
+// Sem botão de fechar próprio: quem monta o componente já mostra um "■ Parar"
+// (o mesmo toggle que liga o player) — dois controles fariam a mesma coisa.
+export default function SetPlayer({ setlist }) {
+  // Congela a fila no instante em que o player nasce: trocar filtro, tag,
+  // busca ou ordenação enquanto toca não deve pular a faixa embaixo do pé
+  // de quem está ouvindo (o componente já desmonta/remonta a cada play)
+  const [setlistCongelado] = useState(() => setlist)
   const [idx, setIdx] = useState(0)
   const [erroDe, setErroDe] = useState(null)
   const playerRef = useRef(null)
@@ -26,7 +33,7 @@ export default function SetPlayer({ setlist, onFechar }) {
   }, [])
 
   // Só entram no player as músicas que têm vídeo cadastrado
-  const faixas = (setlist || [])
+  const faixas = (setlistCongelado || [])
     .map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
     .filter((s) => getYouTubeId(s.videoUrl))
   const atual = faixas[idx]
@@ -83,7 +90,6 @@ export default function SetPlayer({ setlist, onFechar }) {
     <div className="set-player" onClick={(e) => e.stopPropagation()}>
       <div className="set-player-topo">
         <span>{idx + 1} / {faixas.length} · <strong>{atual?.title}</strong></span>
-        <button type="button" className="btn-meta-add" onClick={onFechar}>✕ Fechar</button>
       </div>
 
       <div className="perf-player-box"><div ref={containerRef} /></div>

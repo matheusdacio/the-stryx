@@ -284,7 +284,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
           )}
 
           {tocando && (
-            <SetPlayer setlist={ensaio.setlist} onFechar={() => setTocando(false)} />
+            <SetPlayer setlist={ensaio.setlist} />
           )}
 
           <div className="ensaio-row-actions">
@@ -339,7 +339,7 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
 
-      {tocando && <SetPlayer setlist={ensaio.setlist} onFechar={() => setTocando(false)} />}
+      {tocando && <SetPlayer setlist={ensaio.setlist} />}
 
       {hasSetlist && <SetlistPreview setlist={ensaio.setlist} />}
 

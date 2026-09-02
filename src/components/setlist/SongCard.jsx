@@ -7,13 +7,13 @@ import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { DIFFICULTIES } from '../../utils/dificuldade'
-import { OPINIONS } from '../../utils/score'
+import { OPINIONS, fundirVotos } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position }) {
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position, tocandoVideo = false, onTocarVideo }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -121,6 +121,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
           bpm: song.bpm || null,
           tags: song.tags || [],
           dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade },
+          // Preserva as opiniões que rolaram no setlist — sem isso a volta
+          // apagava a única votação que as músicas importadas já tinham
+          opinoes: fundirVotos(snap.data().opinoes, song.opinoes),
         })
         reopened = true
       }
@@ -138,7 +141,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         bpm: song.bpm || null,
         tags: song.tags || [],
         status: 'aberta',
-        opinoes: {},
+        opinoes: song.opinoes || {},
         dificuldade,
         suggestedBy: user.displayName || user.email,
         suggestedById: user.uid,
@@ -174,6 +177,20 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         <button className="btn-remove" onClick={remove} title="Remover">✕</button>
       </div>
 
+      {/* Vídeo — uma instância só, fora do expandir/recolher, senão trocar de
+          estado desmonta o player e a música para no meio */}
+      {videoId && (
+        <div className="song-video-slot">
+          <VideoInline
+            url={song.videoUrl}
+            title={song.title}
+            compacto
+            aberto={tocandoVideo}
+            onToggle={(v) => onTocarVideo?.(v ? song.id : null)}
+          />
+        </div>
+      )}
+
       {/* Resumo compacto — aparece só quando recolhido */}
       {!expanded && (
         <div className="song-collapsed" onClick={() => setExpanded(true)}>
@@ -190,7 +207,6 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
             </span>
           )}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
-          {videoId && <VideoInline url={song.videoUrl} title={song.title} compacto />}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
         </div>
@@ -290,7 +306,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
                 if (!voters.length) return null
                 return (
                   <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                    {d.short}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
                   </span>
                 )
               })}
@@ -306,9 +322,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         ) : (
           <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>♩ + BPM</button>
         )}
-        {videoId ? (
-          <VideoInline url={song.videoUrl} title={song.title} compacto />
-        ) : (
+        {!videoId && (
           <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>🎬 + vídeo</button>
         )}
         {(song.tags || []).map((t) => (
