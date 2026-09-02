@@ -835,6 +835,14 @@ button { font-family: inherit; }
   color: #a5b4fc; font-weight: 600;
   box-shadow: 0 1px 10px rgba(99, 102, 241, 0.25);
 }
+/* Select nativo no lugar da fileira de pills de ordenação — mesma cara do
+   .btn-sort.active, já que sempre tem uma opção escolhida */
+.btn-sort-select {
+  font-size: 0.8rem; padding: 5px 10px;
+  border-radius: 20px; border: 1px solid var(--accent);
+  background: rgba(99, 102, 241, 0.14); color: #a5b4fc; font-weight: 600;
+  cursor: pointer;
+}
 
 /* Score e rank nos cards de sugestão */
 .sug-rank-badge {

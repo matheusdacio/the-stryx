@@ -820,15 +820,9 @@ export default function SugestoesPage() {
       {/* Ordenação */}
       <div className="sort-bar">
         <span className="sort-label">Ordenar:</span>
-        {SORTS.map((s) => (
-          <button
-            key={s.value}
-            className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
-            onClick={() => mudarSortBy(s.value)}
-          >
-            {s.label}
-          </button>
-        ))}
+        <select className="btn-sort-select" value={sortBy} onChange={(e) => mudarSortBy(e.target.value)}>
+          {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
       </div>
       <p className="filter-hint">{SORTS.find((s) => s.value === sortBy)?.hint}</p>
 

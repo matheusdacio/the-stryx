@@ -252,20 +252,12 @@ export default function SetlistPage() {
       <p className="filter-hint">O nível da música é o de quem está menos pronto nela.</p>
 
       {/* Ordenação extra */}
-      {(
-        <div className="sort-bar">
-          <span className="sort-label">Ordenar:</span>
-          {SORTS.map((s) => (
-            <button
-              key={s.value}
-              className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
-              onClick={() => setSortBy(s.value)}
-            >
-              {s.label}
-            </button>
-          ))}
-        </div>
-      )}
+      <div className="sort-bar">
+        <span className="sort-label">Ordenar:</span>
+        <select className="btn-sort-select" value={sortBy} onChange={(e) => setSortBy(e.target.value)}>
+          {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      </div>
 
       {/* Filtro por tags customizadas */}
       {allTags.length > 0 && (
