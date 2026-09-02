@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useAuth } from '../../contexts/AuthContext'
 import SongCard from './SongCard'
 import { notasPorMusica, opinioesPorMusica } from '../../utils/score'
 import AddSongModal from './AddSongModal'
@@ -40,6 +41,7 @@ function facilidade(song) {
 }
 
 export default function SetlistPage() {
+  const { user } = useAuth()
   const [songs, setSongs] = useState([])
   const [loaded, setLoaded] = useState(false)
   const [sugestoes, setSugestoes] = useState([])
@@ -89,8 +91,10 @@ export default function SetlistPage() {
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
   )
 
+  const meuVotoFalta = (s) => !(s.dominio || {})[user.uid]
+
   const filtered = songs.filter((s) =>
-    (filter === 'all' || nivelDe(s) === filter) &&
+    (filter === 'all' || (filter === 'meu_voto_falta' ? meuVotoFalta(s) : nivelDe(s) === filter)) &&
     (!tagFilter || (s.tags || []).includes(tagFilter)) &&
     matchesSearch(search, s.title, s.artist)
   )
@@ -130,6 +134,7 @@ export default function SetlistPage() {
       : songs.filter((s) => nivelDe(s) === f.value).length
     return acc
   }, {})
+  const meuVotoFaltaCount = songs.filter(meuVotoFalta).length
 
   return (
     <div className="page">
@@ -151,6 +156,13 @@ export default function SetlistPage() {
             {f.label} <span className="count">{counts[f.value]}</span>
           </button>
         ))}
+        <button
+          className={`btn-filter ${filter === 'meu_voto_falta' ? 'active' : ''}`}
+          onClick={() => setFilter(filter === 'meu_voto_falta' ? 'all' : 'meu_voto_falta')}
+          title="Mostrar só as músicas que faltam seu voto de domínio"
+        >
+          🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
+        </button>
       </div>
 
       {/* Ordenação extra */}
