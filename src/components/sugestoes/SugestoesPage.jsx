@@ -49,14 +49,14 @@ function OpinionSummary({ opinoes }) {
 }
 
 function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou }) {
-  const [myOpinion, setMyOpinion] = useState(null)
-  // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
-  // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
-  const [comment, setComment] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
   const [saving, setSaving] = useState(false)
   const [reopening, setReopening] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(sugestao.notes || '')
+  const [editingComment, setEditingComment] = useState(false)
+  // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
+  // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
+  const [commentDraft, setCommentDraft] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
   const ref = doc(db, 'sugestoes', sugestao.id)
 
   const list = opinoesArray(sugestao.opinoes)
@@ -88,13 +88,18 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
   }
 
-  const submitOpinion = () => {
-    if (!myOpinion) return
-    if (VETOS.includes(myOpinion) && !confirm('Marcar isso veta a música: quando a banda toda opinar, ela sai da fila. Confirma?')) return
+  // Grava no toque, igual ao voto de dificuldade (e ao de domínio no
+  // Setlist) — tocar de novo na opção já marcada desfaz o voto. O
+  // comentário é campo à parte, com salvar próprio, pra não se perder
+  // quando a pessoa só quer trocar de opinião
+  const votarOpiniao = (opinion) => {
+    if (existing?.opinion === opinion) {
+      removerOpiniao()
+      return
+    }
+    if (VETOS.includes(opinion) && !confirm('Marcar isso veta a música: quando a banda toda opinar, ela sai da fila. Confirma?')) return
     onVotou?.(sugestao.id)
-    setSaving(true)
-    // Chave é o userId — sobrescreve automaticamente opinião anterior
-    const voto = { userName, opinion: myOpinion, comment: comment.trim(), at: new Date().toISOString() }
+    const voto = { userName, opinion, comment: existing?.comment || '', at: new Date().toISOString() }
     const opinoesDepois = { ...(sugestao.opinoes || {}), [userId]: voto }
     const update = { [`opinoes.${userId}`]: voto }
 
@@ -106,13 +111,13 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       update.rejeitadaPor = 'veto'
     }
 
-    // Não espera o servidor confirmar: sem sinal, o await de updateDoc fica
-    // pendente indefinidamente (é assim que o SDK do Firestore funciona,
-    // mesmo com cache persistente) e o botão ficava preso em "Enviando..."
     updateDoc(ref, update).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
-    setSaving(false)
-    setMyOpinion(null)
-    setComment('')
+  }
+
+  const saveComment = () => {
+    updateDoc(ref, { [`opinoes.${userId}.comment`]: commentDraft.trim() })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    setEditingComment(false)
   }
 
   const approve = async () => {
@@ -184,52 +189,6 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           <p className="sug-description">{sugestao.description}</p>
         )}
 
-        {/* Observações da banda — editável por qualquer membro */}
-        {editingNotes ? (
-          <div className="notes-edit" style={{ marginBottom: 12 }}>
-            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} autoFocus placeholder="Observações da banda..." />
-            <div className="notes-actions">
-              <button className="btn-secondary" onClick={() => setEditingNotes(false)}>Cancelar</button>
-              <button className="btn-primary" onClick={saveNotes}>Salvar</button>
-            </div>
-          </div>
-        ) : (
-          <p className="song-notes" style={{ marginBottom: 12 }} onClick={() => { setNotes(sugestao.notes || ''); setEditingNotes(true) }}>
-            {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
-          </p>
-        )}
-
-        {/* Dificuldade pra tocar */}
-        <div className="difficulty-section" style={{ marginBottom: 12 }}>
-          <p className="section-label">Dificuldade pra tocar</p>
-          <div className="difficulty-btns">
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d.value}
-                className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
-                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
-                aria-pressed={myDiff === d.value}
-                onClick={() => voteDiff(d.value)}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-          {Object.keys(dificuldade).length > 0 && (
-            <div className="difficulty-summary">
-              {DIFFICULTIES.map((d) => {
-                const voters = Object.values(dificuldade).filter((v) => v.level === d.value)
-                if (!voters.length) return null
-                return (
-                  <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
             {sugestao.status === 'aprovada' ? '✓ Enviada pro setlist' : '✕ Rejeitada'}
@@ -254,6 +213,101 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           )
         )}
 
+        {/* Opinar é o gesto mais frequente da tela — logo abaixo do vídeo,
+            grava no toque (igual à dificuldade), sem precisar rolar até o
+            fim nem tocar num botão "Enviar" à parte */}
+        <div className="opinion-form">
+          <p className="section-label">
+            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? 'A banda toda já opinou' : 'Vale tocar?'}
+          </p>
+          {!(sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers)) && (
+            <div className="opinion-btns">
+              {OPINIONS.map((o) => (
+                <button
+                  key={o.value}
+                  className={`btn-opinion ${existing?.opinion === o.value ? 'selected' : ''}`}
+                  style={existing?.opinion === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
+                  aria-pressed={existing?.opinion === o.value}
+                  onClick={() => votarOpiniao(o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {existing && (
+            editingComment ? (
+              <div className="notes-edit">
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  rows={2}
+                  autoFocus
+                  placeholder="Considerações (opcional)..."
+                />
+                <div className="notes-actions">
+                  <button className="btn-secondary" onClick={() => setEditingComment(false)}>Cancelar</button>
+                  <button className="btn-primary" onClick={saveComment}>Salvar</button>
+                </div>
+              </div>
+            ) : (
+              <p className="existing-vote">
+                {existing.comment || <span className="placeholder">Adicionar comentário...</span>}
+                {' '}
+                <button className="btn-link-inline" onClick={() => { setCommentDraft(existing.comment || ''); setEditingComment(true) }}>Editar</button>
+                {' '}
+                <button className="btn-link-inline" onClick={removerOpiniao}>Remover opinião</button>
+              </p>
+            )
+          )}
+        </div>
+
+        {/* Observações da banda — editável por qualquer membro */}
+        {editingNotes ? (
+          <div className="notes-edit" style={{ marginBottom: 12 }}>
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} autoFocus placeholder="Observações da banda..." />
+            <div className="notes-actions">
+              <button className="btn-secondary" onClick={() => setEditingNotes(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveNotes}>Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <p className="song-notes" style={{ marginBottom: 12 }} onClick={() => { setNotes(sugestao.notes || ''); setEditingNotes(true) }}>
+            {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+          </p>
+        )}
+
+        {/* Dificuldade pra tocar */}
+        <div className="difficulty-section-flat" style={{ marginBottom: 12 }}>
+          <p className="section-label">Dificuldade pra tocar</p>
+          <div className="difficulty-btns">
+            {DIFFICULTIES.map((d) => (
+              <button
+                key={d.value}
+                className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
+                style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
+                aria-pressed={myDiff === d.value}
+                onClick={() => voteDiff(d.value)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+          {Object.keys(dificuldade).length > 0 && (
+            <div className="difficulty-summary">
+              {DIFFICULTIES.map((d) => {
+                const voters = Object.values(dificuldade).filter((v) => v.level === d.value)
+                if (!voters.length) return null
+                return (
+                  <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                  </span>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
         {list.length > 0 && (
           <div className="opinions-list">
             <p className="section-label">Opiniões da banda ({list.length})</p>
@@ -272,59 +326,6 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         )}
 
-        {existing && (
-          <p className="existing-vote">
-            Sua opinião atual:{' '}
-            <span style={{ color: OPINIONS.find((o) => o.value === existing.opinion)?.color }}>
-              {OPINIONS.find((o) => o.value === existing.opinion)?.label}
-            </span>
-            {' '}
-            <button className="btn-link-inline" onClick={removerOpiniao}>Remover</button>
-          </p>
-        )}
-
-        {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) && (
-          <p className="lookup-aviso">
-            A banda toda já opinou — a votação desta música está encerrada.
-          </p>
-        )}
-
-        {sugestao.status === 'aberta' && !todosVotaram(sugestao, bandMembers) && (
-          <div className="opinion-form">
-            <p className="section-label">{existing ? 'Alterar minha opinião' : 'Deixar minha opinião'}</p>
-            <p className="filter-hint" style={{ marginTop: -4 }}>
-              Marcar ✕ ou – veta a música: quando a banda toda opinar, ela sai da fila. Dá pra voltar trocando a opinião.
-            </p>
-            <div className="opinion-btns">
-              {OPINIONS.map((o) => (
-                <button
-                  key={o.value}
-                  className={`btn-opinion ${myOpinion === o.value ? 'selected' : ''}`}
-                  style={myOpinion === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
-                  aria-pressed={myOpinion === o.value}
-                  onClick={() => setMyOpinion(myOpinion === o.value ? null : o.value)}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {myOpinion && (
-              <>
-                <textarea
-                  className="opinion-comment-input"
-                  placeholder="Considerações (opcional)..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={2}
-                />
-                <button className="btn-primary" onClick={submitOpinion} disabled={saving}>
-                  {saving ? 'Enviando...' : existing ? 'Atualizar opinião' : 'Enviar opinião'}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
         {isAdmin && sugestao.status === 'aberta' && (
           <div className="admin-controls">
             <p className="section-label">Decisão final</p>
@@ -335,6 +336,10 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             </div>
           </div>
         )}
+
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onClose}>Fechar</button>
+        </div>
       </div>
     </div>
   )
