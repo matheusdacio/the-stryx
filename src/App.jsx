@@ -1,4 +1,4 @@
-import { HashRouter, Routes, Route } from 'react-router-dom'
+import { HashRouter, Routes, Route, Navigate } from 'react-router-dom'
 import { useAuth } from './contexts/AuthContext'
 import Login from './components/Login'
 import Navbar from './components/Navbar'
@@ -27,6 +27,7 @@ export default function App() {
           <Route path="/sugestoes" element={<SugestoesPage />} />
           <Route path="/membros" element={<MembrosPage />} />
           <Route path="/import" element={<ImportPage />} />
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
       <BottomNav />
