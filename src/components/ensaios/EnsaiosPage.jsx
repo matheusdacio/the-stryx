@@ -3,7 +3,7 @@ import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, dele
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
-import { PRESENCAS, splitPresenca } from '../../utils/presenca'
+import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 
@@ -37,6 +37,29 @@ function isPast(ts) {
   if (!ts) return false
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return d < new Date()
+}
+
+// Primeiras músicas do evento, pra dar o tom do que vai ser ensaiado sem
+// precisar abrir os detalhes
+function SetlistPreview({ setlist, limite = 5 }) {
+  const lista = setlist || []
+  if (!lista.length) return null
+  const restantes = lista.length - limite
+  return (
+    <div className="setlist-preview">
+      <ol className="event-songs-list">
+        {lista.slice(0, limite).map((s, i) => (
+          <li key={s.id || i}>
+            {s.title}
+            {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+          </li>
+        ))}
+      </ol>
+      {restantes > 0 && (
+        <p className="setlist-preview-more">+ {restantes} {restantes === 1 ? 'música' : 'músicas'}</p>
+      )}
+    </div>
+  )
 }
 
 // ── Presença ──────────────────────────────────────────────────────────
@@ -119,7 +142,7 @@ function TypeBadge({ type }) {
 
 // ── Card expandível ───────────────────────────────────────────────────
 
-function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform, bandMembers, user }) {
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user }) {
   const [open, setOpen] = useState(false)
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
@@ -188,6 +211,7 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform, bandMem
               <button className="btn-primary" onClick={() => onPerform(ensaio)}>🎤 Modo palco</button>
             )}
             <button className="btn-secondary" onClick={() => onEdit(ensaio)}>Editar</button>
+            <button className="btn-secondary" onClick={() => onCopy(ensaio)}>⧉ Copiar</button>
             <button className="btn-ghost-danger" onClick={() => onRemove(ensaio)}>Remover</button>
           </div>
         </div>
@@ -198,7 +222,7 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform, bandMem
 
 // ── Card destaque — próximo evento ────────────────────────────────────
 
-function NextEnsaioCard({ ensaio, onEdit, onPerform, bandMembers, user }) {
+function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }) {
   const [open, setOpen] = useState(false)
   const hasSetlist = ensaio.setlist?.length > 0
 
@@ -229,6 +253,8 @@ function NextEnsaioCard({ ensaio, onEdit, onPerform, bandMembers, user }) {
         <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
         <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
+
+      {hasSetlist && !open && <SetlistPreview setlist={ensaio.setlist} />}
 
       {hasSetlist && open && (
         <div className="pauta-block" style={{ marginTop: 10 }}>
@@ -269,6 +295,9 @@ function NextEnsaioCard({ ensaio, onEdit, onPerform, bandMembers, user }) {
         <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onEdit(ensaio)}>
           Editar
         </button>
+        <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onCopy(ensaio)}>
+          ⧉ Copiar
+        </button>
       </div>
     </div>
   )
@@ -288,6 +317,7 @@ export default function EnsaiosPage() {
   const [bandMembers, setBandMembers] = useState([])
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
+  const [soPendentes, setSoPendentes] = useState(false)
   const [performing, setPerforming] = useState(null)
 
   useEffect(() => {
@@ -321,6 +351,9 @@ export default function EnsaiosPage() {
   const nextEnsaio = futuros[0] || null
   const restantes  = futuros.slice(1)
 
+  // Futuros que eu ainda não respondi — é o que o filtro de pendências mostra
+  const pendentes = futuros.filter((e) => faltaResponder(e, user.uid))
+
   const counts = { proximos: futuros.length, realizados: realizados.length, cancelados: cancelados.length }
 
   const listForTab = tab === 'proximos' ? restantes : tab === 'realizados' ? realizados : cancelados
@@ -344,13 +377,53 @@ export default function EnsaiosPage() {
             {counts[t.key] > 0 && <span className="count">{counts[t.key]}</span>}
           </button>
         ))}
+        <button
+          className={`btn-filter ${soPendentes ? 'active' : ''}`}
+          onClick={() => { setSoPendentes(!soPendentes); setTab('proximos') }}
+          title="Eventos futuros em que você ainda não indicou presença"
+        >
+          ⏳ Falta indicar
+          {pendentes.length > 0 && <span className="count">{pendentes.length}</span>}
+        </button>
       </div>
 
+      {/* Só os que faltam responder */}
+      {tab === 'proximos' && soPendentes && (
+        pendentes.length === 0 ? (
+          <div className="empty-state" style={{ marginTop: 12 }}>
+            <p>Você já respondeu todos os eventos futuros. 🎉</p>
+          </div>
+        ) : (
+          <div className="ensaio-list" style={{ marginTop: 8 }}>
+            {pendentes.map(e => (
+              <EnsaioRow
+                key={e.id}
+                ensaio={e}
+                onEdit={setModal}
+                onCopy={(x) => setModal({ copiar: x })}
+                onRemove={remove}
+                onTogglePauta={togglePauta}
+                onPerform={setPerforming}
+                bandMembers={bandMembers}
+                user={user}
+              />
+            ))}
+          </div>
+        )
+      )}
+
       {/* Aba Próximos */}
-      {tab === 'proximos' && (
+      {tab === 'proximos' && !soPendentes && (
         <>
           {nextEnsaio
-            ? <NextEnsaioCard ensaio={nextEnsaio} onEdit={setModal} onPerform={setPerforming} bandMembers={bandMembers} user={user} />
+            ? <NextEnsaioCard
+                ensaio={nextEnsaio}
+                onEdit={setModal}
+                onCopy={(x) => setModal({ copiar: x })}
+                onPerform={setPerforming}
+                bandMembers={bandMembers}
+                user={user}
+              />
             : (
               <div className="empty-state" style={{ marginTop: 12 }}>
                 <p>Nenhum evento planejado.</p>
@@ -368,6 +441,7 @@ export default function EnsaiosPage() {
                     key={e.id}
                     ensaio={e}
                     onEdit={setModal}
+                    onCopy={(x) => setModal({ copiar: x })}
                     onRemove={remove}
                     onTogglePauta={togglePauta}
                     onPerform={setPerforming}
@@ -395,6 +469,7 @@ export default function EnsaiosPage() {
                   key={e.id}
                   ensaio={e}
                   onEdit={setModal}
+                  onCopy={(x) => setModal({ copiar: x })}
                   onRemove={remove}
                   onTogglePauta={togglePauta}
                   onPerform={setPerforming}
@@ -407,7 +482,13 @@ export default function EnsaiosPage() {
         </>
       )}
 
-      {modal && <EnsaioModal ensaio={modal === 'add' ? null : modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <EnsaioModal
+          ensaio={modal === 'add' ? null : modal.copiar || modal}
+          copiando={!!modal.copiar}
+          onClose={() => setModal(null)}
+        />
+      )}
       {performing && <PerformanceMode event={performing} onClose={() => setPerforming(null)} />}
     </div>
   )

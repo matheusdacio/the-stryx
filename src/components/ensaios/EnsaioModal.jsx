@@ -8,16 +8,23 @@ function toInputDate(ts) {
   return d.toISOString().slice(0, 10)
 }
 
-export default function EnsaioModal({ ensaio, onClose }) {
+// `copiando` reaproveita um evento como molde: vem o repertório, a pauta (com
+// os itens desmarcados), local e tipo — mas não a data nem a presença
+export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
+  const editando = !!ensaio && !copiando
   const [allSongs, setAllSongs] = useState([])
   const [form, setForm] = useState({
-    date: toInputDate(ensaio?.date) || '',
+    date: copiando ? '' : toInputDate(ensaio?.date) || '',
     location: ensaio?.location || '',
     type: ensaio?.type || 'ensaio',
-    status: ensaio?.status || 'planejado',
+    status: copiando ? 'planejado' : ensaio?.status || 'planejado',
     notes: ensaio?.notes || '',
   })
-  const [pauta, setPauta] = useState(ensaio?.pauta || [])
+  const [pauta, setPauta] = useState(
+    copiando
+      ? (ensaio?.pauta || []).map((i) => ({ ...i, done: false }))
+      : ensaio?.pauta || []
+  )
   const [setlist, setSetlist] = useState(ensaio?.setlist || [])
   const [newItem, setNewItem] = useState('')
   const [songSearch, setSongSearch] = useState('')
@@ -95,10 +102,11 @@ export default function EnsaioModal({ ensaio, onClose }) {
       setlist,
       date: Timestamp.fromDate(new Date(form.date + 'T12:00:00')),
     }
-    if (ensaio) {
+    if (editando) {
       await updateDoc(doc(db, 'ensaios', ensaio.id), data)
     } else {
-      await addDoc(collection(db, 'ensaios'), { ...data, createdAt: serverTimestamp() })
+      // Evento novo (inclusive cópia) nasce sem presença
+      await addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() })
     }
     onClose()
   }
@@ -108,7 +116,12 @@ export default function EnsaioModal({ ensaio, onClose }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>{ensaio ? 'Editar Evento' : 'Agendar Evento'}</h2>
+        <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
+        {copiando && (
+          <p className="section-label" style={{ marginBottom: 10 }}>
+            Repertório e pauta vieram do evento de {toInputDate(ensaio?.date).split('-').reverse().join('/')}. Escolha a data nova — a presença começa em branco.
+          </p>
+        )}
         <form onSubmit={handleSave}>
           {/* Tipo de evento */}
           <div className="event-type-toggle">

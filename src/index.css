@@ -1185,3 +1185,12 @@ button { font-family: inherit; }
 }
 .presenca-vai { color: #10b981; }
 .presenca-nao { color: #ef4444; }
+
+/* Prévia do repertório no card do evento */
+.setlist-preview { margin-top: 12px; }
+.setlist-preview-more {
+  font-size: 0.74rem;
+  color: var(--text-muted);
+  margin-top: 4px;
+  padding-left: 22px;
+}

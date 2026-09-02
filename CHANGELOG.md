@@ -15,6 +15,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ## [1.28.0] — 2026-09-02
 - **Presença por pessoa nos eventos**: no lugar da lista de checkboxes onde qualquer um marcava por todo mundo, cada pessoa logada responde **Vou / Não vou** no próprio card do evento (clicar de novo desfaz). O card mostra quem vai, quem não vai e quem ainda não respondeu, e o cabeçalho traz os contadores ✓/✕
+- **Card do evento mais informativo**: além de quem vai e quem falta responder, o card do próximo evento já lista as **5 primeiras músicas** com o total restante, sem precisar abrir os detalhes
+- **Filtro "⏳ Falta indicar"**: mostra só os eventos futuros em que você ainda não respondeu se vai ou não, com o número pendente no próprio botão
+- **Copiar evento**: novo botão que abre um evento novo já com o repertório, a pauta (itens desmarcados), local e tipo do evento escolhido. A data fica em branco e a presença começa zerada
 - **Ferramenta "Migrar pra presença por pessoa"** na página Banda (admin): eventos já realizados preservam o histórico como "Vou", os futuros nascem em branco pra banda confirmar de verdade, e quem não está no cadastro (convidado de ensaio antigo) é preservado à parte. Rodada uma vez nos 21 eventos
 - **Tom da música** (Ex: Sol, Am): campo novo no cadastro e na edição da música, chip no card do setlist, e viaja junto na ida e volta entre sugestão e setlist
 - **Modo palco** passa a mostrar o **tom em destaque** e as **observações** da música (ex: quem canta). Além disso, o palco agora lê o repertório ao vivo em vez do retrato guardado no evento — mudou o BPM, o tom ou a observação no setlist, o palco já reflete; música removida do repertório continua aparecendo com os dados salvos no evento
