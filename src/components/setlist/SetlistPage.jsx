@@ -8,6 +8,7 @@ import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } 
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
 import SongCard from './SongCard'
+import { notasPorMusica } from '../../utils/score'
 import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
 import { matchesSearch } from '../../utils/search'
@@ -54,6 +55,7 @@ function SortableSongCard({ song, ...props }) {
 
 export default function SetlistPage() {
   const [songs, setSongs] = useState([])
+  const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
   const [ensaiandoSort, setEnsaiandoSort] = useState('manual')
@@ -73,6 +75,14 @@ export default function SetlistPage() {
       setSongs(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     })
     return unsub
+  }, [])
+
+  // As opiniões da banda vivem na sugestão que originou a música — é de lá
+  // que vem a nota mostrada no setlist
+  useEffect(() => {
+    return onSnapshot(collection(db, 'sugestoes'), (snap) =>
+      setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    )
   }, [])
 
   const moveUp = async (index) => {
@@ -109,6 +119,8 @@ export default function SetlistPage() {
     })
     await batch.commit()
   }
+
+  const notaDe = notasPorMusica(sugestoes)
 
   const allTags = [...new Set(songs.flatMap((s) => s.tags || []))].sort((a, b) =>
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
@@ -234,6 +246,7 @@ export default function SetlistPage() {
                 const globalIndex = songs.findIndex((s) => s.id === song.id)
                 return (
                   <SortableSongCard
+                    nota={notaDe(song)}
                     key={song.id}
                     song={song}
                     onMoveUp={() => moveUp(globalIndex)}
@@ -251,6 +264,7 @@ export default function SetlistPage() {
         <div className="song-list">
           {displayed.map((song, i) => (
             <SongCard
+              nota={notaDe(song)}
               key={song.id}
               song={song}
               position={i + 1}

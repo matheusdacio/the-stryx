@@ -31,7 +31,7 @@ const DIFF_TO_SUGESTAO = {
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder, dragHandleProps }) {
+export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder, dragHandleProps }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [editing, setEditing] = useState(false)
@@ -192,18 +192,24 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
       {/* Resumo compacto — aparece só quando recolhido */}
       {!expanded && (
         <div className="song-collapsed" onClick={() => setExpanded(true)}>
-          <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
+          {piorDominio ? (
+            <span className="status-dot" style={{ color: piorDominio.color, background: piorDominio.bg }}>
+              {piorDominio.label}
+            </span>
+          ) : (
+            <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
+          )}
+          {nota && (
+            <span className="mini-chip" title={`Média ${nota.media} · ${nota.total} voto(s) da banda`}>
+              ⭐ {nota.media.toFixed(2)}
+            </span>
+          )}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
           {videoId && <span className="mini-chip">▶ vídeo</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.status === 'ensaiando' && diffCount > 0 && (
             <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
-          )}
-          {piorDominio && (
-            <span className="mini-chip" style={{ color: piorDominio.color, borderColor: piorDominio.color }}>
-              💪 {piorDominio.label}
-            </span>
           )}
           {song.notes && <span className="mini-chip">📝</span>}
         </div>

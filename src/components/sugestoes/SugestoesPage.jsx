@@ -10,7 +10,7 @@ import SearchLupa from '../SearchLupa'
 import MusicLookup from '../MusicLookup'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
-import { normalizeName } from '../../utils/votes'
+import { calcSongScore, chaveMusica } from '../../utils/score'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -32,11 +32,6 @@ const DIFFICULTIES = [
 const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-
-// Identidade da música pra cruzar sugestão com setlist sem depender de acento
-// ou caixa. Título e artista juntos: só o título casaria versões diferentes
-const chaveMusica = (titulo, artista) =>
-  `${normalizeName(titulo)}|${normalizeName(artista)}`
 
 // Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
 // votado (usado no chip do card). avg/max null se ninguém votou
@@ -415,9 +410,6 @@ const SORTS = [
   { value: 'recent',      label: '🕐 Recentes' },
 ]
 
-// ── Pontuação por tipo de opinião ─────────────────────────────────────
-const SCORES = { hino: 1.2, escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
-
 // Labels com score para as células da planilha (ex: "1 - Escopo")
 const SCORE_LABELS_XLS = {
   hino:      '1,2 - Hino',
@@ -431,15 +423,6 @@ const STATUS_LABELS_XLS = {
   aberta:    'Em aberto',
   aprovada:  'Aprovada',
   rejeitada: 'Rejeitada',
-}
-
-/** Calcula pontuação de uma sugestão */
-function calcSongScore(opinoes) {
-  const list = Object.values(opinoes || {})
-  if (!list.length) return { soma: 0, media: 0, total: 0 }
-  const soma = list.reduce((acc, v) => acc + (SCORES[v.opinion] ?? 0), 0)
-  const rounded = (n) => Math.round(n * 100) / 100
-  return { soma: rounded(soma), media: rounded(soma / list.length), total: list.length }
 }
 
 // ── Nota combinada: média das opiniões com desconto por dificuldade ───
