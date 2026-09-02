@@ -209,6 +209,38 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         </div>
       )}
 
+      {/* Domínio — sempre visível, mesmo com o card fechado: é o voto
+          que alimenta a escolha do que ensaiar */}
+      <div className="difficulty-section">
+        <p className="section-label">Você se sente pronto nessa?</p>
+        <div className="difficulty-btns">
+          {DOMINIOS.map((d) => (
+            <button
+              key={d.value}
+              className={`btn-diff ${myDominio === d.value ? 'active' : ''}`}
+              style={myDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              onClick={() => voteDominio(d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        {Object.keys(dominio).length > 0 && (
+          <div className="difficulty-summary">
+            {DOMINIOS.map((d) => {
+              const voters = Object.values(dominio).filter((v) => v.level === d.value)
+              if (!voters.length) return null
+              return (
+                <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                  {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
       {expanded && <>
       <div className="song-status-bar">
         {Object.keys(STATUS_LABELS).map((s) => (
@@ -254,37 +286,6 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           )}
         </div>
       )}
-
-      {/* Domínio — em qualquer status: serve pra escolher o que ensaiar */}
-      <div className="difficulty-section">
-        <p className="section-label">Você se sente pronto nessa?</p>
-        <div className="difficulty-btns">
-          {DOMINIOS.map((d) => (
-            <button
-              key={d.value}
-              className={`btn-diff ${myDominio === d.value ? 'active' : ''}`}
-              style={myDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
-              onClick={() => voteDominio(d.value)}
-            >
-              {d.label}
-            </button>
-          ))}
-        </div>
-
-        {Object.keys(dominio).length > 0 && (
-          <div className="difficulty-summary">
-            {DOMINIOS.map((d) => {
-              const voters = Object.values(dominio).filter((v) => v.level === d.value)
-              if (!voters.length) return null
-              return (
-                <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                  {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
-                </span>
-              )
-            })}
-          </div>
-        )}
-      </div>
 
       {/* BPM, metrônomo e vídeo */}
       <div className="song-meta-bar">
