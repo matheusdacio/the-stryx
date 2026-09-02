@@ -1,12 +1,7 @@
 import { useState } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
-
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|v\/|watch\?v=|&v=)([^#&?]{11})/)
-  return match ? match[1] : null
-}
+import { getYouTubeId } from '../../utils/youtube'
 
 export default function AddSongModal({ onClose, totalSongs }) {
   const [form, setForm] = useState({ title: '', artist: '', notes: '', status: 'ensaiando', tom: '', bpm: '', videoUrl: '' })

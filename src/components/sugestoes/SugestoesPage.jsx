@@ -8,6 +8,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchLupa from '../SearchLupa'
 import { matchesSearch } from '../../utils/search'
+import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -49,12 +50,6 @@ function difficultyByWeight(weight) {
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
 function opinoesArray(opinoes) {
   return Object.entries(opinoes || {}).map(([uid, data]) => ({ userId: uid, ...data }))
-}
-
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|v\/|watch\?v=|&v=)([^#&?]{11})/)
-  return match ? match[1] : null
 }
 
 function YouTubeThumbnail({ url, title }) {

@@ -307,6 +307,7 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
 
 const TABS = [
   { key: 'proximos',   label: 'Próximos' },
+  { key: 'pendentes',  label: '⏳ Presença pendente' },
   { key: 'realizados', label: 'Realizados' },
   { key: 'cancelados', label: 'Cancelados' },
 ]
@@ -317,7 +318,6 @@ export default function EnsaiosPage() {
   const [bandMembers, setBandMembers] = useState([])
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
-  const [soPendentes, setSoPendentes] = useState(false)
   const [performing, setPerforming] = useState(null)
 
   useEffect(() => {
@@ -354,9 +354,17 @@ export default function EnsaiosPage() {
   // Futuros que eu ainda não respondi — é o que o filtro de pendências mostra
   const pendentes = futuros.filter((e) => faltaResponder(e, user.uid))
 
-  const counts = { proximos: futuros.length, realizados: realizados.length, cancelados: cancelados.length }
+  const counts = {
+    proximos: futuros.length,
+    pendentes: pendentes.length,
+    realizados: realizados.length,
+    cancelados: cancelados.length,
+  }
 
-  const listForTab = tab === 'proximos' ? restantes : tab === 'realizados' ? realizados : cancelados
+  const listForTab = tab === 'pendentes' ? pendentes
+    : tab === 'realizados' ? realizados
+    : tab === 'cancelados' ? cancelados
+    : restantes
 
   return (
     <div className="page">
@@ -377,43 +385,10 @@ export default function EnsaiosPage() {
             {counts[t.key] > 0 && <span className="count">{counts[t.key]}</span>}
           </button>
         ))}
-        <button
-          className={`btn-filter ${soPendentes ? 'active' : ''}`}
-          onClick={() => { setSoPendentes(!soPendentes); setTab('proximos') }}
-          title="Eventos futuros em que você ainda não indicou presença"
-        >
-          ⏳ Falta indicar
-          {pendentes.length > 0 && <span className="count">{pendentes.length}</span>}
-        </button>
       </div>
 
-      {/* Só os que faltam responder */}
-      {tab === 'proximos' && soPendentes && (
-        pendentes.length === 0 ? (
-          <div className="empty-state" style={{ marginTop: 12 }}>
-            <p>Você já respondeu todos os eventos futuros. 🎉</p>
-          </div>
-        ) : (
-          <div className="ensaio-list" style={{ marginTop: 8 }}>
-            {pendentes.map(e => (
-              <EnsaioRow
-                key={e.id}
-                ensaio={e}
-                onEdit={setModal}
-                onCopy={(x) => setModal({ copiar: x })}
-                onRemove={remove}
-                onTogglePauta={togglePauta}
-                onPerform={setPerforming}
-                bandMembers={bandMembers}
-                user={user}
-              />
-            ))}
-          </div>
-        )
-      )}
-
       {/* Aba Próximos */}
-      {tab === 'proximos' && !soPendentes && (
+      {tab === 'proximos' && (
         <>
           {nextEnsaio
             ? <NextEnsaioCard
@@ -455,12 +430,16 @@ export default function EnsaiosPage() {
         </>
       )}
 
-      {/* Aba Realizados / Cancelados */}
+      {/* Abas de lista simples */}
       {tab !== 'proximos' && (
         <>
           {listForTab.length === 0 ? (
             <div className="empty-state" style={{ marginTop: 12 }}>
-              <p>Nenhum evento {tab === 'realizados' ? 'realizado' : 'cancelado'} aqui.</p>
+              <p>
+                {tab === 'pendentes'
+                  ? 'Você já indicou presença em todos os eventos futuros. 🎉'
+                  : `Nenhum evento ${tab === 'realizados' ? 'realizado' : 'cancelado'} aqui.`}
+              </p>
             </div>
           ) : (
             <div className="ensaio-list" style={{ marginTop: 8 }}>

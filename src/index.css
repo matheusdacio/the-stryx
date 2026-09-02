@@ -1194,3 +1194,33 @@ button { font-family: inherit; }
   margin-top: 4px;
   padding-left: 22px;
 }
+
+/* Modo palco — player em sequência */
+.perf-play {
+  padding: 6px 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.82rem;
+  font-weight: 600;
+  cursor: pointer;
+}
+.perf-play:hover { border-color: var(--accent); color: var(--accent); }
+.perf-play.active { border-color: var(--accent); color: var(--accent); }
+.perf-player { padding: 0 16px; }
+.perf-player-box {
+  max-width: 720px;
+  margin: 0 auto;
+  aspect-ratio: 16 / 9;
+  border-radius: 10px;
+  overflow: hidden;
+  background: #000;
+}
+.perf-player-box iframe { width: 100%; height: 100%; border: 0; }
+.perf-player-aviso {
+  text-align: center;
+  font-size: 0.82rem;
+  color: var(--text-muted);
+  margin-top: 8px;
+}

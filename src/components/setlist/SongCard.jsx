@@ -3,6 +3,7 @@ import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, ser
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
+import { getYouTubeId } from '../../utils/youtube'
 
 const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
 
@@ -25,12 +26,6 @@ const DIFF_TO_SUGESTAO = {
   sofrendo: 'dificil',
   travado: 'dificil',
   moises: 'dificil',
-}
-
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|v\/|watch\?v=|&v=)([^#&?]{11})/)
-  return match ? match[1] : null
 }
 
 const firstName = (n) => (n || '').trim().split(' ')[0]

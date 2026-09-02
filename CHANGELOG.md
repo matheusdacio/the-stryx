@@ -15,6 +15,8 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ## [1.28.0] — 2026-09-02
 - **Presença por pessoa nos eventos**: no lugar da lista de checkboxes onde qualquer um marcava por todo mundo, cada pessoa logada responde **Vou / Não vou** no próprio card do evento (clicar de novo desfaz). O card mostra quem vai, quem não vai e quem ainda não respondeu, e o cabeçalho traz os contadores ✓/✕
+- **Tocar o set em sequência** no Modo palco: botão "▶ Tocar" que abre um player do YouTube dentro do app e emenda a próxima música quando a atual termina, sem sair pro YouTube. O primeiro play exige um toque na tela (política de autoplay dos navegadores), vídeo com incorporação bloqueada pelo dono avisa em vez de travar, e no celular o som para se a tela bloquear
+- A aba de eventos ganhou **⏳ Presença pendente** como segunda opção, logo depois de Próximos
 - **Card do evento mais informativo**: além de quem vai e quem falta responder, o card do próximo evento já lista as **5 primeiras músicas** com o total restante, sem precisar abrir os detalhes
 - **Filtro "⏳ Falta indicar"**: mostra só os eventos futuros em que você ainda não respondeu se vai ou não, com o número pendente no próprio botão
 - **Copiar evento**: novo botão que abre um evento novo já com o repertório, a pauta (itens desmarcados), local e tipo do evento escolhido. A data fica em branco e a presença começa zerada
