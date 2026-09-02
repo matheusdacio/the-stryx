@@ -47,7 +47,9 @@ function OpinionSummary({ opinoes }) {
 
 function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers }) {
   const [myOpinion, setMyOpinion] = useState(null)
-  const [comment, setComment] = useState('')
+  // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
+  // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
+  const [comment, setComment] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
   const [saving, setSaving] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(sugestao.notes || '')
