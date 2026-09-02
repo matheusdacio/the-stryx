@@ -264,28 +264,30 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
             </button>
           ))}
         </div>
-
-        {dominioVotos.length > 0 && (
-          <div className="difficulty-summary">
-            {DOMINIOS.map((d) => {
-              const voters = dominioVotos.filter((v) => v.level === d.value && !v.seeded)
-              if (!voters.length) return null
-              return (
-                <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                  {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
-                </span>
-              )
-            })}
-            {dominioVotos.some((v) => v.seeded) && (
-              <span className="diff-pill diff-pill-seeded">
-                Ainda não disseram: {dominioVotos.filter((v) => v.seeded).map((v) => firstName(v.userName)).join(', ')}
-              </span>
-            )}
-          </div>
-        )}
       </div>
 
       {expanded && <>
+
+      {/* Quem votou o quê em domínio — só no card aberto; fechado fica só
+          o selo (compacta o card, que é a tela mais rolada do app) */}
+      {dominioVotos.length > 0 && (
+        <div className="difficulty-summary" style={{ marginTop: -4, marginBottom: 10 }}>
+          {DOMINIOS.map((d) => {
+            const voters = dominioVotos.filter((v) => v.level === d.value && !v.seeded)
+            if (!voters.length) return null
+            return (
+              <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+              </span>
+            )
+          })}
+          {dominioVotos.some((v) => v.seeded) && (
+            <span className="diff-pill diff-pill-seeded">
+              Ainda não disseram: {dominioVotos.filter((v) => v.seeded).map((v) => firstName(v.userName)).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
 
       {/* Opinião da banda — fecha quando todos já opinaram */}
       <div className="difficulty-section-flat">
