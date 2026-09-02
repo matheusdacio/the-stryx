@@ -2,18 +2,21 @@ import { useState } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { getYouTubeId } from '../../utils/youtube'
+import { checarDuplicata } from '../../utils/duplicata'
 
-export default function AddSongModal({ onClose, totalSongs }) {
+export default function AddSongModal({ onClose, totalSongs, acervo }) {
   const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', bpm: '', videoUrl: '' })
   const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
 
+  const { bloqueio, titulo: jaExiste, parecidas } = checarDuplicata(form.title, form.artist, acervo)
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.title.trim()) return
+    if (!form.title.trim() || bloqueio) return
     setSaving(true)
     await addDoc(collection(db, 'songs'), {
       ...form,
@@ -33,6 +36,16 @@ export default function AddSongModal({ onClose, totalSongs }) {
         <form onSubmit={handleSubmit}>
           <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus /></label>
           <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
+          {bloqueio && (
+            <p className="aviso-duplicata bloqueio">
+              ⛔ <strong>{jaExiste}</strong> {bloqueio === 'setlist' ? 'já está no setlist.' : 'já foi sugerida.'}
+            </p>
+          )}
+          {!bloqueio && parecidas?.length > 0 && (
+            <p className="aviso-duplicata">
+              ⚠️ Já existe algo parecido: {parecidas.join(' · ')} — confira o artista.
+            </p>
+          )}
           <div className="form-row">
             <label>Tom
               <input name="tom" value={form.tom} onChange={handleChange} placeholder="Ex: Sol, Am" />
@@ -58,7 +71,7 @@ export default function AddSongModal({ onClose, totalSongs }) {
           <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Notas..." rows={3} /></label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Adicionar'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Salvando...' : 'Adicionar'}</button>
           </div>
         </form>
       </div>

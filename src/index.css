@@ -1260,3 +1260,19 @@ button { font-family: inherit; }
 
 /* Música que ainda não recebeu voto de domínio */
 .status-dot.status-sem-voto { background: rgba(107,114,128,0.14); color: var(--text-muted); }
+
+/* Aviso de música repetida no cadastro */
+.aviso-duplicata {
+  font-size: 0.78rem;
+  color: var(--yellow);
+  background: rgba(245, 158, 11, 0.1);
+  border: 1px solid rgba(245, 158, 11, 0.3);
+  border-radius: var(--radius-sm);
+  padding: 7px 10px;
+  margin: 4px 0 10px;
+}
+.aviso-duplicata.bloqueio {
+  color: var(--red);
+  background: rgba(230, 57, 70, 0.1);
+  border-color: rgba(230, 57, 70, 0.35);
+}

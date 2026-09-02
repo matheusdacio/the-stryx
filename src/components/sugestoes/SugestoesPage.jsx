@@ -11,6 +11,7 @@ import MusicLookup from '../MusicLookup'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { calcSongScore, chaveMusica } from '../../utils/score'
+import { checarDuplicata } from '../../utils/duplicata'
 import { estaRejeitada, temVeto, todosVotaram } from '../../utils/rejeicao'
 import { getYouTubeId } from '../../utils/youtube'
 
@@ -315,13 +316,16 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   )
 }
 
-function AddSugestaoModal({ onClose, userId, userName }) {
+function AddSugestaoModal({ onClose, userId, userName, acervo }) {
   // tom e bpm não têm campo no formulário: vêm da busca automática quando
   // disponível e viajam pro setlist se a sugestão for aprovada
   const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })
   const [achado, setAchado] = useState(null)
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
+
+  // Trava o cadastro de música que já existe, e avisa quando só o título bate
+  const { bloqueio, titulo: jaExiste, parecidas } = checarDuplicata(form.title, form.artist, acervo)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -340,7 +344,7 @@ function AddSugestaoModal({ onClose, userId, userName }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.title.trim()) return
+    if (!form.title.trim() || bloqueio) return
     setSaving(true)
     await addDoc(collection(db, 'sugestoes'), {
       ...form,
@@ -373,6 +377,17 @@ function AddSugestaoModal({ onClose, userId, userName }) {
             <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
           </div>
 
+          {bloqueio && (
+            <p className="aviso-duplicata bloqueio">
+              ⛔ <strong>{jaExiste}</strong> {bloqueio === 'setlist' ? 'já está no setlist.' : 'já foi sugerida.'}
+            </p>
+          )}
+          {!bloqueio && parecidas?.length > 0 && (
+            <p className="aviso-duplicata">
+              ⚠️ Já existe algo parecido: {parecidas.join(' · ')} — confira o artista antes de sugerir.
+            </p>
+          )}
+
           <MusicLookup titulo={form.title} onPick={aplicarAchado} />
           {(achado?.tom || achado?.bpm) && (
             <p className="lookup-aviso">
@@ -398,7 +413,7 @@ function AddSugestaoModal({ onClose, userId, userName }) {
           </label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Enviando...' : 'Sugerir'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Enviando...' : 'Sugerir'}</button>
           </div>
         </form>
       </div>
@@ -543,6 +558,7 @@ export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
   const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
+  const [musicasSetlist, setMusicasSetlist] = useState([])
   const [bandMembers, setBandMembers] = useState([])
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('balanceada')
@@ -566,6 +582,7 @@ export default function SugestoesPage() {
         chaves.add(chaveMusica(song.title, song.artist))
       })
       setNoSetlist({ ids, chaves })
+      setMusicasSetlist(snap.docs.map((d) => ({ title: d.data().title, artist: d.data().artist || '' })))
     })
   }, [])
 
@@ -797,6 +814,7 @@ export default function SugestoesPage() {
           onClose={() => setAddModal(false)}
           userId={user.uid}
           userName={user.displayName}
+          acervo={{ musicas: musicasSetlist, sugestoes }}
         />
       )}
     </div>
