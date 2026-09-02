@@ -54,12 +54,6 @@ function jaPassou(ts) {
   return dia(d) < dia(new Date())
 }
 
-function isPast(ts) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d < new Date()
-}
-
 // Primeiras músicas do evento, pra dar o tom do que vai ser ensaiado sem
 // precisar abrir os detalhes
 function SetlistPreview({ setlist, limite = 5 }) {
@@ -440,8 +434,11 @@ export default function EnsaiosPage() {
   }
 
   // Separa por categoria
-  const futuros    = ensaios.filter(e => !isPast(e.date) && e.status !== 'cancelado')
-  const realizados = ensaios.filter(e =>  isPast(e.date) && e.status !== 'cancelado').reverse()
+  // jaPassou (não isPast): evento de hoje fica em Próximos o dia inteiro,
+  // coerente com a pergunta de presença e o filtro de pendências, que já
+  // usam jaPassou/jaComecou. Antes, o card destaque sumia ao meio-dia.
+  const futuros    = ensaios.filter(e => !jaPassou(e.date) && e.status !== 'cancelado')
+  const realizados = ensaios.filter(e =>  jaPassou(e.date) && e.status !== 'cancelado').reverse()
   const cancelados = ensaios.filter(e => e.status === 'cancelado')
 
   const nextEnsaio = futuros[0] || null
