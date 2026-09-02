@@ -183,6 +183,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
                 key={d.value}
                 className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
                 style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                aria-pressed={myDiff === d.value}
                 onClick={() => voteDiff(d.value)}
               >
                 {d.label}
@@ -265,6 +266,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
                   key={o.value}
                   className={`btn-opinion ${myOpinion === o.value ? 'selected' : ''}`}
                   style={myOpinion === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
+                  aria-pressed={myOpinion === o.value}
                   onClick={() => setMyOpinion(myOpinion === o.value ? null : o.value)}
                 >
                   {o.label}

@@ -103,6 +103,7 @@ function PresencaBar({ ensaio, uid, userName }) {
           key={p.value}
           className={`btn-presenca ${meu === p.value ? 'active' : ''}`}
           style={meu === p.value ? { background: p.bg, borderColor: p.color, color: p.color } : {}}
+          aria-pressed={meu === p.value}
           onClick={() => responder(p.value)}
         >
           {p.label}

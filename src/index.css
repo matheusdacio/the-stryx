@@ -893,6 +893,15 @@ button { font-family: inherit; }
 }
 .btn-opinion:hover { border-color: var(--gray); color: var(--text); }
 .btn-opinion.selected { font-weight: 600; }
+
+/* Marca não-cromática do voto selecionado — daltonismo/leitor de tela não
+   dependem só da cor de fundo. Anel em vez de "✓ " pra não colidir com os
+   prefixos ✓/~/✕/– que já existem nos rótulos de opinião */
+.btn-diff[aria-pressed="true"],
+.btn-opinion[aria-pressed="true"],
+.btn-presenca[aria-pressed="true"] {
+  outline: 2px solid currentColor; outline-offset: 1px;
+}
 .opinion-comment-input {
   width: 100%; background: var(--surface2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--text); padding: 9px 12px;

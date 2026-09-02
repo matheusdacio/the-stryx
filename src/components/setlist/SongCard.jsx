@@ -248,6 +248,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
               key={d.value}
               className={`btn-diff ${myDominio === d.value ? 'active' : ''}`}
               style={myDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              aria-pressed={myDominio === d.value}
               onClick={() => voteDominio(d.value)}
             >
               {d.label}
@@ -284,6 +285,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
                 key={o.value}
                 className={`btn-diff ${minhaOpiniao === o.value ? 'active' : ''}`}
                 style={minhaOpiniao === o.value ? { borderColor: o.color, color: o.color } : {}}
+                aria-pressed={minhaOpiniao === o.value}
                 onClick={() => votarOpiniao(o.value)}
               >
                 {o.label}
@@ -318,6 +320,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
                 key={d.value}
                 className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
                 style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
+                aria-pressed={myDiff === d.value}
                 onClick={() => voteDiff(d.value)}
               >
                 {d.label}
