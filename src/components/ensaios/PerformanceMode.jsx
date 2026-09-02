@@ -45,6 +45,30 @@ export default function PerformanceMode({ event, onClose }) {
     }
   }, [])
 
+  // Mantém a tela acesa com o celular apoiado no pedestal. O metrônomo é
+  // Web Audio, não vídeo — não aciona o wake lock automático de mídia do
+  // navegador sozinho. O navegador libera o lock quando a aba perde o foco
+  // (troca de app, tela bloqueia), então pede de novo ao voltar.
+  useEffect(() => {
+    let lock = null
+    const pedir = async () => {
+      try {
+        lock = await navigator.wakeLock?.request('screen')
+      } catch {
+        // Sem suporte, ou o navegador recusou — a tela apaga no tempo normal
+      }
+    }
+    pedir()
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') pedir()
+    }
+    document.addEventListener('visibilitychange', onVisibility)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisibility)
+      lock?.release?.()
+    }
+  }, [])
+
   if (!current) return null
 
   return (
