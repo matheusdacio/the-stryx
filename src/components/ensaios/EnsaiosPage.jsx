@@ -33,6 +33,25 @@ function relativeLabel(ts) {
   return `${Math.abs(days)} dias atrás`
 }
 
+// Marcar o que foi ensaiado só faz sentido do dia do evento em diante.
+// Compara por dia: o evento é gravado ao meio-dia, então usar a hora faria
+// o ensaio de hoje contar como futuro até o meio-dia
+function jaComecou(ts) {
+  if (!ts) return false
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return dia(d) <= dia(new Date())
+}
+
+// Já passou do dia: não faz sentido perguntar se a pessoa vai, e o resumo
+// passa a falar no passado
+function jaPassou(ts) {
+  if (!ts) return false
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return dia(d) < dia(new Date())
+}
+
 function isPast(ts) {
   if (!ts) return false
   const d = ts.toDate ? ts.toDate() : new Date(ts)
@@ -97,7 +116,7 @@ function PresencaBar({ ensaio, uid, userName }) {
   )
 }
 
-function PresencaResumo({ ensaio, bandMembers }) {
+function PresencaResumo({ ensaio, bandMembers, passado }) {
   const { vao, nao, pendentes, convidados } = splitPresenca(ensaio, bandMembers)
   if (!bandMembers.length) return null
 
@@ -116,8 +135,8 @@ function PresencaResumo({ ensaio, bandMembers }) {
 
   return (
     <div className="presenca-resumo">
-      {linha('Vão', vao, PRESENCAS[0].color)}
-      {linha('Não vão', nao, PRESENCAS[1].color)}
+      {linha(passado ? 'Foram' : 'Vão', vao, PRESENCAS[0].color)}
+      {linha(passado ? 'Não foram' : 'Não vão', nao, PRESENCAS[1].color)}
       {linha('Sem resposta', pendentes, 'var(--text-muted)')}
       {convidados.length > 0 && (
         <div className="presenca-linha">
@@ -155,7 +174,9 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
     updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: next })
   }
 
-  const promoviveis = (ensaio.setlist || []).filter(
+  const podeMarcar = jaComecou(ensaio.date)
+  const passado = jaPassou(ensaio.date)
+  const promoviveis = !podeMarcar ? [] : (ensaio.setlist || []).filter(
     (s) => s.id && ensaiadas.includes(s.id) && songs[s.id]?.status === 'ensaiando'
   )
   const promover = async () => {
@@ -190,22 +211,27 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
                   const status = songs[s.id]?.status
+                  const texto = (
+                    <span>
+                      {s.title}
+                      {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                      {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                      {status === 'pronta' && <span className="mini-chip" style={{ marginLeft: 6 }}>✓ pronta</span>}
+                    </span>
+                  )
                   return (
                     <li key={s.id || i}>
-                      <label className="song-ensaiada">
-                        <input
-                          type="checkbox"
-                          checked={ensaiadas.includes(s.id)}
-                          onChange={() => toggleEnsaiada(s.id)}
-                          title="Marcar como ensaiada neste evento"
-                        />
-                        <span>
-                          {s.title}
-                          {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                          {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                          {status === 'pronta' && <span className="mini-chip" style={{ marginLeft: 6 }}>✓ pronta</span>}
-                        </span>
-                      </label>
+                      {podeMarcar ? (
+                        <label className="song-ensaiada">
+                          <input
+                            type="checkbox"
+                            checked={ensaiadas.includes(s.id)}
+                            onChange={() => toggleEnsaiada(s.id)}
+                            title="Marcar como ensaiada neste evento"
+                          />
+                          {texto}
+                        </label>
+                      ) : texto}
                     </li>
                   )
                 })}
@@ -231,8 +257,10 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
           )}
 
           <div style={{ marginTop: 10 }}>
-            <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
-            <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
+            {!passado && (
+              <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+            )}
+            <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
           </div>
 
           {hasNotes && (

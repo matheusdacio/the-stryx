@@ -15,9 +15,10 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ## [1.28.0] — 2026-09-02
 - **Presença por pessoa nos eventos**: no lugar da lista de checkboxes onde qualquer um marcava por todo mundo, cada pessoa logada responde **Vou / Não vou** no próprio card do evento (clicar de novo desfaz). O card mostra quem vai, quem não vai e quem ainda não respondeu, e o cabeçalho traz os contadores ✓/✕
+- _fix:_ a marcação de "ensaiada" e a pergunta "Você vai?" não aparecem mais em evento fora de hora — a marcação começa no dia do evento, a pergunta desaparece quando a data passa, e o resumo de presença passa a falar no passado ("Foram" / "Não foram")
 - **Sugestão que já está no setlist sai das Sugestões**, inclusive do filtro "Todas". O cruzamento usa o vínculo gravado na aprovação e, pras aprovadas antigas que não têm esse vínculo, o título + artista normalizados. Se a música for removida do setlist depois, a sugestão reaparece
 - **Cards de evento sempre abertos**: acabou o "Ver detalhes" e o clique pra expandir — músicas, presença, pauta e observações ficam à mostra
-- **Ciclo ensaiando → pronta**: no evento, cada música do repertório tem uma marcação de "ensaiada"; marcando as que rolaram, aparece um botão que promove de uma vez as que ainda estão em "Ensaiando" pra "Pronta" no setlist
+- **Ciclo ensaiando → pronta**: a partir do dia do evento, cada música do repertório tem uma marcação de "ensaiada"; marcando as que rolaram, aparece um botão que promove de uma vez as que ainda estão em "Ensaiando" pra "Pronta" no setlist
 - **Busca automática ao cadastrar sugestão**: digitando o nome da música, o app oferece os candidatos do catálogo do iTunes (título, artista e ano) e preenche o artista com um clique, sem sobrescrever o que já foi digitado. Se as chaves opcionais estiverem configuradas, também busca o link do YouTube e o tom/BPM da gravação original — ver `.env.example`
 - **Lembretes automáticos de evento** por push: três dias antes, só pra quem ainda não indicou presença; um dia antes, pra quem confirmou, com local, número de confirmados e tamanho do repertório. Cada aviso é marcado no evento, então não repete
 - _chore:_ eslint passa a reconhecer os scripts de notificação como Node, o que zera 6 erros de lint que já existiam no projeto
