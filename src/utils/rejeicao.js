@@ -18,6 +18,11 @@ const votou = (sugestao, membro) => {
 export const todosVotaram = (sugestao, bandMembers) =>
   bandMembers.length > 0 && bandMembers.every((m) => votou(sugestao, m))
 
+// Nomes de quem ainda não opinou — pro banner de veto pendente dizer quem
+// está segurando a decisão em vez de cobrar "a banda" sem apontar ninguém
+export const quemFalta = (sugestao, bandMembers) =>
+  bandMembers.filter((m) => !votou(sugestao, m)).map((m) => m.name)
+
 // Só é rejeitada depois que a banda inteira opinou e alguém vetou. Enquanto
 // falta gente votar, a música continua em aberto por mais veto que tenha.
 // (A rejeição manual não existe mais; o status antigo continua valendo pras

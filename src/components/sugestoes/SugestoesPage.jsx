@@ -14,7 +14,7 @@ import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
-import { estaRejeitada, temVeto, todosVotaram } from '../../utils/rejeicao'
+import { estaRejeitada, temVeto, todosVotaram, quemFalta } from '../../utils/rejeicao'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -205,11 +205,16 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         )}
 
         {sugestao.status === 'aberta' && temVeto(sugestao) && (
-          <div className={`sug-status-banner ${todosVotaram(sugestao, bandMembers) ? 'sug-rejeitada' : ''}`}>
-            {todosVotaram(sugestao, bandMembers)
-              ? '✕ Rejeitada — a banda toda opinou e alguém marcou "Não curti" ou "Não faz sentido"'
-              : '⚠️ Tem veto, mas ainda falta gente votar — segue em aberto até todos opinarem'}
-          </div>
+          todosVotaram(sugestao, bandMembers) ? (
+            <div className="sug-status-banner sug-rejeitada">
+              ✕ Rejeitada — a banda toda opinou e alguém marcou "Não curti" ou "Não faz sentido"
+            </div>
+          ) : (
+            <div className="sug-status-banner sug-veto-pendente">
+              ⚠️ Tem veto, mas ainda falta gente votar — segue em aberto até todos opinarem.
+              {' '}Faltam: {quemFalta(sugestao, bandMembers).map(firstName).join(', ')}
+            </div>
+          )
         )}
 
         {list.length > 0 && (
