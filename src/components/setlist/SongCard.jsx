@@ -215,7 +215,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       {/* Domínio — sempre visível, mesmo com o card fechado: é o voto
           que alimenta a escolha do que ensaiar */}
       <div className="difficulty-section">
-        <p className="section-label">Você se sente pronto nessa?</p>
+        <p className="section-label">✅ Você se sente pronto nessa?</p>
         <div className="difficulty-btns">
           {DOMINIOS.map((d) => (
             <button
@@ -249,7 +249,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       {/* Opinião da banda — fecha quando todos já opinaram */}
       <div className="difficulty-section">
         <p className="section-label">
-          {bandaJaOpinou ? 'A banda toda já opinou' : 'O que você acha dessa música?'}
+          {bandaJaOpinou ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
         </p>
         {!bandaJaOpinou && (
           <div className="difficulty-btns">
@@ -285,7 +285,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
           banda já a domina (isso é o bloco de cima) */}
       {(
         <div className="difficulty-section">
-          <p className="section-label">Como tá pra você?</p>
+          <p className="section-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
