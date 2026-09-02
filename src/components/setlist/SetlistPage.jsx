@@ -10,13 +10,15 @@ import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { calcDifficulty } from '../../utils/dificuldade'
+import { todosVotaram } from '../../utils/rejeicao'
 
 // O setlist é organizado pelo domínio da banda, no pior cenário votado:
-// basta uma pessoa insegura pra música contar como precisando de ensaio
+// basta uma pessoa insegura pra música contar como precisando de ensaio.
+// "Sem voto" (ninguém da banda votou) não é filtro à parte — quem quer ver
+// o que falta usa "Falta meu voto", que é pessoal
 const FILTERS = [
   { value: 'all', label: 'Todas' },
   ...[...DOMINIOS].reverse().map((d) => ({ value: d.value, label: d.label })),
-  { value: 'sem_voto', label: 'Sem voto' },
 ]
 
 // Nível da música pra filtro e contagem
@@ -91,10 +93,18 @@ export default function SetlistPage() {
     a.localeCompare(b, 'pt-BR', { sensitivity: 'base' })
   )
 
-  const meuVotoFalta = (s) => !(s.dominio || {})[user.uid]
+  // Falta EU indicar algo nessa música: domínio (pronto pra tocar),
+  // dificuldade (é fácil?) ou opinião (vale tocar — só conta enquanto a
+  // seção ainda está aberta, isto é, nem toda a banda opinou ainda)
+  const meuVotoFalta = (s) => {
+    const opinoes = opinioesDe(s)
+    return !(s.dominio || {})[user.uid] ||
+      !(s.dificuldade || {})[user.uid] ||
+      (!todosVotaram({ opinoes }, bandMembers) && !opinoes[user.uid])
+  }
 
   const filtered = songs.filter((s) =>
-    (filter === 'all' || (filter === 'meu_voto_falta' ? meuVotoFalta(s) : nivelDe(s) === filter)) &&
+    (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter)) &&
     (!tagFilter || (s.tags || []).includes(tagFilter)) &&
     matchesSearch(search, s.title, s.artist)
   )
@@ -157,9 +167,9 @@ export default function SetlistPage() {
           </button>
         ))}
         <button
-          className={`btn-filter ${filter === 'meu_voto_falta' ? 'active' : ''}`}
-          onClick={() => setFilter(filter === 'meu_voto_falta' ? 'all' : 'meu_voto_falta')}
-          title="Mostrar só as músicas que faltam seu voto de domínio"
+          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          onClick={() => setFilter(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
+          title="Mostrar só as músicas que faltam você indicar domínio, dificuldade ou opinião"
         >
           🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
         </button>

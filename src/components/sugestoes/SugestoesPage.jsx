@@ -614,7 +614,7 @@ export default function SugestoesPage() {
   const noFiltro = (s) => {
     if (filter === 'all') return true
     if (filter === 'rejeitada') return estaRejeitada(s, bandMembers)
-    if (filter === 'nao_votei') return faltaVotar(s, user, noSetlist, bandMembers)
+    if (filter === 'falta_meu_voto') return faltaVotar(s, user, noSetlist, bandMembers)
     return s.status === 'aberta' && !estaRejeitada(s, bandMembers)
   }
 
@@ -699,11 +699,11 @@ export default function SugestoesPage() {
           )
         })}
         <button
-          className={`btn-filter ${filter === 'nao_votei' ? 'active' : ''}`}
-          onClick={() => setFilter(filter === 'nao_votei' ? 'aberta' : 'nao_votei')}
+          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          onClick={() => setFilter(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
-          🗳 Não votei <span className="count">{pendingCount}</span>
+          🗳 Falta meu voto <span className="count">{pendingCount}</span>
         </button>
       </div>
 
@@ -727,7 +727,7 @@ export default function SugestoesPage() {
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma sugestão encontrada pra "{search.trim()}".</p>
-          ) : filter === 'nao_votei' ? (
+          ) : filter === 'falta_meu_voto' ? (
             <p>🎉 Você já votou em todas as músicas daqui!</p>
           ) : (
             <>
