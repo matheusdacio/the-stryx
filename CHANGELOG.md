@@ -13,6 +13,18 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.32.0] — 2026-09-02
+- **Veto fica explícito nas Sugestões**: "Não faz sentido" e "Não curti" ganham "· tira da fila" e viram vermelho de alerta (eram laranja/cinza, cara de opção neutra); linha de ajuda antes dos botões; confirm só nessas duas; "Remover" a própria opinião fica sempre visível, mesmo depois que a banda toda já opinou — antes o botão sumia bem quando alguém precisava desfazer um veto por engano
+- **Opinar vira 1 toque**: bloco de opinião sobe pra logo abaixo do vídeo (antes ficava depois de observações, dificuldade e da lista de opiniões dos outros) e grava direto, igual à dificuldade — sem escolher, rolar e apertar "Enviar"; comentário vira campo à parte, com "Editar" e "Salvar" próprios, então trocar de opinião não apaga mais o que foi escrito
+- **Toast de confirmação** ("Foi pro setlist, marcada Crua pra geral", "Voltou pras sugestões", "Reaberta pra votação") — as duas ações que só faziam o item sumir da tela agora avisam que deu certo, com o botão desabilitado e "Enviando..."/"Devolvendo..." enquanto grava (dois toques rápidos não duplicam mais a música)
+- Sugestão nova sem nenhuma opinião vai pro topo de "Melhores e fáceis" em vez de empatar em 0 com as reprovadas; chip 🆕 em sugestão e música recente; "Enviar pro setlist" já avisa que a música some da lista e entra Crua pra geral
+- **Lista de Sugestões para de reordenar sozinha** enquanto alguém está lendo — a posição só muda quando o próprio filtro/ordenação/busca mudam; um chip "Ordem mudou · reordenar" aparece quando o voto de outro membro deixaria a ordem diferente
+- Resumo de opiniões no card usa palavra ("Ajustar 1", "Fora 1") em vez de símbolo quase ilegível ("~ 1", "– 1"); nota da banda formatada com vírgula (1,05) e uma linha explica a ordenação ativa; "🗳 Votos" vira "👥 Mais votadas"
+- Fileira de 5 pills de ordenação vira um único select, em Sugestões e no Setlist — sobra mais tela pra ver as músicas antes de rolar
+- Busca automática de música (Sugestões) avisa "Procurando no catálogo…" e, se não achar nada, "Não achei no catálogo — preenche na mão"
+- Card "✓ Aprovada" vira "✓ No setlist"; modal de Cifra em edição não mostra mais dois botões ("Fechar" e "Cancelar") fazendo a mesma coisa
+- Tocar fora do modal de Cifra ou Evento não descarta mais o que foi digitado (só fecha por Cancelar, que confirma se algo mudou); botão voltar do Android fecha modal e Modo palco em vez de trocar de aba de repente — e o Modo palco lembra em que música parou se você sair e voltar
+
 ## [1.31.0] — 2026-09-02
 - **Card do Setlist fica menos poluído**: ✕ de apagar some do cabeçalho (virou "Remover" no rodapé do card aberto, ao lado de "↩ Voltar pras sugestões", com confirm explicando o que se perde); a lista de quem votou cada nível de domínio só aparece com o card aberto; domínio continua em caixa cheia, opinião e dificuldade viram "vazados" — os três paravam de parecer a mesma pergunta três vezes
 - Botões de voto (domínio, dificuldade, opinião, presença) sobem de ~24px pra 40px de altura — é o gesto mais frequente do app, e um toque errado no vizinho trocava ou apagava o voto sem aviso; voto marcado ganha um anel, não só cor (daltonismo, leitor de tela)
