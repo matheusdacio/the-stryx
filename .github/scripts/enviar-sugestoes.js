@@ -55,23 +55,48 @@ async function main() {
 
   const tokens = tokensSnap.docs.map(d => ({ uid: d.id, ...d.data() }))
 
-  for (const item of filaSnap.docs) {
+  // Quem monta repertório de uma vez sugere várias músicas em minutos; sem
+  // agrupar, cada uma vira um push separado 15 min depois (cron desse
+  // workflow) — rajada de "Nova sugestão" é o tipo de ruído que faz
+  // desligar o sino e perder junto o lembrete de ensaio
+  const gruposSugestao = new Map()
+  const outros = []
+  filaSnap.docs.forEach((item) => {
     const dados = item.data()
+    if (dados.tipo !== 'nova_sugestao') { outros.push(item); return }
+    if (!gruposSugestao.has(dados.suggestedById)) {
+      gruposSugestao.set(dados.suggestedById, { suggestedBy: dados.suggestedBy, itens: [] })
+    }
+    gruposSugestao.get(dados.suggestedById).itens.push({ ref: item.ref, ...dados })
+  })
 
-    if (dados.tipo === 'nova_sugestao') {
-      const artista = dados.artista ? ` — ${dados.artista}` : ''
-      const titulo = `Nova sugestão 🎵`
-      const corpo = `${dados.suggestedBy} sugeriu "${dados.titulo}${artista}". Dê sua opinião!`
-
-      // Envia para todos exceto quem sugeriu
-      const destinatarios = tokens.filter(t => t.uid !== dados.suggestedById)
-      for (const dest of destinatarios) {
-        await enviar(dest.token, titulo, corpo, LINK_NOVA_SUGESTAO)
-      }
-      console.log(`Sugestão "${dados.titulo}": ${destinatarios.length} notificações enviadas.`)
+  for (const [suggestedById, { suggestedBy, itens }] of gruposSugestao) {
+    let titulo, corpo
+    if (itens.length === 1) {
+      const artista = itens[0].artista ? ` — ${itens[0].artista}` : ''
+      titulo = `Nova sugestão 🎵`
+      corpo = `${suggestedBy} sugeriu "${itens[0].titulo}${artista}". Dê sua opinião!`
+    } else {
+      const nomes = itens.slice(0, 2).map((i) => `"${i.titulo}"`)
+      const resto = itens.length - nomes.length
+      const lista = resto > 0 ? `${nomes.join(', ')} e mais ${resto}` : nomes.join(' e ')
+      titulo = `Novas sugestões 🎵`
+      corpo = `${suggestedBy} sugeriu ${itens.length} músicas: ${lista}. Dê sua opinião!`
     }
 
-    // Marca como processado
+    // Envia para todos exceto quem sugeriu
+    const destinatarios = tokens.filter((t) => t.uid !== suggestedById)
+    for (const dest of destinatarios) {
+      await enviar(dest.token, titulo, corpo, LINK_NOVA_SUGESTAO)
+    }
+    console.log(`Sugestões de ${suggestedBy} (${itens.length}): ${destinatarios.length} notificações enviadas.`)
+
+    const batch = db.batch()
+    itens.forEach((i) => batch.update(i.ref, { processado: true }))
+    await batch.commit()
+  }
+
+  for (const item of outros) {
     await item.ref.update({ processado: true })
   }
 
