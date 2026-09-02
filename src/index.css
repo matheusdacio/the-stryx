@@ -764,6 +764,7 @@ button { font-family: inherit; }
 }
 .sug-aprovada { background: rgba(16, 185, 129, 0.15); color: var(--green); }
 .sug-rejeitada { background: rgba(107, 114, 128, 0.15); color: var(--gray); }
+.sug-veto-pendente { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
 
 .opinion-summary { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
 .opinion-pill {

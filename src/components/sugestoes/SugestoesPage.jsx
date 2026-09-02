@@ -78,14 +78,19 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
     if (!myOpinion) return
     setSaving(true)
     // Chave é o userId — sobrescreve automaticamente opinião anterior
-    await updateDoc(ref, {
-      [`opinoes.${userId}`]: {
-        userName,
-        opinion: myOpinion,
-        comment: comment.trim(),
-        at: new Date().toISOString(),
-      },
-    })
+    const voto = { userName, opinion: myOpinion, comment: comment.trim(), at: new Date().toISOString() }
+    const opinoesDepois = { ...(sugestao.opinoes || {}), [userId]: voto }
+    const update = { [`opinoes.${userId}`]: voto }
+
+    // Grava a rejeição no momento em que o último voto fecha com veto — sem
+    // isso ela era só calculada na hora (estaRejeitada), e o badge do
+    // rodapé, a planilha exportada e a lista divergiam entre si
+    if (todosVotaram({ opinoes: opinoesDepois }, bandMembers) && temVeto({ opinoes: opinoesDepois })) {
+      update.status = 'rejeitada'
+      update.rejeitadaPor = 'veto'
+    }
+
+    await updateDoc(ref, update)
     setSaving(false)
     setMyOpinion(null)
     setComment('')
@@ -743,9 +748,13 @@ export default function SugestoesPage() {
                           🎯 {diffLabel.label}
                         </span>
                       )}
-                      {s.status !== 'aberta' && (
-                        <span className={`sug-status-tag sug-${s.status}`}>
-                          {s.status === 'aprovada' ? '✓ Aprovada' : '✕ Rejeitada'}
+                      {s.status === 'aprovada' ? (
+                        <span className="sug-status-tag sug-aprovada">✓ Aprovada</span>
+                      ) : estaRejeitada(s, bandMembers) ? (
+                        <span className="sug-status-tag sug-rejeitada">✕ Rejeitada</span>
+                      ) : temVeto(s) && (
+                        <span className="sug-status-tag sug-veto-pendente" title="Um voto já veta — falta a banda toda opinar pra fechar">
+                          ⚠️ veto
                         </span>
                       )}
                     </div>
