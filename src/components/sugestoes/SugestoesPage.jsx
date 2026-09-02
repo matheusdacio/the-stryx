@@ -15,6 +15,7 @@ import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta } from '../../utils/rejeicao'
+import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -558,7 +559,6 @@ export default function SugestoesPage() {
   const [bandMembers, setBandMembers] = useState([])
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('balanceada')
-  const [onlyUnvoted, setOnlyUnvoted] = useState(false)
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
@@ -614,14 +614,15 @@ export default function SugestoesPage() {
   const noFiltro = (s) => {
     if (filter === 'all') return true
     if (filter === 'rejeitada') return estaRejeitada(s, bandMembers)
+    if (filter === 'nao_votei') return faltaVotar(s, user, noSetlist, bandMembers)
     return s.status === 'aberta' && !estaRejeitada(s, bandMembers)
   }
 
-  const byStatus = visiveis.filter(noFiltro)
+  const filtered = visiveis.filter(noFiltro)
     .filter((s) => matchesSearch(search, s.title, s.artist))
-  const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
-  const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
-  const pendingCount = visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
+  // "falta pra mim" — mesma conta pro badge do título e pro botão de filtro,
+  // pra não mostrar dois números diferentes pra mesma coisa
+  const pendingCount = countSugestoesPendentes(visiveis, user, noSetlist, bandMembers)
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
@@ -698,11 +699,11 @@ export default function SugestoesPage() {
           )
         })}
         <button
-          className={`btn-filter ${onlyUnvoted ? 'active' : ''}`}
-          onClick={() => setOnlyUnvoted(!onlyUnvoted)}
-          title="Mostrar só as músicas que você ainda não votou"
+          className={`btn-filter ${filter === 'nao_votei' ? 'active' : ''}`}
+          onClick={() => setFilter(filter === 'nao_votei' ? 'aberta' : 'nao_votei')}
+          title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
-          🗳 Não votei <span className="count">{unvotedCount}</span>
+          🗳 Não votei <span className="count">{pendingCount}</span>
         </button>
       </div>
 
@@ -726,7 +727,7 @@ export default function SugestoesPage() {
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma sugestão encontrada pra "{search.trim()}".</p>
-          ) : onlyUnvoted ? (
+          ) : filter === 'nao_votei' ? (
             <p>🎉 Você já votou em todas as músicas daqui!</p>
           ) : (
             <>
