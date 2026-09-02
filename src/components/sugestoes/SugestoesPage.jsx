@@ -12,7 +12,7 @@ import VideoInline from '../VideoInline'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
-import { checarDuplicata } from '../../utils/duplicata'
+import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta } from '../../utils/rejeicao'
 import { getYouTubeId } from '../../utils/youtube'
@@ -294,7 +294,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   )
 }
 
-function AddSugestaoModal({ onClose, userId, userName, acervo }) {
+function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente }) {
   // tom e bpm não têm campo no formulário: vêm da busca automática quando
   // disponível e viajam pro setlist se a sugestão for aprovada
   const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })
@@ -303,7 +303,8 @@ function AddSugestaoModal({ onClose, userId, userName, acervo }) {
   const videoId = getYouTubeId(form.videoUrl)
 
   // Trava o cadastro de música que já existe, e avisa quando só o título bate
-  const { bloqueio, titulo: jaExiste, parecidas } = checarDuplicata(form.title, form.artist, acervo)
+  const duplicata = checarDuplicata(form.title, form.artist, acervo)
+  const { bloqueio, parecidas } = duplicata
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -357,7 +358,16 @@ function AddSugestaoModal({ onClose, userId, userName, acervo }) {
 
           {bloqueio && (
             <p className="aviso-duplicata bloqueio">
-              ⛔ <strong>{jaExiste}</strong> {bloqueio === 'setlist' ? 'já está no setlist.' : 'já foi sugerida.'}
+              ⛔ {mensagemBloqueio(duplicata)}
+              {bloqueio === 'sugestao' && (
+                <button
+                  type="button"
+                  className="btn-link-inline"
+                  onClick={() => onAbrirExistente(duplicata.sugestaoExistente)}
+                >
+                  Abrir essa
+                </button>
+              )}
             </p>
           )}
           {!bloqueio && parecidas?.length > 0 && (
@@ -796,7 +806,8 @@ export default function SugestoesPage() {
           onClose={() => setAddModal(false)}
           userId={user.uid}
           userName={user.displayName}
-          acervo={{ musicas: musicasSetlist, sugestoes }}
+          acervo={{ musicas: musicasSetlist, sugestoes, bandMembers }}
+          onAbrirExistente={(sug) => { setAddModal(false); setModal(sug) }}
         />
       )}
     </div>

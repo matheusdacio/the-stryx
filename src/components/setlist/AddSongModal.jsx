@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { getYouTubeId } from '../../utils/youtube'
-import { checarDuplicata } from '../../utils/duplicata'
+import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 
 export default function AddSongModal({ onClose, totalSongs, acervo }) {
   const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', bpm: '', videoUrl: '' })
@@ -10,7 +10,8 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
 
-  const { bloqueio, titulo: jaExiste, parecidas } = checarDuplicata(form.title, form.artist, acervo)
+  const duplicata = checarDuplicata(form.title, form.artist, acervo)
+  const { bloqueio, parecidas } = duplicata
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
@@ -38,7 +39,10 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
           <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
           {bloqueio && (
             <p className="aviso-duplicata bloqueio">
-              ⛔ <strong>{jaExiste}</strong> {bloqueio === 'setlist' ? 'já está no setlist.' : 'já foi sugerida.'}
+              ⛔ {mensagemBloqueio(duplicata)}
+              {bloqueio === 'sugestao' && (
+                <a href="#/sugestoes" className="btn-link-inline" onClick={onClose}>Ver em Sugestões</a>
+              )}
             </p>
           )}
           {!bloqueio && parecidas?.length > 0 && (

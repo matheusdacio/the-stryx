@@ -232,7 +232,7 @@ export default function SetlistPage() {
         </div>
       )}
 
-      {showModal && <AddSongModal onClose={() => setShowModal(false)} totalSongs={songs.length} acervo={{ musicas: songs, sugestoes }} />}
+      {showModal && <AddSongModal onClose={() => setShowModal(false)} totalSongs={songs.length} acervo={{ musicas: songs, sugestoes, bandMembers }} />}
     </div>
   )
 }

@@ -1271,6 +1271,12 @@ button { font-family: inherit; }
   padding: 7px 10px;
   margin: 4px 0 10px;
 }
+.btn-link-inline {
+  display: inline; margin-left: 6px; padding: 0;
+  background: none; border: none; color: inherit;
+  font: inherit; font-weight: 700; text-decoration: underline;
+  cursor: pointer;
+}
 .aviso-duplicata.bloqueio {
   color: var(--red);
   background: rgba(230, 57, 70, 0.1);
