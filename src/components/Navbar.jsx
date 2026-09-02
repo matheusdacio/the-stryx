@@ -14,8 +14,14 @@ export default function Navbar() {
     if (permissao === 'granted') {
       if (window.confirm('Desativar notificações?')) await desativar()
     } else {
-      const ok = await ativar()
-      if (!ok && permissao === 'denied') alert('Notificações bloqueadas. Habilite nas configurações do navegador.')
+      const r = await ativar()
+      if (r === 'denied') {
+        alert('O navegador bloqueou as notificações. Desbloqueia nas configurações do site e tenta de novo.')
+      } else if (r === 'error') {
+        alert('Não consegui ativar agora. Tenta de novo com internet.')
+      } else if (r === 'ok') {
+        alert('Pronto! Você recebe aviso de sugestão nova e lembrete de ensaio.')
+      }
     }
   }
 
