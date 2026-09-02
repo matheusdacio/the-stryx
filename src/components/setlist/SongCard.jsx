@@ -273,7 +273,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       {expanded && <>
 
       {/* Opinião da banda — fecha quando todos já opinaram */}
-      <div className="difficulty-section">
+      <div className="difficulty-section-flat">
         <p className="section-label">
           {bandaJaOpinou ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
         </p>
@@ -283,7 +283,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
               <button
                 key={o.value}
                 className={`btn-diff ${minhaOpiniao === o.value ? 'active' : ''}`}
-                style={minhaOpiniao === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
+                style={minhaOpiniao === o.value ? { borderColor: o.color, color: o.color } : {}}
                 onClick={() => votarOpiniao(o.value)}
               >
                 {o.label}
@@ -310,14 +310,14 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       {/* Dificuldade pra tocar — o quanto a música é difícil, não o quanto a
           banda já a domina (isso é o bloco de cima) */}
       {(
-        <div className="difficulty-section">
+        <div className="difficulty-section-flat">
           <p className="section-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d.value}
                 className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
-                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
                 onClick={() => voteDiff(d.value)}
               >
                 {d.label}
