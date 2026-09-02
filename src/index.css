@@ -1153,3 +1153,35 @@ button { font-family: inherit; }
   color: var(--text-muted);
   white-space: pre-wrap;
 }
+
+/* ── Presença nos eventos ─────────────────────────────────────────── */
+.presenca-bar {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+  margin-bottom: 10px;
+}
+.btn-presenca {
+  padding: 5px 14px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: transparent;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s;
+}
+.btn-presenca:hover { border-color: var(--accent); color: var(--accent); }
+.presenca-resumo { display: flex; flex-direction: column; gap: 7px; }
+.presenca-linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.presenca-linha-titulo {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-muted);
+  min-width: 96px;
+}
+.presenca-vai { color: #10b981; }
+.presenca-nao { color: #ef4444; }

@@ -7,6 +7,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
 import { normalizeEventMembers } from '../../utils/members'
+import { migrateEventPresence } from '../../utils/presenca'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -203,6 +204,75 @@ function EventNormalizeTool() {
   )
 }
 
+// ── Ferramenta: migrar a lista de membros pra presença por pessoa ─────
+// A lista antiga era um texto marcado por qualquer um. Eventos já realizados
+// guardam o histórico como "Vou"; os futuros nascem em branco pra banda
+// confirmar de verdade. Quem não está no cadastro vira "convidado".
+function PresenceMigrateTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await migrateEventPresence({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhum evento com lista antiga.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { updated } = await migrateEventPresence()
+      setMsg(`✅ ${updated} evento(s) migrado(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '👥 Migrar pra presença por pessoa'}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} evento(s)</p>
+          {pending.map((c) => (
+            <p key={c.id} className="event-normalize-item">
+              <strong>{c.date}</strong> {c.passado ? '(realizado)' : '(futuro)'}: {c.antes.join(', ') || '—'}
+              <br />→ {c.passado
+                ? `Vou: ${c.vai.join(', ') || '—'}${c.convidados.length ? ` · convidados: ${c.convidados.join(', ')}` : ''}`
+                : 'presença em branco'}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length} evento(s)`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -307,6 +377,7 @@ export default function MembrosPage() {
             {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
           </button>
           <EventNormalizeTool />
+          <PresenceMigrateTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}

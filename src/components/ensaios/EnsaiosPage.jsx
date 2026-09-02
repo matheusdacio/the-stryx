@@ -1,7 +1,9 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
-import { dedupMemberNames, firstName } from '../../utils/members'
+import { useAuth } from '../../contexts/AuthContext'
+import { firstName } from '../../utils/members'
+import { PRESENCAS, splitPresenca } from '../../utils/presenca'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 
@@ -37,6 +39,75 @@ function isPast(ts) {
   return d < new Date()
 }
 
+// ── Presença ──────────────────────────────────────────────────────────
+
+// Cada um responde pela própria presença. Clicar de novo na mesma resposta
+// desfaz, igual aos votos de dificuldade
+function PresencaBar({ ensaio, uid, userName }) {
+  const meu = (ensaio.presenca || {})[uid]?.status
+
+  const responder = (status) => {
+    const ref = doc(db, 'ensaios', ensaio.id)
+    if (meu === status) {
+      updateDoc(ref, { [`presenca.${uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`presenca.${uid}`]: { status, name: userName, at: new Date().toISOString() },
+      })
+    }
+  }
+
+  return (
+    <div className="presenca-bar" onClick={(e) => e.stopPropagation()}>
+      <span className="section-label">Você vai?</span>
+      {PRESENCAS.map((p) => (
+        <button
+          key={p.value}
+          className={`btn-presenca ${meu === p.value ? 'active' : ''}`}
+          style={meu === p.value ? { background: p.bg, borderColor: p.color, color: p.color } : {}}
+          onClick={() => responder(p.value)}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PresencaResumo({ ensaio, bandMembers }) {
+  const { vao, nao, pendentes, convidados } = splitPresenca(ensaio, bandMembers)
+  if (!bandMembers.length) return null
+
+  const linha = (titulo, lista, cor) => lista.length > 0 && (
+    <div className="presenca-linha">
+      <span className="presenca-linha-titulo" style={{ color: cor }}>{titulo} ({lista.length})</span>
+      <div className="members-tags">
+        {lista.map((m) => (
+          <span key={m.name} className="member-tag" style={{ borderColor: cor, color: cor }} title={m.name}>
+            {firstName(m.name)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="presenca-resumo">
+      {linha('Vão', vao, PRESENCAS[0].color)}
+      {linha('Não vão', nao, PRESENCAS[1].color)}
+      {linha('Sem resposta', pendentes, 'var(--text-muted)')}
+      {convidados.length > 0 && (
+        <div className="presenca-linha">
+          <span className="presenca-linha-titulo">Convidados ({convidados.length})</span>
+          <div className="members-tags">
+            {convidados.map((n) => <span key={n} className="member-tag" title={n}>{firstName(n)}</span>)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
+}
+
 function TypeBadge({ type }) {
   const isShow = type === 'apresentacao'
   return (
@@ -48,11 +119,10 @@ function TypeBadge({ type }) {
 
 // ── Card expandível ───────────────────────────────────────────────────
 
-function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
+function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform, bandMembers, user }) {
   const [open, setOpen] = useState(false)
   const hasPauta   = ensaio.pauta?.length > 0
-  const members    = dedupMemberNames(ensaio.members)
-  const hasMembers = members.length > 0
+  const { vao, nao } = splitPresenca(ensaio, bandMembers)
   const hasNotes   = !!ensaio.notes
   const hasSetlist = ensaio.setlist?.length > 0
 
@@ -66,7 +136,8 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
         </div>
         <div className="ensaio-row-right">
           {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
-          {hasMembers && <span className="ensaio-row-members">👥 {members.length}</span>}
+          {vao.length > 0 && <span className="ensaio-row-members presenca-vai">✓ {vao.length}</span>}
+          {nao.length > 0 && <span className="ensaio-row-members presenca-nao">✕ {nao.length}</span>}
           <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>
         </div>
       </div>
@@ -100,16 +171,10 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
             </div>
           )}
 
-          {hasMembers && (
-            <div style={{ marginTop: 10 }}>
-              <p className="section-label">Membros</p>
-              <div className="members-tags">
-                {members.map((m) => (
-                  <span key={m} className="member-tag" title={m}>{firstName(m)}</span>
-                ))}
-              </div>
-            </div>
-          )}
+          <div style={{ marginTop: 10 }}>
+            <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+            <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
+          </div>
 
           {hasNotes && (
             <div style={{ marginTop: 10 }}>
@@ -133,7 +198,7 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
 
 // ── Card destaque — próximo evento ────────────────────────────────────
 
-function NextEnsaioCard({ ensaio, onEdit, onPerform }) {
+function NextEnsaioCard({ ensaio, onEdit, onPerform, bandMembers, user }) {
   const [open, setOpen] = useState(false)
   const hasSetlist = ensaio.setlist?.length > 0
 
@@ -149,13 +214,20 @@ function NextEnsaioCard({ ensaio, onEdit, onPerform }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
-          {dedupMemberNames(ensaio.members).length > 0 && (
-            <p className="next-ensaio-members">👥 {dedupMemberNames(ensaio.members).length} membros</p>
+          {splitPresenca(ensaio, bandMembers).vao.length > 0 && (
+            <p className="next-ensaio-members presenca-vai">
+              ✓ {splitPresenca(ensaio, bandMembers).vao.length} confirmados
+            </p>
           )}
           {hasSetlist && (
             <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>
           )}
         </div>
+      </div>
+
+      <div style={{ marginTop: 12 }}>
+        <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+        <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
 
       {hasSetlist && open && (
@@ -211,7 +283,9 @@ const TABS = [
 ]
 
 export default function EnsaiosPage() {
+  const { user } = useAuth()
   const [ensaios, setEnsaios] = useState([])
+  const [bandMembers, setBandMembers] = useState([])
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
   const [performing, setPerforming] = useState(null)
@@ -219,6 +293,14 @@ export default function EnsaiosPage() {
   useEffect(() => {
     const q = query(collection(db, 'ensaios'), orderBy('date', 'asc'))
     return onSnapshot(q, (snap) => setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+  }, [])
+
+  useEffect(() => {
+    const q = query(collection(db, 'members'), orderBy('name'))
+    return onSnapshot(q, (snap) => setBandMembers(snap.docs.map((d) => ({
+      name: d.data().name,
+      firebaseUid: d.data().firebaseUid || null,
+    }))))
   }, [])
 
   const remove = (e) => {
@@ -268,7 +350,7 @@ export default function EnsaiosPage() {
       {tab === 'proximos' && (
         <>
           {nextEnsaio
-            ? <NextEnsaioCard ensaio={nextEnsaio} onEdit={setModal} onPerform={setPerforming} />
+            ? <NextEnsaioCard ensaio={nextEnsaio} onEdit={setModal} onPerform={setPerforming} bandMembers={bandMembers} user={user} />
             : (
               <div className="empty-state" style={{ marginTop: 12 }}>
                 <p>Nenhum evento planejado.</p>
@@ -289,6 +371,8 @@ export default function EnsaiosPage() {
                     onRemove={remove}
                     onTogglePauta={togglePauta}
                     onPerform={setPerforming}
+                    bandMembers={bandMembers}
+                    user={user}
                   />
                 ))}
               </div>
@@ -314,6 +398,8 @@ export default function EnsaiosPage() {
                   onRemove={remove}
                   onTogglePauta={togglePauta}
                   onPerform={setPerforming}
+                  bandMembers={bandMembers}
+                  user={user}
                 />
               ))}
             </div>
