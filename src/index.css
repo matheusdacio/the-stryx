@@ -417,7 +417,7 @@ button { font-family: inherit; }
   line-height: 1.7; white-space: pre-wrap; color: var(--text);
   background: var(--surface2); padding: 16px; border-radius: var(--radius);
 }
-.cifra-textarea { font-family: 'Courier New', monospace !important; font-size: 0.88rem !important; }
+.cifra-textarea { font-family: 'Courier New', monospace !important; font-size: 1rem; }
 
 /* ─── EVENTOS ─── */
 .ensaio-list { display: flex; flex-direction: column; gap: 6px; }
@@ -1350,3 +1350,10 @@ button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer;
 .admin-tools summary::before { content: '▸ '; }
 .admin-tools[open] summary::before { content: '▾ '; }
 .admin-tools[open] summary { color: var(--text); margin-bottom: 4px; }
+
+/* iOS dá zoom automático quando o campo focado tem menos de 16px — em
+   qualquer input/select/textarea do celular, 16px evita a tela pulando
+   toda vez que alguém for digitar (sugerir, agendar, cifra...) */
+@media (max-width: 480px) {
+  input, select, textarea { font-size: 16px; }
+}
