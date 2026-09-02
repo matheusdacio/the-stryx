@@ -160,9 +160,11 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       style={{ borderLeftColor: piorDominio?.color || 'var(--border)' }}
     >
       <div className="song-header">
-        <div className="song-order-wrap">
-          <span className="song-position">{position}</span>
-        </div>
+        {position != null && (
+          <div className="song-order-wrap">
+            <span className="song-position">#{position}</span>
+          </div>
+        )}
         <div className="song-info" onClick={() => setExpanded(!expanded)} title={expanded ? 'Recolher' : 'Ver detalhes'}>
           <span className="song-title">{song.title}</span>
           {song.artist && <span className="song-artist"> — {song.artist}</span>}

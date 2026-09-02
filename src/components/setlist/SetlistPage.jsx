@@ -224,7 +224,10 @@ export default function SetlistPage() {
               bandMembers={bandMembers}
               key={song.id}
               song={song}
-              position={i + 1}
+              // Bolinha só faz sentido quando a ordem reflete um ranking
+              // (nota/dificuldade); em Recentes/Antigas ela mudava a cada
+              // filtro/tag/busca sem significar posição nenhuma
+              position={['balanceada', 'media', 'dificuldade'].includes(sortBy) ? i + 1 : null}
               tocandoVideo={tocandoId === song.id}
               onTocarVideo={setTocandoId}
             />

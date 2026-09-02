@@ -250,8 +250,8 @@ button { font-family: inherit; }
 .song-video-slot { margin-bottom: 8px; }
 .song-video-slot .video-inline { margin: 0; }
 .song-position {
-  font-size: 0.75rem; font-weight: 700; color: var(--text-muted);
-  min-width: 22px; height: 22px; border-radius: 6px;
+  font-size: 0.72rem; font-weight: 700; color: var(--text-muted);
+  min-width: 26px; height: 22px; padding: 0 4px; border-radius: 6px;
   background: var(--surface2); border: 1px solid var(--border);
   display: flex; align-items: center; justify-content: center;
 }
