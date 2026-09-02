@@ -640,6 +640,7 @@ export default function SugestoesPage() {
           {pendingCount > 0 && <span className="pending-badge">{pendingCount}</span>}
         </h2>
         <div className="page-header-actions">
+          <SearchLupa value={search} onChange={setSearch} placeholder="Filtrar por nome ou artista..." />
           {isAdmin && filtered.length > 0 && (
             <button className="btn-secondary" onClick={handleExport} title="Exportar para Excel">
               📊 Exportar
@@ -648,8 +649,6 @@ export default function SugestoesPage() {
           <button className="btn-primary" onClick={() => setAddModal(true)}>+ Sugerir</button>
         </div>
       </div>
-
-      <SearchLupa value={search} onChange={setSearch} placeholder="Filtrar por nome ou artista..." />
 
       {/* Filtros de status */}
       <div className="filter-bar">
