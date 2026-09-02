@@ -15,7 +15,7 @@ import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
-import { estaRejeitada, temVeto, todosVotaram, quemFalta } from '../../utils/rejeicao'
+import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
 import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { getYouTubeId } from '../../utils/youtube'
 
@@ -81,8 +81,14 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
     }
   }
 
+  const removerOpiniao = () => {
+    updateDoc(ref, { [`opinoes.${userId}`]: deleteField() })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+  }
+
   const submitOpinion = () => {
     if (!myOpinion) return
+    if (VETOS.includes(myOpinion) && !confirm('Marcar isso veta a música: quando a banda toda opinar, ela sai da fila. Confirma?')) return
     onVotou?.(sugestao.id)
     setSaving(true)
     // Chave é o userId — sobrescreve automaticamente opinião anterior
@@ -247,6 +253,17 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         )}
 
+        {existing && (
+          <p className="existing-vote">
+            Sua opinião atual:{' '}
+            <span style={{ color: OPINIONS.find((o) => o.value === existing.opinion)?.color }}>
+              {OPINIONS.find((o) => o.value === existing.opinion)?.label}
+            </span>
+            {' '}
+            <button className="btn-link-inline" onClick={removerOpiniao}>Remover</button>
+          </p>
+        )}
+
         {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) && (
           <p className="lookup-aviso">
             A banda toda já opinou — a votação desta música está encerrada.
@@ -256,14 +273,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         {sugestao.status === 'aberta' && !todosVotaram(sugestao, bandMembers) && (
           <div className="opinion-form">
             <p className="section-label">{existing ? 'Alterar minha opinião' : 'Deixar minha opinião'}</p>
-            {existing && (
-              <p className="existing-vote">
-                Sua opinião atual:{' '}
-                <span style={{ color: OPINIONS.find((o) => o.value === existing.opinion)?.color }}>
-                  {OPINIONS.find((o) => o.value === existing.opinion)?.label}
-                </span>
-              </p>
-            )}
+            <p className="filter-hint" style={{ marginTop: -4 }}>
+              Marcar ✕ ou – veta a música: quando a banda toda opinar, ela sai da fila. Dá pra voltar trocando a opinião.
+            </p>
             <div className="opinion-btns">
               {OPINIONS.map((o) => (
                 <button
