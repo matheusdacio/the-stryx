@@ -182,7 +182,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
         <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
         {copiando && (
           <p className="section-label" style={{ marginBottom: 10 }}>
-            Repertório e pauta vieram do evento de {toInputDate(ensaio?.date).split('-').reverse().join('/')}. Escolha a data nova — a presença começa em branco.
+            Músicas e pauta vieram do evento de {toInputDate(ensaio?.date).split('-').reverse().join('/')}. Escolha a data nova — a presença começa em branco.
           </p>
         )}
         <form onSubmit={handleSave}>
@@ -224,7 +224,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
             <input
               value={songSearch}
               onChange={(e) => setSongSearch(e.target.value)}
-              placeholder="Buscar música do repertório..."
+              placeholder="Buscar música do setlist..."
             />
             {searchResults.length > 0 && (
               <div className="song-search-results">

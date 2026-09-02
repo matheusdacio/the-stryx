@@ -150,7 +150,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         artist: sugestao.artist || '',
         videoUrl: sugestao.videoUrl || '',
         status: 'ensaiando',
-        notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
+        notes: sugestao.notes || `Veio da sugestão de ${sugestao.suggestedBy}`,
         tom: sugestao.tom || '',
         bpm: sugestao.bpm || null,
         tags: sugestao.tags || [],
@@ -889,7 +889,7 @@ export default function SugestoesPage() {
                         </span>
                       )}
                       {s.status === 'aprovada' ? (
-                        <span className="sug-status-tag sug-aprovada">✓ Aprovada</span>
+                        <span className="sug-status-tag sug-aprovada">✓ No setlist</span>
                       ) : estaRejeitada(s, bandMembers) ? (
                         <span className="sug-status-tag sug-rejeitada">✕ Rejeitada</span>
                       ) : temVeto(s) && (
