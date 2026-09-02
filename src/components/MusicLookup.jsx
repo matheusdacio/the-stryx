@@ -11,9 +11,23 @@ export default function MusicLookup({ titulo, onPick }) {
   const [escolhido, setEscolhido] = useState('')
   const [buscando, setBuscando] = useState(false)
   const [erro, setErro] = useState('')
+  // Consultando cobre o debounce inteiro (não só a rede) e buscadoPara
+  // marca pra qual termo a busca voltou — sem isso, "não achei" podia
+  // aparecer ainda referindo-se ao termo anterior, com opcoes desatualizada
+  const [consultando, setConsultando] = useState(false)
+  const [buscadoPara, setBuscadoPara] = useState('')
 
   const termo = (titulo || '').trim()
   const mostrar = termo.length >= 3 && termo !== escolhido && opcoes.length > 0
+  const naoAchou = termo.length >= 3 && termo !== escolhido && !consultando && buscadoPara === termo && opcoes.length === 0
+
+  // Liga "consultando" já no render (não no efeito): cobre o debounce
+  // inteiro, não só a rede que só começa 600ms depois
+  const [termoAnunciado, setTermoAnunciado] = useState(termo)
+  if (termo !== termoAnunciado && termo.length >= 3) {
+    setTermoAnunciado(termo)
+    setConsultando(true)
+  }
 
   // Espera a pessoa parar de digitar antes de bater na API
   useEffect(() => {
@@ -21,10 +35,11 @@ export default function MusicLookup({ titulo, onPick }) {
     let cancelado = false
     const timer = setTimeout(() => {
       buscarMusicas(termo)
-        .then((r) => { if (!cancelado) { setOpcoes(r); setErro('') } })
+        .then((r) => { if (!cancelado) { setOpcoes(r); setErro(''); setBuscadoPara(termo) } })
         .catch(() => { if (!cancelado) setErro('Não consegui buscar agora.') })
+        .finally(() => { if (!cancelado) setConsultando(false) })
     }, 600)
-    return () => { cancelado = true; clearTimeout(timer) }
+    return () => { cancelado = true; clearTimeout(timer); setConsultando(false) }
   }, [termo])
 
   const escolher = async (op) => {
@@ -53,8 +68,10 @@ export default function MusicLookup({ titulo, onPick }) {
     onPick(dados)
   }
 
+  if (consultando) return <p className="lookup-aviso">Procurando no catálogo…</p>
   if (erro && !mostrar) return <p className="lookup-aviso">{erro}</p>
   if (buscando) return <p className="lookup-aviso">Buscando vídeo e tom…</p>
+  if (naoAchou) return <p className="lookup-aviso">Não achei no catálogo — preenche na mão.</p>
   if (!mostrar) return null
 
   return (
