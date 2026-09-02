@@ -9,6 +9,10 @@ const BADGE = 'https://matheusdacio.github.io/the-stryx/badge-96.png'
 // o push anunciou não tem opinião ainda, então a ordenação padrão jogaria
 // ela pro fim da lista
 const LINK_NOVA_SUGESTAO = 'https://matheusdacio.github.io/the-stryx/#/sugestoes?ordem=recentes&naovotei=1'
+const LINK_ENSAIOS = 'https://matheusdacio.github.io/the-stryx/#/ensaios'
+
+const formatarData = (d) =>
+  d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_STRYX)
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
@@ -96,7 +100,36 @@ async function main() {
     await batch.commit()
   }
 
+  // Evento novo, cancelado ou remarcado — cada item já é a mensagem
+  // inteira (sem agrupar, ao contrário da sugestão)
   for (const item of outros) {
+    const dados = item.data()
+    const data = dados.data?.toDate ? dados.data.toDate() : new Date(dados.data)
+    const tipoLabel = dados.tipoEvento === 'apresentacao' ? 'Apresentação' : 'Ensaio'
+    const onde = dados.local ? ` em ${dados.local}` : ''
+
+    if (dados.tipo === 'novo_evento' || dados.tipo === 'evento_remarcado') {
+      const titulo = dados.tipo === 'novo_evento' ? `${tipoLabel} marcado 🎸` : `${tipoLabel} remarcado 🗓`
+      const corpo = dados.tipo === 'novo_evento'
+        ? `${formatarData(data)}${onde}. Você vai?`
+        : `Agora é ${formatarData(data)}${onde}.`
+      for (const dest of tokens) {
+        await enviar(dest.token, titulo, corpo, LINK_ENSAIOS)
+      }
+      console.log(`${dados.tipo} (${dados.ensaioId}): ${tokens.length} notificações enviadas.`)
+    } else if (dados.tipo === 'evento_cancelado') {
+      const titulo = `${tipoLabel} cancelado ✕`
+      const corpo = `${formatarData(data)}${onde} foi cancelado.`
+      // Só quem tinha confirmado presença precisa saber que não precisa mais ir
+      const ensaioSnap = await db.collection('ensaios').doc(dados.ensaioId).get()
+      const presenca = ensaioSnap.exists ? (ensaioSnap.data().presenca || {}) : {}
+      const destinatarios = tokens.filter((t) => presenca[t.uid]?.status === 'vai')
+      for (const dest of destinatarios) {
+        await enviar(dest.token, titulo, corpo, LINK_ENSAIOS)
+      }
+      console.log(`evento_cancelado (${dados.ensaioId}): ${destinatarios.length} notificações enviadas.`)
+    }
+
     await item.ref.update({ processado: true })
   }
 

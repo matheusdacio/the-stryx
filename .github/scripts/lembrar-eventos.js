@@ -83,11 +83,14 @@ async function main() {
     let titulo = ''
     let corpo = ''
 
-    if (dias === 3 && !marcos.d3) {
+    // <=3 (não só ===3): evento marcado com menos de 3 dias de antecedência
+    // nunca batia exatamente nessa janela e quem não respondia não recebia
+    // lembrete nenhum antes do D-1 (que só avisa quem já confirmou)
+    if (dias <= 3 && dias >= 1 && !marcos.d3) {
       // Só quem não respondeu — quem já disse que vai (ou que não vai) fica em paz
       chave = 'd3'
       alvos = todosUids.filter((uid) => !presenca[uid])
-      titulo = `${tipo} em 3 dias 🗓`
+      titulo = `${tipo} em ${dias} dia${dias === 1 ? '' : 's'} 🗓`
       corpo = `${formatarData(data)}${onde}. Você vai? Confirme sua presença.`
     } else if (dias === 1 && !marcos.d1) {
       chave = 'd1'

@@ -9,6 +9,21 @@ function toInputDate(ts) {
   return d.toISOString().slice(0, 10)
 }
 
+// Evento novo, cancelado ou remarcado — só quem não abre o app dependia
+// disso pra saber. Fila e cron já existem (mesmo caminho da sugestão nova);
+// falha aqui não deve travar nem avisar quem estava salvando o evento
+function enfileirarAviso(tipo, ensaioId, data) {
+  addDoc(collection(db, 'notification_queue'), {
+    tipo,
+    ensaioId,
+    data: data.date,
+    tipoEvento: data.type,
+    local: data.location,
+    processado: false,
+    criadoEm: serverTimestamp(),
+  }).catch(() => {})
+}
+
 // `copiando` reaproveita um evento como molde: vem o repertório, a pauta (com
 // os itens desmarcados), local e tipo — mas não a data nem a presença
 export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
@@ -141,10 +156,20 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
 
       if (Object.keys(mudou).length) {
         updateDoc(doc(db, 'ensaios', ensaio.id), mudou).catch(erro)
+        // Só quem não abre o app dependia disso pra saber que o ensaio
+        // sumiu ou mudou de dia — cancelar tem prioridade sobre remarcar
+        // (não faz sentido avisar as duas coisas na mesma edição)
+        if (mudou.status === 'cancelado') {
+          enfileirarAviso('evento_cancelado', ensaio.id, data)
+        } else if (mudou.date && data.status !== 'cancelado') {
+          enfileirarAviso('evento_remarcado', ensaio.id, data)
+        }
       }
     } else {
       // Evento novo (inclusive cópia) nasce sem presença
-      addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() }).catch(erro)
+      addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() })
+        .then((ref) => enfileirarAviso('novo_evento', ref.id, data))
+        .catch(erro)
     }
     onClose()
   }
