@@ -11,6 +11,7 @@ import MusicLookup from '../MusicLookup'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { calcSongScore, chaveMusica } from '../../utils/score'
+import { estaRejeitada, temVeto, todosVotaram } from '../../utils/rejeicao'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -32,16 +33,6 @@ const DIFFICULTIES = [
 const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-
-// Opiniões que barram a música. Basta uma pessoa marcar uma delas pra
-// sugestão contar como rejeitada — quem não curte vai ter que tocar
-const VETOS = ['fora', 'nao_gosto']
-const temVeto = (sugestao) =>
-  Object.values(sugestao.opinoes || {}).some((v) => VETOS.includes(v.opinion))
-
-// Rejeitada por veto de alguém ou pela decisão do admin
-const estaRejeitada = (sugestao) =>
-  sugestao.status === 'rejeitada' || temVeto(sugestao)
 
 // Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
 // votado (usado no chip do card). avg/max null se ninguém votou
@@ -169,11 +160,6 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
     onClose()
   }
 
-  const reject = async () => {
-    if (!confirm(`Rejeitar a sugestão "${sugestao.title}"?`)) return
-    await updateDoc(ref, { status: 'rejeitada' })
-    onClose()
-  }
 
   const reopen = () => updateDoc(ref, { status: 'aberta' })
 
@@ -251,8 +237,10 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         )}
 
         {sugestao.status === 'aberta' && temVeto(sugestao) && (
-          <div className="sug-status-banner sug-rejeitada">
-            ✕ Rejeitada — alguém marcou "Não curti" ou "Não faz sentido". As opiniões continuam abertas.
+          <div className={`sug-status-banner ${todosVotaram(sugestao, bandMembers) ? 'sug-rejeitada' : ''}`}>
+            {todosVotaram(sugestao, bandMembers)
+              ? '✕ Rejeitada — a banda toda opinou e alguém marcou "Não curti" ou "Não faz sentido"'
+              : '⚠️ Tem veto, mas ainda falta gente votar — segue em aberto até todos opinarem'}
           </div>
         )}
 
@@ -319,7 +307,6 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             <p className="section-label">Decisão final</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-approve" onClick={approve}>➤ Enviar pro setlist</button>
-              <button className="btn-reject" onClick={reject}>✕ Rejeitar</button>
             </div>
           </div>
         )}
@@ -586,6 +573,7 @@ export default function SugestoesPage() {
     return onSnapshot(collection(db, 'members'), (snap) =>
       setBandMembers(snap.docs.map((d) => ({
         name: d.data().name,
+        aliases: d.data().aliases || [],
         firebaseUid: d.data().firebaseUid || null,
       })))
     )
@@ -609,15 +597,15 @@ export default function SugestoesPage() {
 
   const noFiltro = (s) => {
     if (filter === 'all') return true
-    if (filter === 'rejeitada') return estaRejeitada(s)
-    return s.status === 'aberta' && !estaRejeitada(s)
+    if (filter === 'rejeitada') return estaRejeitada(s, bandMembers)
+    return s.status === 'aberta' && !estaRejeitada(s, bandMembers)
   }
 
   const byStatus = visiveis.filter(noFiltro)
     .filter((s) => matchesSearch(search, s.title, s.artist))
   const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
   const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
-  const pendingCount = visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s)).length
+  const pendingCount = visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
@@ -685,8 +673,8 @@ export default function SugestoesPage() {
           const count = f.value === 'all'
             ? visiveis.length
             : f.value === 'rejeitada'
-              ? visiveis.filter(estaRejeitada).length
-              : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s)).length
+              ? visiveis.filter((s) => estaRejeitada(s, bandMembers)).length
+              : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
           return (
             <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => setFilter(f.value)}>
               {f.label} <span className="count">{count}</span>
@@ -740,7 +728,7 @@ export default function SugestoesPage() {
             return (
               <div
                 key={s.id}
-                className={`sug-card sug-card-${estaRejeitada(s) ? 'rejeitada' : s.status}`}
+                className={`sug-card sug-card-${estaRejeitada(s, bandMembers) ? 'rejeitada' : s.status}`}
                 onClick={() => setModal(s)}
               >
                 {videoId && (
