@@ -281,8 +281,8 @@ button { font-family: inherit; }
 .order-btns { display: flex; flex-direction: column; gap: 1px; }
 .btn-order {
   background: none; border: none; color: var(--text-muted);
-  cursor: pointer; font-size: 0.6rem; line-height: 1;
-  padding: 1px 3px; border-radius: 3px; transition: color 0.2s;
+  cursor: pointer; font-size: 0.9rem; line-height: 1;
+  padding: 6px 8px; min-width: 32px; min-height: 28px; border-radius: 3px; transition: color 0.2s;
 }
 .btn-order:hover:not(:disabled) { color: var(--text); }
 .btn-order:disabled { opacity: 0.2; cursor: not-allowed; }
@@ -515,18 +515,29 @@ button { font-family: inherit; }
   display: flex; align-items: center; gap: 8px;
   padding: 8px 10px; border-radius: var(--radius-sm);
   background: var(--surface2); border: 1px solid var(--border);
-  font-size: 0.82rem; cursor: grab; transition: border-color 0.15s;
+  font-size: 0.82rem; transition: border-color 0.15s;
 }
 .event-setlist-item:hover { border-color: var(--border-strong); }
-.event-setlist-item:active { cursor: grabbing; }
-.drag-handle { color: var(--text-muted); opacity: 0.5; font-size: 0.9rem; cursor: grab; }
+.event-setlist-item.dragging {
+  opacity: 0.95; border-color: var(--red);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
+}
+/* Só a alça arrasta (não a linha inteira) — touch-action:none pra segurar
+   e mover no celular sem rolar a página; user-select evita o menu de
+   seleção de texto do iOS grudando no toque longo */
+.drag-handle {
+  color: var(--text-muted); opacity: 0.5; font-size: 0.9rem; cursor: grab;
+  touch-action: none; user-select: none; -webkit-touch-callout: none;
+  padding: 4px;
+}
+.drag-handle:active { cursor: grabbing; }
 .event-setlist-pos {
   font-weight: 700; font-size: 0.75rem; color: var(--text-muted);
   min-width: 18px; text-align: center;
 }
 .event-setlist-title { flex: 1; min-width: 0; }
 .event-setlist-bpm { color: var(--text-muted); font-size: 0.75rem; }
-.event-setlist-actions { display: flex; gap: 3px; align-items: center; }
+.event-setlist-actions { display: flex; gap: 6px; align-items: center; }
 
 /* Lista numerada de músicas no card do evento */
 .event-songs-list { margin: 0; padding-left: 22px; font-size: 0.82rem; display: flex; flex-direction: column; gap: 3px; }
@@ -1143,17 +1154,6 @@ button { font-family: inherit; }
   cursor: pointer; font-size: 0.75rem; padding: 2px 4px; flex-shrink: 0;
 }
 .search-clear:hover { color: var(--text); }
-
-/* ─── DRAG & DROP no setlist ─── */
-.song-position.drag-handle {
-  cursor: grab;
-  touch-action: none; /* segurar e arrastar no celular sem rolar a página */
-}
-.song-position.drag-handle:active { cursor: grabbing; }
-.dragging .song-card {
-  opacity: 0.95; border-color: var(--red);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
-}
 
 .member-check-orphan {
   font-size: 0.7rem;

@@ -1,5 +1,11 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
+import {
+  DndContext, closestCenter,
+  PointerSensor, TouchSensor, useSensor, useSensors,
+} from '@dnd-kit/core'
+import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
+import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
 import { menosDominadas } from '../../utils/dominio'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
@@ -8,6 +14,23 @@ function toInputDate(ts) {
   if (!ts) return ''
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   return d.toISOString().slice(0, 10)
+}
+
+// Wrapper sortable: liga a linha do repertório do evento ao dnd-kit, com a
+// alça ⠿ arrastável por toque (PointerSensor/TouchSensor abaixo)
+function SortableSetlistItem({ id, children }) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    ...(isDragging ? { zIndex: 5, position: 'relative' } : {}),
+  }
+  return (
+    <div ref={setNodeRef} style={style} className={`event-setlist-item ${isDragging ? 'dragging' : ''}`}>
+      <span className="drag-handle" title="Arrastar para reordenar" {...attributes} {...listeners}>⠿</span>
+      {children}
+    </div>
+  )
 }
 
 // Evento novo, cancelado ou remarcado — só quem não abre o app dependia
@@ -49,7 +72,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const [avisoCruas, setAvisoCruas] = useState('')
   const [saving, setSaving] = useState(false)
   const [mexeu, setMexeu] = useState(false)
-  const dragIndex = useRef(null)
+
+  // Pointer: arrasta depois de mover 6px (clique/toque normal continua
+  // funcionando). Touch: segurar 250ms antes de arrastar (rolar a página
+  // continua funcionando sem disparar o arrasto sem querer)
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(TouchSensor, { activationConstraint: { delay: 250, tolerance: 8 } }),
+  )
 
   // Carrega músicas do repertório
   useEffect(() => {
@@ -121,20 +151,15 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     setSetlist(next)
   }
 
-  // Drag and drop (desktop)
-  const handleDragStart = (i) => { dragIndex.current = i }
-  const handleDragOver = (e, i) => {
-    e.preventDefault()
-    const from = dragIndex.current
-    if (from === null || from === i) return
+  // Arrastar e soltar (toque ou mouse) — dnd-kit, ids são os da música
+  const handleDragEnd = ({ active, over }) => {
+    if (!over || active.id === over.id) return
+    const oldIndex = setlist.findIndex((s) => s.id === active.id)
+    const newIndex = setlist.findIndex((s) => s.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
     setMexeu(true)
-    const next = [...setlist]
-    const [moved] = next.splice(from, 1)
-    next.splice(i, 0, moved)
-    dragIndex.current = i
-    setSetlist(next)
+    setSetlist(arrayMove(setlist, oldIndex, newIndex))
   }
-  const handleDragEnd = () => { dragIndex.current = null }
 
   const searchResults = songSearch.trim()
     ? allSongs.filter((s) =>
@@ -266,31 +291,27 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
             </div>
 
             {setlist.length > 0 && (
-              <div className="event-setlist">
-                {setlist.map((s, i) => (
-                  <div
-                    key={s.id}
-                    className="event-setlist-item"
-                    draggable
-                    onDragStart={() => handleDragStart(i)}
-                    onDragOver={(e) => handleDragOver(e, i)}
-                    onDragEnd={handleDragEnd}
-                  >
-                    <span className="drag-handle" title="Arrastar para reordenar">⠿</span>
-                    <span className="event-setlist-pos">{i + 1}</span>
-                    <span className="event-setlist-title">
-                      {s.title}
-                      {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                      {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                    </span>
-                    <span className="event-setlist-actions">
-                      <button type="button" className="btn-order" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
-                      <button type="button" className="btn-order" onClick={() => moveSong(i, 1)} disabled={i === setlist.length - 1}>▼</button>
-                      <button type="button" className="btn-remove" onClick={() => removeSong(i)}>✕</button>
-                    </span>
+              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+                <SortableContext items={setlist.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                  <div className="event-setlist">
+                    {setlist.map((s, i) => (
+                      <SortableSetlistItem key={s.id} id={s.id}>
+                        <span className="event-setlist-pos">{i + 1}</span>
+                        <span className="event-setlist-title">
+                          {s.title}
+                          {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                          {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                        </span>
+                        <span className="event-setlist-actions">
+                          <button type="button" className="btn-order" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
+                          <button type="button" className="btn-order" onClick={() => moveSong(i, 1)} disabled={i === setlist.length - 1}>▼</button>
+                          <button type="button" className="btn-remove" onClick={() => removeSong(i)}>✕</button>
+                        </span>
+                      </SortableSetlistItem>
+                    ))}
                   </div>
-                ))}
-              </div>
+                </SortableContext>
+              </DndContext>
             )}
           </div>
 
