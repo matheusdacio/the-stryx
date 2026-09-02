@@ -5,6 +5,7 @@ import SongCard from './SongCard'
 import { notasPorMusica } from '../../utils/score'
 import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
+import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { calcDifficulty } from '../../utils/dificuldade'
@@ -48,6 +49,7 @@ export default function SetlistPage() {
   const [sortBy, setSortBy] = useState('recentes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
+  const [tocando, setTocando] = useState(false)
 
   useEffect(() => {
     const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
@@ -99,6 +101,9 @@ export default function SetlistPage() {
     if (db_ === null) return -1
     return da - db_
   })
+
+  // Toca o que está na tela: filtro, tag, busca e ordenação valem pra fila
+  const comVideo = displayed.filter((s) => s.videoUrl)
 
   const counts = FILTERS.reduce((acc, f) => {
     acc[f.value] = f.value === 'all'
@@ -164,6 +169,15 @@ export default function SetlistPage() {
               ✕ limpar
             </button>
           )}
+        </div>
+      )}
+
+      {comVideo.length > 0 && (
+        <div style={{ marginBottom: 14 }}>
+          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setTocando(!tocando)}>
+            {tocando ? '■ Parar' : `▶ Tocar as ${comVideo.length} músicas da lista`}
+          </button>
+          {tocando && <SetPlayer setlist={comVideo} onFechar={() => setTocando(false)} />}
         </div>
       )}
 
