@@ -83,7 +83,7 @@ function OpinionSummary({ opinoes }) {
   )
 }
 
-function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
+function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers }) {
   const [myOpinion, setMyOpinion] = useState(null)
   const [comment, setComment] = useState('')
   const [saving, setSaving] = useState(false)
@@ -130,16 +130,24 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
   }
 
   const approve = async () => {
-    if (!confirm(`Aprovar "${sugestao.title}" e mover pro setlist como "Ensaiando"?`)) return
+    if (!confirm(`Enviar "${sugestao.title}" pro setlist?`)) return
+
+    // Música nova entra crua pra todo mundo: ninguém ensaiou ainda. Cada um
+    // muda o próprio voto no card do setlist quando pegar a música
+    const dominio = {}
+    bandMembers.forEach((m) => {
+      if (!m.firebaseUid) return
+      dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString() }
+    })
+
     await addDoc(collection(db, 'songs'), {
+      dominio: { ...dominio, ...(sugestao.dominio || {}) },
       title: sugestao.title,
       artist: sugestao.artist || '',
       videoUrl: sugestao.videoUrl || '',
       status: 'ensaiando',
       notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
       tom: sugestao.tom || '',
-      // Votos de domínio guardados enquanto a música esteve fora do setlist
-      ...(sugestao.dominio ? { dominio: sugestao.dominio } : {}),
       bpm: sugestao.bpm || null,
       tags: sugestao.tags || [],
       // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
@@ -294,7 +302,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           <div className="admin-controls">
             <p className="section-label">Decisão final</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-approve" onClick={approve}>✓ Aprovar e mover pro setlist</button>
+              <button className="btn-approve" onClick={approve}>➤ Enviar pro setlist</button>
               <button className="btn-reject" onClick={reject}>✕ Rejeitar</button>
             </div>
           </div>
@@ -398,7 +406,6 @@ function AddSugestaoModal({ onClose, userId, userName }) {
 const FILTERS = [
   { value: 'all',       label: 'Todas' },
   { value: 'aberta',    label: 'Em aberto' },
-  { value: 'aprovada',  label: 'Aprovadas' },
   { value: 'rejeitada', label: 'Rejeitadas' },
 ]
 
@@ -533,6 +540,7 @@ export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
   const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
+  const [bandMembers, setBandMembers] = useState([])
   const [filter, setFilter] = useState('aberta')
   const [sortBy, setSortBy] = useState('balanceada')
   const [onlyUnvoted, setOnlyUnvoted] = useState(false)
@@ -556,6 +564,15 @@ export default function SugestoesPage() {
       })
       setNoSetlist({ ids, chaves })
     })
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'members'), (snap) =>
+      setBandMembers(snap.docs.map((d) => ({
+        name: d.data().name,
+        firebaseUid: d.data().firebaseUid || null,
+      })))
+    )
   }, [])
 
   useEffect(() => {
@@ -752,6 +769,7 @@ export default function SugestoesPage() {
           sugestao={modal}
           onClose={() => setModal(null)}
           isAdmin={isAdmin}
+          bandMembers={bandMembers}
           userId={user.uid}
           userName={user.displayName}
         />

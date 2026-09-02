@@ -14,6 +14,8 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 ---
 
 ## [1.29.0] — 2026-09-02
+- **Setlist abre ordenado por 🕐 Recentes**, que passou a ser a primeira opção da barra. O "Padrão" continua disponível e é nele que o arrastar pra reordenar funciona
+- **Sugestões:** o filtro "Aprovadas" saiu — quem foi pro setlist já não aparece na lista — e o botão virou **"➤ Enviar pro setlist"**. Ao enviar, a música nasce marcada como **Crua para todos os membros**, já que ninguém ensaiou ainda; cada um muda o próprio voto depois
 - **Ordenações no setlist**, iguais às das sugestões: ⚖️ Melhores e fáceis (nota com desconto pela dificuldade), ⭐ Média, 🎯 Dificuldade, 📅 Antigas e 🕐 Recentes, além do Padrão que mantém a ordem manual e o arrastar. Nas ordenações por nota, música sem nenhuma avaliação vai pro fim
 - **Card do setlist mais limpo**: BPM e contagem de votos saem do resumo (seguem visíveis ao abrir a música), e o antigo ✎ apagadinho virou um botão **✏️ Editar** legível
 - Nas sugestões, o **"🗳 Não votei" foi pra barra de filtros**, ao lado de Rejeitadas, que é o que ele de fato é

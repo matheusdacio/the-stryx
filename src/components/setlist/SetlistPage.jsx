@@ -26,12 +26,12 @@ const FILTERS = [
 const nivelDe = (song) => dominioPorPeso(calcDominio(song.dominio).pior)?.value || 'sem_voto'
 
 const SORTS = [
+  { value: 'recentes',    label: '🕐 Recentes' },
   { value: 'manual',      label: 'Padrão' },
   { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
   { value: 'media',       label: '⭐ Média' },
   { value: 'dificuldade', label: '🎯 Dificuldade' },
   { value: 'data',        label: '📅 Antigas' },
-  { value: 'recentes',    label: '🕐 Recentes' },
 ]
 
 // Peso de cada nível de dificuldade (mesma ordem do "Como tá pra você?")
@@ -73,7 +73,9 @@ export default function SetlistPage() {
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
-  const [ensaiandoSort, setEnsaiandoSort] = useState('manual')
+  // Recentes por padrão: música nova é a que a banda está mexendo agora.
+  // "Padrão" continua na lista porque é a única em que dá pra arrastar
+  const [sortBy, setSortBy] = useState('recentes')
   const [search, setSearch] = useState('')
   const [showModal, setShowModal] = useState(false)
 
@@ -147,7 +149,7 @@ export default function SetlistPage() {
     matchesSearch(search, s.title, s.artist)
   )
 
-  const sortActive = ensaiandoSort !== 'manual'
+  const sortActive = sortBy !== 'manual'
 
   // Arrastar vale em qualquer filtro/tag/busca: soltar em cima de uma música
   // move a arrastada pra posição global dela. Só desliga nas ordenações
@@ -168,10 +170,10 @@ export default function SetlistPage() {
     const semDesconto = () => 1
 
     displayed = [...filtered].sort((a, b) => {
-      if (ensaiandoSort === 'balanceada') return porNota(facilidade)(a, b)
-      if (ensaiandoSort === 'media') return porNota(semDesconto)(a, b)
-      if (ensaiandoSort === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
-      if (ensaiandoSort === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
+      if (sortBy === 'balanceada') return porNota(facilidade)(a, b)
+      if (sortBy === 'media') return porNota(semDesconto)(a, b)
+      if (sortBy === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
+      if (sortBy === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
       // Dificuldade: mais fácil → mais difícil; sem votos vai pro fim
       const da = avgDifficulty(a)
       const db_ = avgDifficulty(b)
@@ -218,8 +220,8 @@ export default function SetlistPage() {
           {SORTS.map((s) => (
             <button
               key={s.value}
-              className={`btn-sort ${ensaiandoSort === s.value ? 'active' : ''}`}
-              onClick={() => setEnsaiandoSort(s.value)}
+              className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
+              onClick={() => setSortBy(s.value)}
             >
               {s.label}
             </button>
