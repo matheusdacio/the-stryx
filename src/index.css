@@ -1357,3 +1357,12 @@ button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer;
 @media (max-width: 480px) {
   input, select, textarea { font-size: 16px; }
 }
+
+/* Reduz movimento pra quem pediu no sistema (enjoo, vestibular, fotossensibilidade) */
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+}
