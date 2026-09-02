@@ -101,15 +101,23 @@ export async function verificarIntegridade() {
     `${musicas.filter((s) => s.sugestaoId).length} músicas com vínculo íntegro`
   )
 
+  // Duas sugestões com o mesmo título+artista deixam a nota da música do
+  // setlist ambígua: ela pode vir de qualquer uma das duas
   const porChave = {}
   sugestoes.forEach((sug) => {
     const k = chaveMusica(sug.title, sug.artist)
-    porChave[k] = (porChave[k] || 0) + 1
+    porChave[k] = [...(porChave[k] || []), sug]
   })
   add(
     'Sem ambiguidade de título + artista',
-    musicas.filter((s) => porChave[chaveMusica(s.title, s.artist)] > 1)
-      .map((s) => `${s.title} casa com mais de uma sugestão`),
+    musicas.flatMap((s) => {
+      const colidem = porChave[chaveMusica(s.title, s.artist)] || []
+      if (colidem.length < 2) return []
+      const quais = colidem
+        .map((sug) => `${sug.status}, ${Object.keys(sug.opinoes || {}).length} voto(s)`)
+        .join(' / ')
+      return [`${s.title}: ${colidem.length} sugestões (${quais})`]
+    }),
     'Cada música casa com no máximo uma sugestão'
   )
 
