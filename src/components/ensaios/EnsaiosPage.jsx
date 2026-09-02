@@ -289,7 +289,12 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
           <div className="ensaio-row-actions">
             {hasSetlist && (
-              <button className="btn-primary" onClick={() => onPerform(ensaio)}>🎤 Modo palco</button>
+              <button
+                className="btn-primary"
+                onClick={() => { setTocando(false); onPerform(ensaio) }}
+              >
+                🎤 Modo palco
+              </button>
             )}
             {hasSetlist && (
               <button className="btn-secondary" onClick={() => setTocando(!tocando)}>
@@ -339,8 +344,6 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
 
-      {tocando && <SetPlayer setlist={ensaio.setlist} />}
-
       {hasSetlist && <SetlistPreview setlist={ensaio.setlist} />}
 
       {ensaio.pauta?.length > 0 && (
@@ -355,9 +358,15 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         </div>
       )}
 
+      {tocando && <SetPlayer setlist={ensaio.setlist} />}
+
       <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
         {hasSetlist && (
-          <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => onPerform(ensaio)}>
+          <button
+            className="btn-primary"
+            style={{ fontSize: '0.8rem' }}
+            onClick={() => { setTocando(false); onPerform(ensaio) }}
+          >
             🎤 Modo palco
           </button>
         )}
