@@ -1254,3 +1254,20 @@ button { font-family: inherit; }
 .lookup-opcao span { color: var(--text-muted); }
 .lookup-ano { font-size: 0.75rem; }
 .lookup-aviso { font-size: 0.76rem; color: var(--text-muted); margin: 4px 0 10px; }
+
+/* Trazer as músicas menos dominadas pro evento */
+.trazer-cruas {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  flex-wrap: wrap;
+  margin: 10px 0;
+  font-size: 0.8rem;
+  color: var(--text-muted);
+}
+.trazer-cruas input {
+  width: 58px;
+  text-align: center;
+}
+.trazer-cruas .btn-secondary { font-size: 0.78rem; padding: 5px 12px; }
+.trazer-cruas-aviso { color: var(--green); }

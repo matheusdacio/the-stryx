@@ -13,6 +13,10 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.29.0] — 2026-09-02
+- **Domínio da música**, votado por cada membro no card do setlist: **Dominada**, **Quase lá** ou **Crua** (clicar de novo desfaz). O chip do card mostra o **pior voto** — se uma pessoa está crua, a banda precisa ensaiar, mesmo que o resto esteja tranquilo. Os votos viajam junto se a música for pras sugestões e voltar
+- **"Trazer as N músicas menos dominadas"** no evento: escolhe a quantidade e o app puxa pro repertório do ensaio as músicas mais cruas, ignorando as que já estão no evento. A ordem é pelo pior voto, depois pela média e depois por quem tem mais votos. Música sem nenhum voto fica de fora: não há indício de que precise de ensaio
+
 ## [1.28.0] — 2026-09-02
 - **Presença por pessoa nos eventos**: no lugar da lista de checkboxes onde qualquer um marcava por todo mundo, cada pessoa logada responde **Vou / Não vou** no próprio card do evento (clicar de novo desfaz). O card mostra quem vai, quem não vai e quem ainda não respondeu, e o cabeçalho traz os contadores ✓/✕
 - _fix:_ a marcação de "ensaiada" e a pergunta "Você vai?" não aparecem mais em evento fora de hora — a marcação começa no dia do evento, a pergunta desaparece quando a data passa, e o resumo de presença passa a falar no passado ("Foram" / "Não foram")

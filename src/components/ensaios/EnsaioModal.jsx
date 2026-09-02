@@ -1,6 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { menosDominadas } from '../../utils/dominio'
 
 function toInputDate(ts) {
   if (!ts) return ''
@@ -28,6 +29,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const [setlist, setSetlist] = useState(ensaio?.setlist || [])
   const [newItem, setNewItem] = useState('')
   const [songSearch, setSongSearch] = useState('')
+  const [quantasCruas, setQuantasCruas] = useState(5)
+  const [avisoCruas, setAvisoCruas] = useState('')
   const [saving, setSaving] = useState(false)
   const dragIndex = useRef(null)
 
@@ -50,6 +53,23 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const removePauta = (i) => setPauta(pauta.filter((_, idx) => idx !== i))
 
   // ── Setlist do evento ───────────────────────────────────────────────
+  // Puxa pro ensaio o que a banda marcou como menos dominado. Já ignora o
+  // que está no evento e quem ainda não recebeu nenhum voto
+  const trazerCruas = () => {
+    const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, setlist.map((s) => s.id))
+    if (!escolhidas.length) {
+      setAvisoCruas('Nenhuma música com voto de domínio fora deste evento.')
+      return
+    }
+    setSetlist([...setlist, ...escolhidas.map((song) => ({
+      id: song.id,
+      title: song.title,
+      artist: song.artist || '',
+      bpm: song.bpm || null,
+    }))])
+    setAvisoCruas(`${escolhidas.length} ${escolhidas.length === 1 ? 'música adicionada' : 'músicas adicionadas'}.`)
+  }
+
   const addSong = (song) => {
     if (setlist.some((s) => s.id === song.id)) return
     setSetlist([...setlist, {
@@ -172,6 +192,20 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
                 ))}
               </div>
             )}
+            <div className="trazer-cruas">
+              <span>Trazer as</span>
+              <input
+                type="number"
+                min="1"
+                max="30"
+                value={quantasCruas}
+                onChange={(e) => setQuantasCruas(e.target.value)}
+              />
+              <span>músicas menos dominadas</span>
+              <button type="button" className="btn-secondary" onClick={trazerCruas}>+ Trazer</button>
+              {avisoCruas && <span className="trazer-cruas-aviso">{avisoCruas}</span>}
+            </div>
+
             {setlist.length > 0 && (
               <div className="event-setlist">
                 {setlist.map((s, i) => (

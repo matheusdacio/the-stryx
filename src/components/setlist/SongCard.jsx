@@ -4,6 +4,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
+import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 
 const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
 
@@ -61,6 +62,24 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
     }
   }
 
+  // Domínio — o quanto cada um se sente pronto nesta música
+  const dominio = song.dominio || {}
+  const myDominio = dominio[user.uid]?.level
+  const voteDominio = (level) => {
+    if (myDominio === level) {
+      updateDoc(ref, { [`dominio.${user.uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`dominio.${user.uid}`]: {
+          userName: user.displayName || user.email,
+          level,
+          at: new Date().toISOString(),
+        },
+      })
+    }
+  }
+  const piorDominio = dominioPorPeso(calcDominio(dominio).pior)
+
   const changeStatus = (status) => updateDoc(ref, { status })
   const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
   const saveMeta = async () => {
@@ -103,6 +122,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           ...(song.notes ? { notes: song.notes } : {}),
           ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
           ...(song.tom ? { tom: song.tom } : {}),
+          ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
           bpm: song.bpm || null,
           tags: song.tags || [],
           dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldadeSug },
@@ -119,6 +139,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         description: '',
         notes: song.notes || '',
         tom: song.tom || '',
+        dominio: song.dominio || {},
         bpm: song.bpm || null,
         tags: song.tags || [],
         status: 'aberta',
@@ -179,6 +200,11 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           {song.status === 'ensaiando' && diffCount > 0 && (
             <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
           )}
+          {piorDominio && (
+            <span className="mini-chip" style={{ color: piorDominio.color, borderColor: piorDominio.color }}>
+              💪 {piorDominio.label}
+            </span>
+          )}
           {song.notes && <span className="mini-chip">📝</span>}
         </div>
       )}
@@ -228,6 +254,37 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           )}
         </div>
       )}
+
+      {/* Domínio — em qualquer status: serve pra escolher o que ensaiar */}
+      <div className="difficulty-section">
+        <p className="section-label">Você se sente pronto nessa?</p>
+        <div className="difficulty-btns">
+          {DOMINIOS.map((d) => (
+            <button
+              key={d.value}
+              className={`btn-diff ${myDominio === d.value ? 'active' : ''}`}
+              style={myDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              onClick={() => voteDominio(d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+
+        {Object.keys(dominio).length > 0 && (
+          <div className="difficulty-summary">
+            {DOMINIOS.map((d) => {
+              const voters = Object.values(dominio).filter((v) => v.level === d.value)
+              if (!voters.length) return null
+              return (
+                <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                  {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
 
       {/* BPM, metrônomo e vídeo */}
       <div className="song-meta-bar">

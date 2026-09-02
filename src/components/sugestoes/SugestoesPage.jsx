@@ -143,6 +143,8 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
       status: 'ensaiando',
       notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
       tom: sugestao.tom || '',
+      // Votos de domínio guardados enquanto a música esteve fora do setlist
+      ...(sugestao.dominio ? { dominio: sugestao.dominio } : {}),
       bpm: sugestao.bpm || null,
       tags: sugestao.tags || [],
       // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
