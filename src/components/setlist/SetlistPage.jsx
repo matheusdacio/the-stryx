@@ -7,6 +7,7 @@ import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { calcDifficulty } from '../../utils/dificuldade'
 
 // O setlist é organizado pelo domínio da banda, no pior cenário votado:
 // basta uma pessoa insegura pra música contar como precisando de ensaio
@@ -27,23 +28,14 @@ const SORTS = [
   { value: 'data',        label: '📅 Antigas' },
 ]
 
-// Peso de cada nível de dificuldade (mesma ordem do "Como tá pra você?")
-// 'nao_vi' não está aqui de propósito: é neutro e não entra na média.
-const DIFF_WEIGHT = { de_boa: 1, ok: 2, sofrendo: 3, travado: 4, moises: 5 }
-
-// Média de dificuldade da banda; null se ninguém deu um voto que conte
-function avgDifficulty(song) {
-  const votes = Object.values(song.dificuldade || {}).filter((v) => DIFF_WEIGHT[v.level])
-  if (!votes.length) return null
-  return votes.reduce((acc, v) => acc + DIFF_WEIGHT[v.level], 0) / votes.length
-}
+const avgDifficulty = (song) => calcDifficulty(song.dificuldade).avg
 
 // Desconto pela dificuldade, no mesmo espírito da ordenação das sugestões:
-// a nota manda e a dificuldade só penaliza. De boa não desconta nada,
-// "Moisés" desconta 30%. Sem voto conta como o meio da escala.
+// a nota manda e a dificuldade só penaliza. Fácil não desconta, Difícil
+// desconta 30%. Sem voto conta como o meio da escala.
 function facilidade(song) {
-  const peso = avgDifficulty(song) ?? 3
-  return 1 - (peso - 1) * 0.075
+  const peso = avgDifficulty(song) ?? 2
+  return 1 - (peso - 1) * 0.15
 }
 
 export default function SetlistPage() {

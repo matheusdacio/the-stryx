@@ -6,28 +6,8 @@ import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { DIFFICULTIES } from '../../utils/dificuldade'
 
-
-// Níveis de dificuldade (votados por cada membro nas músicas em Ensaiando)
-// 'nao_vi' é neutro: não conta na média de dificuldade (ver avgDifficulty na SetlistPage)
-const DIFFICULTIES = [
-  { value: 'nao_vi',   label: 'Ainda não vi',       short: 'Não viu',    color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-  { value: 'de_boa',   label: 'De boa',             short: 'De boa',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ok',       label: 'OK',                 short: 'OK',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'sofrendo', label: 'Estou sofrendo',     short: 'Sofrendo',   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'travado',  label: 'Preciso de um tempo', short: 'Travado',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  { value: 'moises',   label: 'Moisés, não consegue né', short: 'Moisés', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
-]
-
-// Volta pras sugestões: o setlist tem 5 níveis de dificuldade e a sugestão só 3.
-// 'nao_vi' é neutro e não vira voto lá.
-const DIFF_TO_SUGESTAO = {
-  de_boa: 'facil',
-  ok: 'ok',
-  sofrendo: 'dificil',
-  travado: 'dificil',
-  moises: 'dificil',
-}
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
@@ -105,12 +85,6 @@ export default function SongCard({ song, nota, position }) {
   const backToSuggestions = async () => {
     if (!confirm(`Tirar "${song.title}" do setlist e mandar de volta pras sugestões?`)) return
 
-    const dificuldadeSug = {}
-    Object.entries(dificuldade).forEach(([uid, v]) => {
-      const level = DIFF_TO_SUGESTAO[v.level]
-      if (level) dificuldadeSug[uid] = { userName: v.userName, level, at: v.at }
-    })
-
     let reopened = false
     if (song.sugestaoId) {
       const sugRef = doc(db, 'sugestoes', song.sugestaoId)
@@ -124,7 +98,7 @@ export default function SongCard({ song, nota, position }) {
           ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
           bpm: song.bpm || null,
           tags: song.tags || [],
-          dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldadeSug },
+          dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade },
         })
         reopened = true
       }
@@ -143,7 +117,7 @@ export default function SongCard({ song, nota, position }) {
         tags: song.tags || [],
         status: 'aberta',
         opinoes: {},
-        dificuldade: dificuldadeSug,
+        dificuldade,
         suggestedBy: user.displayName || user.email,
         suggestedById: user.uid,
         createdAt: serverTimestamp(),

@@ -10,6 +10,7 @@ import { normalizeEventMembers } from '../../utils/members'
 import { migrateEventPresence } from '../../utils/presenca'
 import { verificarIntegridade } from '../../utils/integridade'
 import { dedupSugestoes } from '../../utils/dedupSugestoes'
+import { migrarDificuldade } from '../../utils/migrarDificuldade'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -387,6 +388,71 @@ function DedupSugestoesTool() {
   )
 }
 
+// ── Ferramenta: escala única de dificuldade ───────────────────────────
+function DificuldadeTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await migrarDificuldade({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhum voto na escala antiga.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { updated } = await migrarDificuldade()
+      setMsg(`✅ ${updated} música(s) convertida(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🎯 Converter dificuldade pra escala única'}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} música(s) com voto na escala antiga</p>
+          {pending.map((c) => (
+            <p key={c.id} className="event-normalize-item">
+              <strong>{c.titulo}</strong>: {c.antes.join(', ')}
+              <br />→ {c.depois.join(', ') || '—'}
+              {c.descartados.length > 0 && ` · descartado "Ainda não vi" de ${c.descartados.join(', ')}`}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length}`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -494,6 +560,7 @@ export default function MembrosPage() {
           <PresenceMigrateTool />
           <IntegridadeTool />
           <DedupSugestoesTool />
+          <DificuldadeTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}

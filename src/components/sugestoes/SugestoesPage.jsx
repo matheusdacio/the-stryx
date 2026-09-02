@@ -13,6 +13,7 @@ import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata } from '../../utils/duplicata'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram } from '../../utils/rejeicao'
 import { getYouTubeId } from '../../utils/youtube'
 
@@ -26,31 +27,7 @@ const OPINIONS = [
   { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
 ]
 
-// Dificuldade da música (votada por cada membro na sugestão)
-const DIFFICULTIES = [
-  { value: 'facil',   label: 'Fácil',   weight: 1, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ok',      label: 'Ok',      weight: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'dificil', label: 'Difícil', weight: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-]
-const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
-
 const firstName = (n) => (n || '').trim().split(' ')[0]
-
-// Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
-// votado (usado no chip do card). avg/max null se ninguém votou
-function calcDifficulty(dificuldade) {
-  const list = Object.values(dificuldade || {})
-  if (!list.length) return { avg: null, max: null, total: 0 }
-  const weights = list.map((v) => DIFF_BY_VALUE[v.level]?.weight || 0)
-  const sum = weights.reduce((acc, w) => acc + w, 0)
-  return { avg: sum / list.length, max: Math.max(...weights), total: list.length }
-}
-
-// Mapeia um peso num dos 3 rótulos. O card mostra o pior voto, não a média:
-// se alguém disse que é difícil, o chip fica Difícil
-function difficultyByWeight(weight) {
-  return DIFFICULTIES.find((d) => d.weight === weight) || null
-}
 
 // opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
