@@ -10,13 +10,12 @@ const TYPES = [
   { value: 'estrutura', label: 'Estrutura', color: '#10b981' },
 ]
 
-function RascunhoCard({ r, onEdit, onDelete }) {
+function RascunhoCard({ r, onEdit }) {
   const type = TYPES.find((t) => t.value === r.type) || TYPES[0]
   return (
     <div className="rascunho-card" onClick={() => onEdit(r)}>
       <div className="rascunho-header">
         <span className="rascunho-title">{r.title}</span>
-        <button className="btn-remove" onClick={(e) => { e.stopPropagation(); onDelete(r) }}>✕</button>
       </div>
       <span className="badge" style={{ background: type.color + '33', color: type.color, borderColor: type.color + '55' }}>
         {type.label}
@@ -27,7 +26,7 @@ function RascunhoCard({ r, onEdit, onDelete }) {
   )
 }
 
-function RascunhoModal({ rascunho, onClose }) {
+function RascunhoModal({ rascunho, onClose, onRemove }) {
   const { user } = useAuth()
   const [form, setForm] = useState({ title: rascunho?.title || '', type: rascunho?.type || 'ideia', content: rascunho?.content || '' })
   const [saving, setSaving] = useState(false)
@@ -73,6 +72,7 @@ function RascunhoModal({ rascunho, onClose }) {
             />
           </label>
           <div className="modal-actions">
+            {onRemove && <button type="button" className="btn-ghost-danger" style={{ marginRight: 'auto' }} onClick={onRemove}>Remover</button>}
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
           </div>
@@ -94,7 +94,7 @@ export default function RascunhosPage() {
 
   const filtered = filterType === 'all' ? rascunhos : rascunhos.filter((r) => r.type === filterType)
 
-  const remove = (r) => { if (confirm(`Remover "${r.title}"?`)) deleteDoc(doc(db, 'rascunhos', r.id)) }
+  const remove = (r) => { if (confirm(`Apagar o rascunho "${r.title}"? Não dá pra desfazer.`)) deleteDoc(doc(db, 'rascunhos', r.id)) }
 
   return (
     <div className="page">
@@ -126,12 +126,18 @@ export default function RascunhosPage() {
       ) : (
         <div className="card-grid">
           {filtered.map((r) => (
-            <RascunhoCard key={r.id} r={r} onEdit={setModal} onDelete={remove} />
+            <RascunhoCard key={r.id} r={r} onEdit={setModal} />
           ))}
         </div>
       )}
 
-      {modal && <RascunhoModal rascunho={modal === 'add' ? null : modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <RascunhoModal
+          rascunho={modal === 'add' ? null : modal}
+          onClose={() => setModal(null)}
+          onRemove={modal !== 'add' ? () => { remove(modal); setModal(null) } : undefined}
+        />
+      )}
     </div>
   )
 }

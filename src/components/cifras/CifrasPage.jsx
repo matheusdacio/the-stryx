@@ -22,7 +22,7 @@ export default function CifrasPage() {
   )
 
   const remove = (cifra) => {
-    if (confirm(`Remover cifra de "${cifra.title}"?`)) deleteDoc(doc(db, 'cifras', cifra.id))
+    if (confirm(`Apagar a cifra de "${cifra.title}"? Não dá pra desfazer.`)) deleteDoc(doc(db, 'cifras', cifra.id))
   }
 
   return (
@@ -53,7 +53,6 @@ export default function CifrasPage() {
                   <span className="cifra-title">{cifra.title}</span>
                   {cifra.artist && <span className="cifra-artist">{cifra.artist}</span>}
                 </div>
-                <button className="btn-remove" onClick={(e) => { e.stopPropagation(); remove(cifra) }}>✕</button>
               </div>
               <div className="cifra-meta">
                 {cifra.key && <span className="badge badge-key">Tom: {cifra.key}</span>}
@@ -69,6 +68,7 @@ export default function CifrasPage() {
         <CifraModal
           cifra={modal === 'add' ? null : modal}
           onClose={() => setModal(null)}
+          onRemove={modal !== 'add' ? () => { remove(modal); setModal(null) } : undefined}
           KEYS={KEYS}
         />
       )}

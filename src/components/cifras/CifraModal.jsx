@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 
-export default function CifraModal({ cifra, onClose, KEYS }) {
+export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
   const isView = cifra && !cifra._editing
   const [editing, setEditing] = useState(!cifra)
   const [form, setForm] = useState({
@@ -37,6 +37,7 @@ export default function CifraModal({ cifra, onClose, KEYS }) {
           <h2>{editing ? (cifra ? 'Editar Cifra' : 'Nova Cifra') : form.title}</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             {cifra && !editing && <button className="btn-secondary" onClick={() => setEditing(true)}>Editar</button>}
+            {onRemove && <button className="btn-ghost-danger" onClick={onRemove}>Remover</button>}
             <button className="btn-secondary" onClick={onClose}>Fechar</button>
           </div>
         </div>

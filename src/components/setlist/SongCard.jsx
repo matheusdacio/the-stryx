@@ -122,7 +122,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
     setNewTag('')
   }
   const removeTag = (t) => setTags(tags.filter((x) => x !== t))
-  const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
+  const remove = () => {
+    if (confirm(`Apagar "${song.title}" de vez? Votos de domínio, dificuldade e opinião, tom, BPM, tags e observações vão junto. Se é só tirar do setlist, use "↩ Voltar pras sugestões".`)) deleteDoc(ref)
+  }
 
   // Tira a música do setlist e devolve pra aba de Sugestões.
   // Se ela veio de uma sugestão aprovada, reabre a original (preserva as opiniões);
@@ -199,7 +201,6 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         >
           ›
         </button>
-        <button className="btn-remove" onClick={remove} title="Remover">✕</button>
       </div>
 
       {/* Vídeo — uma instância só, fora do expandir/recolher, senão trocar de
@@ -415,6 +416,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       <div className="song-card-footer">
         <button className="btn-back-sug" onClick={backToSuggestions} title="Tirar do setlist e devolver pras sugestões">
           ↩ Voltar pras sugestões
+        </button>
+        <button className="btn-ghost-danger" onClick={remove} title="Apagar a música de vez">
+          Remover
         </button>
       </div>
       </>}

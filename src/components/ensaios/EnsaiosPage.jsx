@@ -192,8 +192,8 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
         </div>
         <div className="ensaio-row-right">
           {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
-          {vao.length > 0 && <span className="ensaio-row-members presenca-vai">✓ {vao.length}</span>}
-          {nao.length > 0 && <span className="ensaio-row-members presenca-nao">✕ {nao.length}</span>}
+          {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
+          {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
         </div>
       </div>
 
