@@ -13,6 +13,10 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.28.0] — 2026-09-02
+- **Tom da música** (Ex: Sol, Am): campo novo no cadastro e na edição da música, chip no card do setlist, e viaja junto na ida e volta entre sugestão e setlist
+- **Modo palco** passa a mostrar o **tom em destaque** e as **observações** da música (ex: quem canta). Além disso, o palco agora lê o repertório ao vivo em vez do retrato guardado no evento — mudou o BPM, o tom ou a observação no setlist, o palco já reflete; música removida do repertório continua aparecendo com os dados salvos no evento
+
 ## [1.27.0] — 2026-09-02
 - **Ordenação "Melhores e fáceis"** nas Sugestões, agora a **padrão** ao abrir a página e primeira da barra: combina a nota das opiniões com a dificuldade votada, pra deixar no topo o que a banda gostou mais e toca mais fácil. A nota é a base e a dificuldade entra como desconto (Fácil não desconta, Ok ×0,85, Difícil ×0,7), então música difícil precisa ser bem melhor avaliada pra passar na frente de uma fácil. Quem ainda não tem voto de dificuldade conta como Ok. O badge de posição (#1, #2…) agora aparece também nessa ordenação
 - **Ferramenta "Normalizar membros dos eventos"** na página Banda (admin): mostra evento por evento quais nomes antigos serão trocados pelos do cadastro atual e, se confirmado, regrava só o campo de membros. Rodada uma vez: 17 dos 21 eventos tinham nome antigo ou pessoa repetida

@@ -1,9 +1,24 @@
 import { useState, useEffect, useCallback } from 'react'
+import { collection, onSnapshot } from 'firebase/firestore'
+import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 
 export default function PerformanceMode({ event, onClose }) {
-  const setlist = event.setlist || []
+  const [repertorio, setRepertorio] = useState(null)
   const [idx, setIdx] = useState(0)
+
+  // O evento guarda um retrato das músicas (título, artista, BPM) de quando
+  // foi montado. Tom e observações mudam no repertório, então lemos de lá e
+  // caímos no retrato se a música tiver sido removida do setlist
+  useEffect(() => {
+    return onSnapshot(collection(db, 'songs'), (snap) => {
+      const map = {}
+      snap.docs.forEach((d) => { map[d.id] = d.data() })
+      setRepertorio(map)
+    })
+  }, [])
+
+  const setlist = (event.setlist || []).map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
 
   const current = setlist[idx]
   const next = setlist[idx + 1] || null
@@ -48,11 +63,15 @@ export default function PerformanceMode({ event, onClose }) {
         <p className="perf-now-label">Tocando agora</p>
         <h1 className="perf-title">{current.title}</h1>
         {current.artist && <p className="perf-artist">{current.artist}</p>}
-        {current.bpm && (
-          <div className="perf-bpm" onClick={(e) => e.stopPropagation()}>
-            <MetronomeButton bpm={current.bpm} />
-          </div>
-        )}
+        <div className="perf-chips">
+          {current.tom && <span className="perf-tom">♪ {current.tom}</span>}
+          {current.bpm && (
+            <span className="perf-bpm" onClick={(e) => e.stopPropagation()}>
+              <MetronomeButton bpm={current.bpm} />
+            </span>
+          )}
+        </div>
+        {current.notes && <p className="perf-notes">{current.notes}</p>}
       </div>
 
       {/* Próxima música */}
@@ -63,6 +82,7 @@ export default function PerformanceMode({ event, onClose }) {
             <p className="perf-next-title">
               {next.title}
               {next.artist && <span className="perf-next-artist"> — {next.artist}</span>}
+              {next.tom && <span className="perf-next-bpm"> · ♪ {next.tom}</span>}
               {next.bpm && <span className="perf-next-bpm"> · {next.bpm} BPM</span>}
             </p>
           </>

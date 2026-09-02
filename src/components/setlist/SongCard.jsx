@@ -41,6 +41,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   const [editing, setEditing] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
+  const [tom, setTom] = useState(song.tom || '')
   const [bpm, setBpm] = useState(song.bpm || '')
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
@@ -69,6 +70,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
   const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
   const saveMeta = async () => {
     await updateDoc(ref, {
+      tom: tom.trim(),
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
       tags,
@@ -105,6 +107,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           status: 'aberta',
           ...(song.notes ? { notes: song.notes } : {}),
           ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
+          ...(song.tom ? { tom: song.tom } : {}),
           bpm: song.bpm || null,
           tags: song.tags || [],
           dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldadeSug },
@@ -120,6 +123,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         videoUrl: song.videoUrl || '',
         description: '',
         notes: song.notes || '',
+        tom: song.tom || '',
         bpm: song.bpm || null,
         tags: song.tags || [],
         status: 'aberta',
@@ -173,6 +177,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
       {!expanded && (
         <div className="song-collapsed" onClick={() => setExpanded(true)}>
           <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
+          {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
           {videoId && <span className="mini-chip">▶ vídeo</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
@@ -258,6 +263,9 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
       {editingMeta && (
         <div className="song-meta-edit">
           <div className="form-row">
+            <label>Tom
+              <input value={tom} onChange={(e) => setTom(e.target.value)} placeholder="Ex: Sol, Am" />
+            </label>
             <label>BPM
               <input type="number" min="20" max="300" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="Ex: 120" />
             </label>

@@ -9,7 +9,7 @@ function getYouTubeId(url) {
 }
 
 export default function AddSongModal({ onClose, totalSongs }) {
-  const [form, setForm] = useState({ title: '', artist: '', notes: '', status: 'ensaiando', bpm: '', videoUrl: '' })
+  const [form, setForm] = useState({ title: '', artist: '', notes: '', status: 'ensaiando', tom: '', bpm: '', videoUrl: '' })
   const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
@@ -22,6 +22,7 @@ export default function AddSongModal({ onClose, totalSongs }) {
     setSaving(true)
     await addDoc(collection(db, 'songs'), {
       ...form,
+      tom: form.tom.trim(),
       bpm: form.bpm ? Number(form.bpm) : null,
       tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean),
       order: totalSongs,
@@ -44,6 +45,9 @@ export default function AddSongModal({ onClose, totalSongs }) {
                 <option value="pronta">Pronta</option>
                 <option value="extra">Extra</option>
               </select>
+            </label>
+            <label>Tom
+              <input name="tom" value={form.tom} onChange={handleChange} placeholder="Ex: Sol, Am" />
             </label>
             <label>BPM
               <input name="bpm" type="number" min="20" max="300" value={form.bpm} onChange={handleChange} placeholder="Ex: 120" />
