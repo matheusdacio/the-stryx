@@ -357,7 +357,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
         <h2>Nova Sugestão</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
-            <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus /></label>
+            <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
             <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
           </div>
 

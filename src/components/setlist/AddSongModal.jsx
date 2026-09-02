@@ -38,7 +38,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Adicionar Música</h2>
         <form onSubmit={handleSubmit}>
-          <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus /></label>
+          <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus required /></label>
           <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
           {bloqueio && (
             <p className="aviso-duplicata bloqueio">

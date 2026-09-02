@@ -54,7 +54,7 @@ function RascunhoModal({ rascunho, onClose }) {
         <h2>{rascunho ? 'Editar Rascunho' : 'Novo Rascunho'}</h2>
         <form onSubmit={handleSave}>
           <div className="form-row">
-            <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Ideia pro refrão" autoFocus /></label>
+            <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Ideia pro refrão" autoFocus required /></label>
             <label>Tipo
               <select name="type" value={form.type} onChange={handleChange}>
                 {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}

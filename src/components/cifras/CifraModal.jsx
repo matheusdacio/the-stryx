@@ -44,7 +44,7 @@ export default function CifraModal({ cifra, onClose, KEYS }) {
         {editing ? (
           <form onSubmit={handleSave}>
             <div className="form-row">
-              <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus /></label>
+              <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
               <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
             </div>
             <div className="form-row">
