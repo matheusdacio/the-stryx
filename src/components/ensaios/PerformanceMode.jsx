@@ -1,20 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
-import { getYouTubeId, loadYouTubeApi } from '../../utils/youtube'
 import MetronomeButton from '../setlist/MetronomeButton'
 
 export default function PerformanceMode({ event, onClose }) {
   const [repertorio, setRepertorio] = useState(null)
   const [idx, setIdx] = useState(0)
-  const [tocando, setTocando] = useState(false)
-  // Guarda o id que falhou, não um booleano: assim o aviso desaparece sozinho
-  // quando a música muda, sem precisar limpar estado dentro do efeito
-  const [erroDe, setErroDe] = useState(null)
-  const playerRef = useRef(null)
-  const containerRef = useRef(null)
-  const totalRef = useRef(0)
-  const videoIdRef = useRef(null)
 
   // O evento guarda um retrato das músicas (título, artista, BPM) de quando
   // foi montado. Tom e observações mudam no repertório, então lemos de lá e
@@ -31,57 +22,9 @@ export default function PerformanceMode({ event, onClose }) {
 
   const current = setlist[idx]
   const next = setlist[idx + 1] || null
-  const videoId = getYouTubeId(current?.videoUrl)
-  const erroVideo = !!videoId && erroDe === videoId
-
-  // O player consulta o total dentro do callback do YouTube, fora do render
-  useEffect(() => { totalRef.current = setlist.length }, [setlist.length])
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
   const goPrev = useCallback(() => setIdx((i) => Math.max(i - 1, 0)), [])
-
-  // Player embutido: encadeia o setlist sem sair pro YouTube. Criado uma vez
-  // quando liga; a troca de música usa loadVideoById (recriar o player a cada
-  // faixa faria a reprodução engasgar)
-  useEffect(() => {
-    if (!tocando) return
-    let cancelado = false
-
-    loadYouTubeApi().then((YT) => {
-      if (cancelado || !containerRef.current) return
-      playerRef.current = new YT.Player(containerRef.current, {
-        playerVars: { autoplay: 1, playsinline: 1, rel: 0 },
-        events: {
-          onStateChange: (e) => {
-            // Terminou a música: emenda a próxima, ou encerra no fim do set
-            if (e.data !== YT.PlayerState.ENDED) return
-            setIdx((i) => {
-              if (i + 1 < totalRef.current) return i + 1
-              setTocando(false)
-              return i
-            })
-          },
-          // Vídeo removido ou com incorporação bloqueada pelo dono
-          onError: () => setErroDe(videoIdRef.current),
-        },
-      })
-    })
-
-    return () => {
-      cancelado = true
-      playerRef.current?.destroy?.()
-      playerRef.current = null
-    }
-  }, [tocando])
-
-  // Troca a faixa quando a música muda (ou quando o player acabou de nascer)
-  useEffect(() => {
-    videoIdRef.current = videoId
-    const player = playerRef.current
-    if (!tocando || !player?.loadVideoById) return
-    if (videoId) player.loadVideoById(videoId)
-    else player.stopVideo?.()
-  }, [videoId, tocando])
 
   // Teclado: setas navegam, Esc sai
   useEffect(() => {
@@ -112,13 +55,6 @@ export default function PerformanceMode({ event, onClose }) {
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {event.location || ''}
         </span>
-        <button
-          className={`perf-play ${tocando ? 'active' : ''}`}
-          onClick={() => setTocando(!tocando)}
-          title={tocando ? 'Parar' : 'Tocar o set em sequência'}
-        >
-          {tocando ? '■ Parar' : '▶ Tocar'}
-        </button>
         <button className="perf-close" onClick={onClose}>✕</button>
       </div>
 
@@ -137,21 +73,6 @@ export default function PerformanceMode({ event, onClose }) {
         </div>
         {current.notes && <p className="perf-notes">{current.notes}</p>}
       </div>
-
-      {tocando && (
-        <div className="perf-player" onClick={(e) => e.stopPropagation()}>
-          {videoId ? (
-            <div className="perf-player-box"><div ref={containerRef} /></div>
-          ) : (
-            <p className="perf-player-aviso">Esta música não tem link do YouTube cadastrado.</p>
-          )}
-          {erroVideo && (
-            <p className="perf-player-aviso">
-              O dono do vídeo não permite tocar fora do YouTube. Pule pra próxima.
-            </p>
-          )}
-        </div>
-      )}
 
       {/* Próxima música */}
       <div className="perf-next">

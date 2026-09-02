@@ -8,6 +8,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchLupa from '../SearchLupa'
 import MusicLookup from '../MusicLookup'
+import VideoInline from '../VideoInline'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { calcSongScore, chaveMusica } from '../../utils/score'
@@ -55,17 +56,6 @@ function difficultyByWeight(weight) {
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
 function opinoesArray(opinoes) {
   return Object.entries(opinoes || {}).map(([uid, data]) => ({ userId: uid, ...data }))
-}
-
-function YouTubeThumbnail({ url, title }) {
-  const id = getYouTubeId(url)
-  if (!id) return null
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className="yt-thumb-wrap" title="Abrir no YouTube">
-      <img src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} alt={title} className="yt-thumb" />
-      <div className="yt-play-icon">▶</div>
-    </a>
-  )
 }
 
 function OpinionSummary({ opinoes }) {
@@ -179,7 +169,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           Sugerida por <strong>{sugestao.suggestedBy}</strong>
         </p>
 
-        {sugestao.videoUrl && <YouTubeThumbnail url={sugestao.videoUrl} title={sugestao.title} />}
+        {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
 
         {sugestao.description && (
           <p className="sug-description">{sugestao.description}</p>

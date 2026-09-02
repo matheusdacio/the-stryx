@@ -1276,3 +1276,34 @@ button { font-family: inherit; }
   background: rgba(230, 57, 70, 0.1);
   border-color: rgba(230, 57, 70, 0.35);
 }
+
+/* Player embutido na música */
+.btn-tocar {
+  font-size: 0.72rem; padding: 3px 12px;
+  border-radius: 20px; border: 1px solid var(--border-strong);
+  background: transparent; color: var(--text-muted);
+  cursor: pointer; white-space: nowrap; transition: all 0.15s;
+}
+.btn-tocar:hover { border-color: var(--red); color: var(--red); }
+.video-inline { margin: 8px 0; }
+.video-inline iframe {
+  width: 100%; aspect-ratio: 16 / 9;
+  border: 0; border-radius: var(--radius); background: #000;
+}
+button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer; width: 100%; }
+
+/* Player do set no evento */
+.set-player {
+  margin: 10px 0;
+  padding: 10px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface2);
+}
+.set-player-topo {
+  display: flex; align-items: center; justify-content: space-between;
+  gap: 8px; margin-bottom: 8px; font-size: 0.8rem; color: var(--text-muted);
+}
+.set-player-nav { display: flex; gap: 8px; margin-top: 8px; }
+.set-player-nav .btn-secondary { font-size: 0.78rem; flex: 1; }
+.song-collapsed .video-inline { flex-basis: 100%; }

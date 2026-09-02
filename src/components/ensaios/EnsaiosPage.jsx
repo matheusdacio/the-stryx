@@ -7,6 +7,7 @@ import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso } from '../../utils/dominio'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
+import SetPlayer from '../SetPlayer'
 
 function formatDate(ts, opts = {}) {
   if (!ts) return ''
@@ -177,6 +178,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
     updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: next })
   }
 
+  const [tocando, setTocando] = useState(false)
   const podeMarcar = jaComecou(ensaio.date)
   const passado = jaPassou(ensaio.date)
 
@@ -281,9 +283,18 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             </div>
           )}
 
+          {tocando && (
+            <SetPlayer setlist={ensaio.setlist} onFechar={() => setTocando(false)} />
+          )}
+
           <div className="ensaio-row-actions">
             {hasSetlist && (
               <button className="btn-primary" onClick={() => onPerform(ensaio)}>🎤 Modo palco</button>
+            )}
+            {hasSetlist && (
+              <button className="btn-secondary" onClick={() => setTocando(!tocando)}>
+                {tocando ? '■ Parar' : '▶ Tocar o set'}
+              </button>
             )}
             <button className="btn-secondary" onClick={() => onEdit(ensaio)}>Editar</button>
             <button className="btn-secondary" onClick={() => onCopy(ensaio)}>⧉ Copiar</button>
@@ -297,6 +308,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 // ── Card destaque — próximo evento ────────────────────────────────────
 
 function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }) {
+  const [tocando, setTocando] = useState(false)
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
@@ -327,6 +339,8 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
       </div>
 
+      {tocando && <SetPlayer setlist={ensaio.setlist} onFechar={() => setTocando(false)} />}
+
       {hasSetlist && <SetlistPreview setlist={ensaio.setlist} />}
 
       {ensaio.pauta?.length > 0 && (
@@ -345,6 +359,11 @@ function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }
         {hasSetlist && (
           <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => onPerform(ensaio)}>
             🎤 Modo palco
+          </button>
+        )}
+        {hasSetlist && (
+          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setTocando(!tocando)}>
+            {tocando ? '■ Parar' : '▶ Tocar o set'}
           </button>
         )}
         <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onEdit(ensaio)}>

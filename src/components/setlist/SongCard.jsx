@@ -4,6 +4,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
+import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 
 
@@ -205,7 +206,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
             </span>
           )}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
-          {videoId && <span className="mini-chip">▶ vídeo</span>}
+          {videoId && <VideoInline url={song.videoUrl} title={song.title} compacto />}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
         </div>
@@ -287,15 +288,7 @@ export default function SongCard({ song, nota, onMoveUp, onMoveDown, isFirst, is
           <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>♩ + BPM</button>
         )}
         {videoId ? (
-          <a
-            href={song.videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="song-video-link"
-            title="Abrir no YouTube"
-          >
-            ▶ YouTube
-          </a>
+          <VideoInline url={song.videoUrl} title={song.title} compacto />
         ) : (
           <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>🎬 + vídeo</button>
         )}
