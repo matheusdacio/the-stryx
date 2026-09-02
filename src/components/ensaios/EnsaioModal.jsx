@@ -126,7 +126,22 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     // se a pessoa fechasse e tentasse de novo, salvava duas vezes
     const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (editando) {
-      updateDoc(doc(db, 'ensaios', ensaio.id), data).catch(erro)
+      // Só grava o que de fato mudou em relação ao que estava aberto — quem
+      // só trocou o local não regrava pauta/setlist por cima de uma edição
+      // simultânea de outro membro (ensaiadas/presenca nunca entram aqui,
+      // já que nem fazem parte do form)
+      const mudou = {}
+      if (form.location !== (ensaio.location || '')) mudou.location = data.location
+      if (form.type !== (ensaio.type || 'ensaio')) mudou.type = data.type
+      if (form.status !== (ensaio.status || 'planejado')) mudou.status = data.status
+      if (form.notes !== (ensaio.notes || '')) mudou.notes = data.notes
+      if (form.date !== toInputDate(ensaio.date)) mudou.date = data.date
+      if (JSON.stringify(pauta) !== JSON.stringify(ensaio.pauta || [])) mudou.pauta = data.pauta
+      if (JSON.stringify(setlist) !== JSON.stringify(ensaio.setlist || [])) mudou.setlist = data.setlist
+
+      if (Object.keys(mudou).length) {
+        updateDoc(doc(db, 'ensaios', ensaio.id), mudou).catch(erro)
+      }
     } else {
       // Evento novo (inclusive cópia) nasce sem presença
       addDoc(collection(db, 'ensaios'), { ...data, presenca: {}, createdAt: serverTimestamp() }).catch(erro)

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
@@ -166,10 +166,13 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   // Registro do que foi realmente tocado no ensaio. Quem diz se a música ficou
   // pronta é o voto de domínio de cada um, não esta marcação
   const ensaiadas = ensaio.ensaiadas || []
+  // arrayUnion/arrayRemove em vez de regravar o array inteiro: duas pessoas
+  // marcando músicas diferentes ao mesmo tempo não se pisam mais (quem
+  // gravasse por último apagava a marcação do outro)
   const toggleEnsaiada = (id) => {
     if (!id) return
-    const next = ensaiadas.includes(id) ? ensaiadas.filter((x) => x !== id) : [...ensaiadas, id]
-    updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: next })
+    const campo = ensaiadas.includes(id) ? arrayRemove(id) : arrayUnion(id)
+    updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: campo })
   }
 
   const [tocando, setTocando] = useState(false)
