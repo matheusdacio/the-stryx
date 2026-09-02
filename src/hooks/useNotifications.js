@@ -54,7 +54,11 @@ export function useNotifications(user) {
   // Escuta mensagens com app em foreground. `new Notification(...)` é
   // construtor de página e o Chrome Android recusa ("Illegal constructor") —
   // só dá pra notificar por registration.showNotification, que é o mesmo
-  // caminho que o service worker usa em segundo plano
+  // caminho que o service worker usa em segundo plano. `data.FCM_MSG` é o
+  // formato interno que o próprio SDK usa pra reconhecer a notificação como
+  // dele (getMessaging()/onNotificationClick do SW) — embrulhar assim faz o
+  // toque, mesmo com o app já aberto, cair no mesmo tratamento de clique
+  // (foco + link) que o SW já dá às notificações em segundo plano
   useEffect(() => {
     if (!suportado || permissao !== 'granted') return
     const messaging = getMessaging(getApp())
@@ -67,12 +71,28 @@ export function useNotifications(user) {
           body,
           icon: icone,
           badge: import.meta.env.BASE_URL + 'badge-96.png',
-          data: { url: payload.fcmOptions?.link },
+          data: { FCM_MSG: payload },
         })
       )
     })
     return unsub
   }, [permissao, suportado])
+
+  // Depois do clique (foreground ou segundo plano), o SW foca a aba já
+  // aberta mas não navega pra URL do link — só manda essa mensagem de
+  // volta. É aqui que a gente troca o hash pra cair na tela certa
+  useEffect(() => {
+    if (!suportado) return
+    const onMessageFromSW = (event) => {
+      if (event.data?.messageType !== 'notification-clicked') return
+      const link = event.data?.fcmOptions?.link
+      if (!link) return
+      const hash = new URL(link).hash
+      if (hash) window.location.hash = hash.slice(1)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessageFromSW)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessageFromSW)
+  }, [suportado])
 
   async function ativar() {
     if (!suportado || !user) return 'error'

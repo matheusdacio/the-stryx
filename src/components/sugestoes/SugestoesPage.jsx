@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   collection, onSnapshot, orderBy, query,
   addDoc, updateDoc, doc, serverTimestamp, deleteField
@@ -557,13 +558,21 @@ export default function SugestoesPage() {
   const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
   const [musicasSetlist, setMusicasSetlist] = useState([])
   const [bandMembers, setBandMembers] = useState([])
-  const [filter, setFilter] = useState('aberta')
-  const [sortBy, setSortBy] = useState('balanceada')
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Push de sugestão nova chega com ?ordem=recentes&naovotei=1 — quem toca
+  // no aviso cai já olhando a música anunciada, não no fim da lista padrão
+  const [filter, setFilter] = useState(() => searchParams.get('naovotei') === '1' ? 'falta_meu_voto' : 'aberta')
+  const [sortBy, setSortBy] = useState(() => searchParams.get('ordem') || 'balanceada')
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
 
   const isAdmin = user.email === ADMIN_EMAIL
+
+  useEffect(() => {
+    if (searchParams.size) setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     // Quem já está no setlist não aparece mais aqui — o lugar dela agora é lá.

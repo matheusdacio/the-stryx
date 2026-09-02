@@ -5,6 +5,10 @@ const admin = require('firebase-admin')
 // raiz como '/icon-192.png' resolveria fora do site no GitHub Pages
 const ICONE = 'https://matheusdacio.github.io/the-stryx/icon-192.png'
 const BADGE = 'https://matheusdacio.github.io/the-stryx/badge-96.png'
+// Cai ordenado por Recentes e filtrado em "Falta meu voto": a sugestão que
+// o push anunciou não tem opinião ainda, então a ordenação padrão jogaria
+// ela pro fim da lista
+const LINK_NOVA_SUGESTAO = 'https://matheusdacio.github.io/the-stryx/#/sugestoes?ordem=recentes&naovotei=1'
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_STRYX)
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
@@ -62,7 +66,7 @@ async function main() {
       // Envia para todos exceto quem sugeriu
       const destinatarios = tokens.filter(t => t.uid !== dados.suggestedById)
       for (const dest of destinatarios) {
-        await enviar(dest.token, titulo, corpo)
+        await enviar(dest.token, titulo, corpo, LINK_NOVA_SUGESTAO)
       }
       console.log(`Sugestão "${dados.titulo}": ${destinatarios.length} notificações enviadas.`)
     }
