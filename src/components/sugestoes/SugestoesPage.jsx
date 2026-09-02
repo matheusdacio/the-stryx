@@ -745,6 +745,28 @@ export default function SugestoesPage() {
     return 0
   })
 
+  // Congela a posição enquanto a página está aberta: um voto alheio não
+  // pula o card debaixo de quem está lendo. Recalcula do zero só quando
+  // filtro/ordenação/busca mudam (chave abaixo) — ajustar state durante o
+  // render, não em efeito, é o padrão que o próprio React recomenda pra
+  // "resetar ao mudar uma dependência" sem o flash de um efeito
+  const [ordemCongelada, setOrdemCongelada] = useState(() => displayed.map((s) => s.id))
+  const chaveOrdem = `${filter}|${sortBy}|${search}`
+  const [chaveAnterior, setChaveAnterior] = useState(chaveOrdem)
+  if (chaveOrdem !== chaveAnterior) {
+    setChaveAnterior(chaveOrdem)
+    setOrdemCongelada(displayed.map((s) => s.id))
+  }
+  // Sair da lista (virou rejeitada, ou meu próprio voto some com "Falta meu
+  // voto") é imediato — só a POSIÇÃO de quem continua na lista é que
+  // congela; ids novos entram no fim
+  const idsAtuais = new Set(displayed.map((s) => s.id))
+  const porId = Object.fromEntries(displayed.map((s) => [s.id, s]))
+  const presentesNaOrdem = ordemCongelada.filter((id) => idsAtuais.has(id))
+  const novos = displayed.filter((s) => !ordemCongelada.includes(s.id))
+  const displayedCongelado = [...presentesNaOrdem.map((id) => porId[id]), ...novos]
+  const ordemDivergente = displayedCongelado.some((s, i) => s.id !== displayed[i]?.id)
+
   const currentFilterLabel = FILTERS.find((f) => f.value === filter)?.label || ''
 
   const handleExport = () => {
@@ -824,7 +846,12 @@ export default function SugestoesPage() {
         </div>
       ) : (
         <div className="sug-list">
-          {displayed.map((s, rank) => {
+          {ordemDivergente && (
+            <button className="chip-reordenar" onClick={() => setOrdemCongelada(displayed.map((s) => s.id))}>
+              Ordem mudou · reordenar
+            </button>
+          )}
+          {displayedCongelado.map((s, rank) => {
             const videoId = getYouTubeId(s.videoUrl)
             const myVote = (s.opinoes || {})[user.uid]
             const { soma, media, total } = calcSongScore(s.opinoes)

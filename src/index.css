@@ -363,6 +363,12 @@ button { font-family: inherit; }
 .diff-pill-seeded { color: var(--text-muted); background: var(--surface2); }
 .filter-hint { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 14px; }
 .filter-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+.chip-reordenar {
+  display: block; margin: 0 0 12px; padding: 6px 12px;
+  font-size: 0.78rem; color: var(--accent); background: rgba(99, 102, 241, 0.1);
+  border: 1px dashed var(--accent); border-radius: var(--radius); cursor: pointer;
+}
+.chip-reordenar:hover { background: rgba(99, 102, 241, 0.18); }
 
 .song-notes {
   font-size: 0.82rem; color: var(--text-muted); cursor: pointer;
