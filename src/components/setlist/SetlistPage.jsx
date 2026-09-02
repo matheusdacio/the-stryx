@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { collection, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
@@ -72,13 +73,23 @@ export default function SetlistPage() {
   // O setlist é um acervo, não uma sequência: a ordem vem sempre de um
   // critério. Montar sequência é papel do repertório do evento
   const [sortBy, setSortBy] = useState('recentes')
-  const [search, setSearch] = useState('')
+  // Vem preenchida quando chega de um link "ver essa música" (lista de
+  // evento, por ex.) — ?q= no lugar do hash inteiro, porque o HashRouter
+  // já usa o hash pra rota
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [search, setSearch] = useState(() => searchParams.get('q') || '')
   const [showModal, setShowModal] = useState(false)
   // Um id só: null = nada tocando, 'lista' = o SetPlayer da lista,
   // ou o id da música cujo player inline está aberto. Ligar um sempre
   // fecha o outro (D08) — nunca dois áudios ao mesmo tempo
   const [tocandoId, setTocandoId] = useState(null)
   const [bandMembers, setBandMembers] = useState([])
+  const [cifras, setCifras] = useState([])
+
+  useEffect(() => {
+    if (searchParams.size) setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   useEffect(() => {
     const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
@@ -103,6 +114,13 @@ export default function SetlistPage() {
         aliases: d.data().aliases || [],
         firebaseUid: d.data().firebaseUid || null,
       })))
+    )
+  }, [])
+
+  // Pra achar a cifra da música (F88) sem duplicar dado nem exigir vínculo
+  useEffect(() => {
+    return onSnapshot(collection(db, 'cifras'), (snap) =>
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
     )
   }, [])
 
@@ -318,6 +336,7 @@ export default function SetlistPage() {
               nota={notaDe(song)}
               opinoes={opinioesDe(song)}
               bandMembers={bandMembers}
+              cifras={cifras}
               key={song.id}
               song={song}
               // Bolinha só faz sentido quando a ordem reflete um ranking

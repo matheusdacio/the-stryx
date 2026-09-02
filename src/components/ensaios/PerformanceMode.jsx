@@ -3,6 +3,7 @@ import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
+import { acharCifra } from '../../utils/score'
 
 export default function PerformanceMode({ event, onClose }) {
   useFecharComVoltar(onClose)
@@ -33,6 +34,16 @@ export default function PerformanceMode({ event, onClose }) {
     })
   }, [])
 
+  // Cifra por título+artista (F88) — quem depende dela hoje sai do palco,
+  // busca na aba Cifras e perde a posição do set
+  const [cifras, setCifras] = useState([])
+  useEffect(() => {
+    return onSnapshot(collection(db, 'cifras'), (snap) =>
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    )
+  }, [])
+  const [mostrarCifra, setMostrarCifra] = useState(false)
+
   const setlist = (event.setlist || []).map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
 
   // idx restaurado do sessionStorage pode não caber mais (o repertório
@@ -40,6 +51,15 @@ export default function PerformanceMode({ event, onClose }) {
   const idxAtual = Math.max(0, Math.min(idx, setlist.length - 1))
   const current = setlist[idxAtual]
   const next = setlist[idxAtual + 1] || null
+  const cifraAtual = current ? acharCifra(cifras, current.title, current.artist) : null
+
+  // Trocar de música fecha a cifra da anterior — senão parece que a letra
+  // na tela é da música que está tocando agora
+  const [idxDaCifraAberta, setIdxDaCifraAberta] = useState(idxAtual)
+  if (mostrarCifra && idxAtual !== idxDaCifraAberta) {
+    setIdxDaCifraAberta(idxAtual)
+    setMostrarCifra(false)
+  }
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
   const goPrev = useCallback(() => setIdx((i) => Math.max(i - 1, 0)), [])
@@ -111,8 +131,21 @@ export default function PerformanceMode({ event, onClose }) {
               <MetronomeButton bpm={current.bpm} />
             </span>
           )}
+          {cifraAtual && (
+            <button
+              className="perf-cifra-toggle"
+              onClick={(e) => { e.stopPropagation(); setMostrarCifra(!mostrarCifra) }}
+            >
+              📄 {mostrarCifra ? 'Fechar cifra' : 'Cifra'}
+            </button>
+          )}
         </div>
         {current.notes && <p className="perf-notes">{current.notes}</p>}
+        {mostrarCifra && cifraAtual && (
+          <pre className="perf-cifra-content" onClick={(e) => e.stopPropagation()}>
+            {cifraAtual.content || 'Sem conteúdo.'}
+          </pre>
+        )}
       </div>
 
       {/* Próxima música */}

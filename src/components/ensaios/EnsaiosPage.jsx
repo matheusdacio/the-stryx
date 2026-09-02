@@ -160,7 +160,7 @@ function TypeBadge({ type }) {
 
 // `compacto` é a aba de pendências: ali a tarefa é responder presença, então
 // ela vem primeiro e o repertório fica só como prévia
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false }) {
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false }) {
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
 
@@ -184,18 +184,37 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
-    <div className="ensaio-row open">
-      <div className="ensaio-row-header">
-        <div className="ensaio-row-left">
-          <span className="ensaio-row-date">{formatDateShort(ensaio.date)}</span>
-          <TypeBadge type={ensaio.type} />
-          {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
-        </div>
-        <div className="ensaio-row-right">
-          {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
-          {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
-          {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
-        </div>
+    <div className={`ensaio-row open ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
+      <div className={`ensaio-row-header ${destaque ? 'destaque-header' : ''}`}>
+        {destaque ? (
+          <>
+            <div>
+              <p className="next-ensaio-label">
+                {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
+              </p>
+              <p className="next-ensaio-date">{formatDate(ensaio.date)}</p>
+              {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
+              {vao.length > 0 && <p className="next-ensaio-members presenca-vai">✓ {vao.length} confirmados</p>}
+              {hasSetlist && <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ensaio-row-left">
+              <span className="ensaio-row-date">{formatDateShort(ensaio.date)}</span>
+              <TypeBadge type={ensaio.type} />
+              {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
+            </div>
+            <div className="ensaio-row-right">
+              {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
+              {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
+              {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
+            </div>
+          </>
+        )}
       </div>
 
       <div className="ensaio-row-body">
@@ -221,11 +240,21 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
                   const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio).pior)
+                  const q = encodeURIComponent(s.title)
                   const texto = (
                     <span>
-                      {s.title}
+                      <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
                       {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                       {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                      <a
+                        href={`#/cifras?q=${q}`}
+                        className="mini-chip"
+                        style={{ marginLeft: 6 }}
+                        title="Ver cifra"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        📄
+                      </a>
                       {nivel && (
                         <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
                           {nivel.label}
@@ -308,81 +337,6 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   )
 }
 
-// ── Card destaque — próximo evento ────────────────────────────────────
-
-function NextEnsaioCard({ ensaio, onEdit, onCopy, onPerform, bandMembers, user }) {
-  const [tocando, setTocando] = useState(false)
-  const hasSetlist = ensaio.setlist?.length > 0
-
-  return (
-    <div className={`next-ensaio-card ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}`}>
-      <div className="next-ensaio-top">
-        <div>
-          <p className="next-ensaio-label">
-            {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
-          </p>
-          <p className="next-ensaio-date">{formatDate(ensaio.date)}</p>
-          {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
-          {splitPresenca(ensaio, bandMembers).vao.length > 0 && (
-            <p className="next-ensaio-members presenca-vai">
-              ✓ {splitPresenca(ensaio, bandMembers).vao.length} confirmados
-            </p>
-          )}
-          {hasSetlist && (
-            <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>
-          )}
-        </div>
-      </div>
-
-      <div style={{ marginTop: 12 }}>
-        <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
-        <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} />
-      </div>
-
-      {hasSetlist && <SetlistPreview setlist={ensaio.setlist} />}
-
-      {ensaio.pauta?.length > 0 && (
-        <div className="pauta-block" style={{ marginTop: 8 }}>
-          <p className="section-label">Pauta</p>
-          {ensaio.pauta.map((item, i) => (
-            <label key={i} className="pauta-item">
-              <input type="checkbox" checked={!!item.done} readOnly />
-              <span className={item.done ? 'done' : ''}>{item.text}</span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      {tocando && <SetPlayer setlist={ensaio.setlist} />}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        {hasSetlist && (
-          <button
-            className="btn-primary"
-            style={{ fontSize: '0.8rem' }}
-            onClick={() => { setTocando(false); onPerform(ensaio) }}
-          >
-            🎤 Modo palco
-          </button>
-        )}
-        {hasSetlist && (
-          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setTocando(!tocando)}>
-            {tocando ? '■ Parar' : '▶ Tocar o set'}
-          </button>
-        )}
-        <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onEdit(ensaio)}>
-          Editar
-        </button>
-        <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onCopy(ensaio)}>
-          ⧉ Copiar
-        </button>
-      </div>
-    </div>
-  )
-}
 
 // ── Página principal ──────────────────────────────────────────────────
 
@@ -492,13 +446,17 @@ export default function EnsaiosPage() {
       {tab === 'proximos' && (
         <>
           {nextEnsaio
-            ? <NextEnsaioCard
+            ? <EnsaioRow
                 ensaio={nextEnsaio}
                 onEdit={setModal}
                 onCopy={(x) => setModal({ copiar: x })}
+                onRemove={remove}
+                onTogglePauta={togglePauta}
                 onPerform={setPerforming}
                 bandMembers={bandMembers}
                 user={user}
+                songs={songs}
+                destaque
               />
             : (
               <div className="empty-state" style={{ marginTop: 12 }}>

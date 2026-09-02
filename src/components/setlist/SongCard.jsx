@@ -7,10 +7,12 @@ import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { DIFFICULTIES } from '../../utils/dificuldade'
-import { OPINIONS, fundirVotos } from '../../utils/score'
+import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 import { showToast } from '../../utils/toast'
+import CifraModal from '../cifras/CifraModal'
 
+const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
@@ -24,9 +26,11 @@ const ehNovo = (createdAt) => {
   return Date.now() - d.getTime() < SETE_DIAS
 }
 
-export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], cifras = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
+  const [verCifra, setVerCifra] = useState(false)
+  const cifra = acharCifra(cifras, song.title, song.artist)
   const [editing, setEditing] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
@@ -391,11 +395,16 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         {!videoId && (
           <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
         )}
+        {cifra && (
+          <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 Cifra</button>
+        )}
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
         ))}
         <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
       </div>
+
+      {verCifra && <CifraModal cifra={cifra} onClose={() => setVerCifra(false)} KEYS={CIFRA_KEYS} />}
 
       {editingMeta && (
         <div className="song-meta-edit">

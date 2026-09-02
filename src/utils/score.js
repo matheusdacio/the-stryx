@@ -27,6 +27,17 @@ export function calcSongScore(opinoes) {
 export const chaveMusica = (titulo, artista) =>
   `${normalizeName(titulo)}|${normalizeName(artista)}`
 
+// Acha a cifra da música pelo título+artista — sem precisar de um campo de
+// vínculo novo, funciona com o que já foi cadastrado. Cifra sem artista
+// (comum: quem cadastrou não preencheu) casa só pelo título
+export function acharCifra(cifras, titulo, artista) {
+  const chave = chaveMusica(titulo, artista)
+  const exata = (cifras || []).find((c) => chaveMusica(c.title, c.artist) === chave)
+  if (exata) return exata
+  const t = normalizeName(titulo)
+  return (cifras || []).find((c) => !c.artist && normalizeName(c.title) === t) || null
+}
+
 // Junta dois mapas de voto sem deixar a mesma pessoa entrar duas vezes —
 // nem quando votou com nome importado ("import_Nome") de um lado e com login
 // do outro. O que vem em `preferido` vence.

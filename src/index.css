@@ -465,19 +465,6 @@ button { font-family: inherit; }
 /* ─── EVENTOS ─── */
 .ensaio-list { display: flex; flex-direction: column; gap: 6px; }
 
-/* Card destaque — próximo evento */
-.next-ensaio-card {
-  background: linear-gradient(150deg, rgba(59, 130, 246, 0.07) 0%, var(--surface) 45%);
-  border: 1px solid #233650;
-  border-left: 4px solid #3b82f6;
-  border-radius: var(--radius); padding: 18px; margin-bottom: 4px;
-  box-shadow: var(--shadow-card);
-}
-.next-ensaio-card.apresentacao {
-  background: linear-gradient(150deg, rgba(225, 29, 72, 0.08) 0%, var(--surface) 45%);
-  border-left-color: #e11d48; border-color: #4a2230;
-}
-
 /* Tipo de evento */
 .event-type-toggle { display: flex; gap: 8px; margin-bottom: 14px; }
 .btn-event-type {
@@ -508,6 +495,8 @@ button { font-family: inherit; }
 }
 .song-search-item:hover { background: rgba(99, 102, 241, 0.14); }
 .song-search-artist { color: var(--text-muted); font-size: 0.78rem; }
+.event-song-link { color: var(--text); text-decoration: underline; text-decoration-color: var(--border-strong); }
+.event-song-link:hover { text-decoration-color: var(--text); }
 
 /* Setlist do evento */
 .event-setlist { display: flex; flex-direction: column; gap: 4px; margin-top: 10px; }
@@ -605,7 +594,6 @@ button { font-family: inherit; }
 }
 .perf-nav-btn:disabled { opacity: 0.35; cursor: default; box-shadow: none; }
 
-.next-ensaio-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
 .next-ensaio-label { font-size: 0.7rem; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
 .apresentacao .next-ensaio-label { color: #fb7185; }
 .next-ensaio-date { font-weight: 800; font-size: 1.05rem; }
@@ -625,10 +613,22 @@ button { font-family: inherit; }
   transition: border-color 0.15s;
 }
 .ensaio-row:hover { border-color: var(--border-strong); }
+/* Card do próximo evento — mesma moldura de destaque de antes, agora só
+   por cima do corpo normal da linha (F98: corpo completo, não reduzido) */
+.ensaio-row.destaque {
+  background: linear-gradient(150deg, rgba(59, 130, 246, 0.07) 0%, var(--surface) 45%);
+  border: 1px solid #233650; border-left: 4px solid #3b82f6;
+  box-shadow: var(--shadow-card);
+}
+.ensaio-row.destaque.apresentacao {
+  background: linear-gradient(150deg, rgba(225, 29, 72, 0.08) 0%, var(--surface) 45%);
+  border-left-color: #e11d48; border-color: #4a2230;
+}
 .ensaio-row-header {
   display: flex; align-items: center; justify-content: space-between;
   padding: 12px 14px; gap: 8px;
 }
+.ensaio-row-header.destaque-header { align-items: flex-start; }
 .ensaio-row-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .ensaio-row-date { font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
 .ensaio-row-loc { font-size: 0.82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1199,6 +1199,20 @@ button { font-family: inherit; }
   line-height: 1.5;
   color: var(--text-muted);
   white-space: pre-wrap;
+}
+.perf-cifra-toggle {
+  font-size: 0.8rem; padding: 6px 14px; border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+}
+.perf-cifra-toggle:hover { border-color: var(--text-muted); }
+.perf-cifra-content {
+  width: 100%; max-width: 640px; margin: 14px auto 0;
+  max-height: 42vh; overflow-y: auto; text-align: left;
+  background: rgba(0, 0, 0, 0.35); border-radius: var(--radius);
+  padding: 16px; font-family: monospace;
+  font-size: clamp(1rem, 3vw, 1.3rem); line-height: 1.5;
+  color: var(--text); white-space: pre-wrap;
 }
 
 /* ── Presença nos eventos ─────────────────────────────────────────── */
