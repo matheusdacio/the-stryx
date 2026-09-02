@@ -1,6 +1,11 @@
 // Processa a fila de notificações e envia FCM para todos os membros
 const admin = require('firebase-admin')
 
+// URL absoluta: o app vive em /the-stryx/ (base do Vite), então um caminho
+// raiz como '/icon-192.png' resolveria fora do site no GitHub Pages
+const ICONE = 'https://matheusdacio.github.io/the-stryx/icon-192.png'
+const BADGE = 'https://matheusdacio.github.io/the-stryx/badge-96.png'
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_STRYX)
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
 const db = admin.firestore()
@@ -12,7 +17,7 @@ async function enviar(token, titulo, corpo, link) {
       token,
       notification: { title: titulo, body: corpo },
       webpush: {
-        notification: { icon: '/favicon.svg' },
+        notification: { icon: ICONE, badge: BADGE, vibrate: [200, 100, 200] },
         fcmOptions: { link: link ?? 'https://matheusdacio.github.io/the-stryx/#/sugestoes' },
       },
     })

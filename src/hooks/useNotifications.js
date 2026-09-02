@@ -27,14 +27,25 @@ export function useNotifications(user) {
   const [ativando, setAtivando] = useState(false)
   const suportado = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
 
-  // Escuta mensagens com app em foreground
+  // Escuta mensagens com app em foreground. `new Notification(...)` é
+  // construtor de página e o Chrome Android recusa ("Illegal constructor") —
+  // só dá pra notificar por registration.showNotification, que é o mesmo
+  // caminho que o service worker usa em segundo plano
   useEffect(() => {
     if (!suportado || permissao !== 'granted') return
     const messaging = getMessaging(getApp())
     const unsub = onMessage(messaging, (payload) => {
       const title = payload.notification?.title ?? 'The Stryx'
       const body = payload.notification?.body ?? ''
-      new Notification(title, { body, icon: '/favicon.svg' })
+      const icone = import.meta.env.BASE_URL + 'icon-192.png'
+      navigator.serviceWorker.ready.then((reg) =>
+        reg.showNotification(title, {
+          body,
+          icon: icone,
+          badge: import.meta.env.BASE_URL + 'badge-96.png',
+          data: { url: payload.fcmOptions?.link },
+        })
+      )
     })
     return unsub
   }, [permissao, suportado])

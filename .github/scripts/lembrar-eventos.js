@@ -15,6 +15,10 @@ const messaging = admin.messaging()
 
 const LINK = 'https://matheusdacio.github.io/the-stryx/#/ensaios'
 const DIA = 86400000
+// URL absoluta: o app vive em /the-stryx/ (base do Vite), então um caminho
+// raiz como '/icon-192.png' resolveria fora do site no GitHub Pages
+const ICONE = 'https://matheusdacio.github.io/the-stryx/icon-192.png'
+const BADGE = 'https://matheusdacio.github.io/the-stryx/badge-96.png'
 
 async function enviar(token, titulo, corpo) {
   try {
@@ -22,7 +26,7 @@ async function enviar(token, titulo, corpo) {
       token,
       notification: { title: titulo, body: corpo },
       webpush: {
-        notification: { icon: '/favicon.svg' },
+        notification: { icon: ICONE, badge: BADGE, vibrate: [200, 100, 200] },
         fcmOptions: { link: LINK },
       },
     })
