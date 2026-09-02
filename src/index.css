@@ -1060,14 +1060,16 @@ button { font-family: inherit; }
 .search-wrap {
   display: flex; align-items: center; gap: 6px;
   flex: 1 1 140px; min-width: 90px; max-width: 220px;
-  background: var(--surface); border: 1px solid var(--border-strong);
-  border-radius: 20px; padding: 6px 12px;
 }
-.search-icon { font-size: 0.8rem; opacity: 0.7; flex-shrink: 0; }
-.search-input {
-  flex: 1; min-width: 0; background: none; border: none; outline: none;
-  color: var(--text); font-size: 0.85rem;
+.search-icon { font-size: 0.8rem; opacity: 0.5; flex-shrink: 0; }
+.filter-input {
+  flex: 1; min-width: 0; background: none;
+  border: none; border-bottom: 1px solid var(--border-strong);
+  outline: none; color: var(--text); font-size: 0.85rem;
+  padding: 4px 0; transition: border-color 0.2s;
 }
+.filter-input:focus { border-bottom-color: var(--red); }
+.filter-input::placeholder { color: var(--text-muted); }
 .search-input::placeholder { color: var(--text-muted); }
 .search-clear {
   background: none; border: none; color: var(--text-muted);

@@ -5,7 +5,7 @@ export default function SearchLupa({ value, onChange, placeholder = 'Filtrar por
     <div className="search-wrap">
       <span className="search-icon">🔍</span>
       <input
-        className="search-input"
+        className="filter-input"
         value={value}
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && onChange('')}
