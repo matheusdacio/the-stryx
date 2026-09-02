@@ -47,6 +47,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const [quantasCruas, setQuantasCruas] = useState(5)
   const [avisoCruas, setAvisoCruas] = useState('')
   const [saving, setSaving] = useState(false)
+  const [mexeu, setMexeu] = useState(false)
   const dragIndex = useRef(null)
 
   // Carrega músicas do repertório
@@ -57,15 +58,23 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     })
   }, [])
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (e) => { setMexeu(true); setForm({ ...form, [e.target.name]: e.target.value }) }
+
+  // Só sai por Cancelar (sem fechar ao tocar fora) — repertório e pauta
+  // montados item a item são o conteúdo mais caro de perder no app inteiro
+  const cancelar = () => {
+    if (mexeu && !confirm('Descartar o que você digitou?')) return
+    onClose()
+  }
 
   const addPauta = () => {
     if (!newItem.trim()) return
+    setMexeu(true)
     setPauta([...pauta, { text: newItem.trim(), done: false }])
     setNewItem('')
   }
 
-  const removePauta = (i) => setPauta(pauta.filter((_, idx) => idx !== i))
+  const removePauta = (i) => { setMexeu(true); setPauta(pauta.filter((_, idx) => idx !== i)) }
 
   // ── Setlist do evento ───────────────────────────────────────────────
   // Puxa pro ensaio o que a banda marcou como menos dominado. Já ignora o
@@ -76,6 +85,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
       setAvisoCruas('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
       return
     }
+    setMexeu(true)
     setSetlist([...setlist, ...escolhidas.map((song) => ({
       id: song.id,
       title: song.title,
@@ -87,6 +97,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
 
   const addSong = (song) => {
     if (setlist.some((s) => s.id === song.id)) return
+    setMexeu(true)
     setSetlist([...setlist, {
       id: song.id,
       title: song.title,
@@ -96,11 +107,12 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     setSongSearch('')
   }
 
-  const removeSong = (i) => setSetlist(setlist.filter((_, idx) => idx !== i))
+  const removeSong = (i) => { setMexeu(true); setSetlist(setlist.filter((_, idx) => idx !== i)) }
 
   const moveSong = (i, dir) => {
     const j = i + dir
     if (j < 0 || j >= setlist.length) return
+    setMexeu(true)
     const next = [...setlist]
     ;[next[i], next[j]] = [next[j], next[i]]
     setSetlist(next)
@@ -112,6 +124,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
     e.preventDefault()
     const from = dragIndex.current
     if (from === null || from === i) return
+    setMexeu(true)
     const next = [...setlist]
     const [moved] = next.splice(from, 1)
     next.splice(i, 0, moved)
@@ -177,7 +190,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const isApresentacao = form.type === 'apresentacao'
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay">
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
         {copiando && (
@@ -302,7 +315,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
           </label>
 
           <div className="modal-actions">
-            <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
+            <button type="button" className="btn-secondary" onClick={cancelar}>Cancelar</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
           </div>
         </form>

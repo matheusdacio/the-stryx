@@ -13,8 +13,19 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
     content: cifra?.content || '',
   })
   const [saving, setSaving] = useState(false)
+  const [mexeu, setMexeu] = useState(false)
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (e) => {
+    setMexeu(true)
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
+
+  // Em edição, só sai por Cancelar (com aviso se mexeu em algo) — tocar
+  // fora não deve descartar cifra digitada por acidente
+  const cancelar = () => {
+    if (mexeu && !confirm('Descartar o que você digitou?')) return
+    onClose()
+  }
 
   const handleSave = (e) => {
     e.preventDefault()
@@ -31,7 +42,7 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={editing ? undefined : onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-top">
           <h2>{editing ? (cifra ? 'Editar Cifra' : 'Nova Cifra') : form.title}</h2>
@@ -69,7 +80,7 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
+              <button type="button" className="btn-secondary" onClick={cancelar}>Cancelar</button>
               <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
