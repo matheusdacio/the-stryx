@@ -46,6 +46,10 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
         <h2>Adicionar Música</h2>
+        <p className="filter-hint" style={{ margin: '-4px 0 12px' }}>
+          Pra música que a banda já toca. Quer propor uma nova?{' '}
+          <a href="#/sugestoes" className="btn-link-inline" onClick={onClose}>Manda em Sugerir 🡒</a>
+        </p>
         <form onSubmit={handleSubmit}>
           <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus required /></label>
           <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
