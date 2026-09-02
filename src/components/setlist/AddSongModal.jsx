@@ -19,6 +19,14 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
     e.preventDefault()
     if (!form.title.trim() || bloqueio) return
     setSaving(true)
+    // Semeia "crua" pra banda toda, igual ao aprovar sugestão — senão a
+    // música cadastrada direto nasce "Sem voto" e fica fora do "Trazer as
+    // menos dominadas" até alguém lembrar de votar nela
+    const dominio = {}
+    ;(acervo.bandMembers || []).forEach((m) => {
+      if (!m.firebaseUid) return
+      dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString(), seeded: true }
+    })
     // Fecha na hora: o Firestore já aplica a escrita localmente e a lista se
     // atualiza sozinha (onSnapshot). Esperar o await deixava o botão preso em
     // "Salvando..." pra sempre sem internet, mesmo com a música já na tela
@@ -27,6 +35,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
       tom: form.tom.trim(),
       bpm: form.bpm ? Number(form.bpm) : null,
       tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean),
+      dominio,
       order: totalSongs,
       createdAt: serverTimestamp(),
     }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
