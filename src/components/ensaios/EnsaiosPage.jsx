@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { dedupMemberNames, firstName } from '../../utils/members'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 
@@ -50,7 +51,8 @@ function TypeBadge({ type }) {
 function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
   const [open, setOpen] = useState(false)
   const hasPauta   = ensaio.pauta?.length > 0
-  const hasMembers = ensaio.members?.length > 0
+  const members    = dedupMemberNames(ensaio.members)
+  const hasMembers = members.length > 0
   const hasNotes   = !!ensaio.notes
   const hasSetlist = ensaio.setlist?.length > 0
 
@@ -64,7 +66,7 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
         </div>
         <div className="ensaio-row-right">
           {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
-          {hasMembers && <span className="ensaio-row-members">👥 {ensaio.members.length}</span>}
+          {hasMembers && <span className="ensaio-row-members">👥 {members.length}</span>}
           <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>
         </div>
       </div>
@@ -102,7 +104,9 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
             <div style={{ marginTop: 10 }}>
               <p className="section-label">Membros</p>
               <div className="members-tags">
-                {ensaio.members.map((m, i) => <span key={i} className="member-tag">{m}</span>)}
+                {members.map((m) => (
+                  <span key={m} className="member-tag" title={m}>{firstName(m)}</span>
+                ))}
               </div>
             </div>
           )}
@@ -145,8 +149,8 @@ function NextEnsaioCard({ ensaio, onEdit, onPerform }) {
         </div>
         <div style={{ textAlign: 'right' }}>
           <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
-          {ensaio.members?.length > 0 && (
-            <p className="next-ensaio-members">👥 {ensaio.members.length} membros</p>
+          {dedupMemberNames(ensaio.members).length > 0 && (
+            <p className="next-ensaio-members">👥 {dedupMemberNames(ensaio.members).length} membros</p>
           )}
           {hasSetlist && (
             <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>

@@ -1,9 +1,11 @@
 import { useState, useEffect, useRef } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { canonicalMemberName, dedupMemberNames } from '../../utils/members'
 
 // Fallback caso ainda não tenha membros importados
 const DEFAULT_MEMBERS = ['Cristiano', 'Shirleano', 'Marcio Braz', 'Marcos', 'Albano', 'Matheus Dacio']
+  .map((name) => ({ name, aliases: [] }))
 
 function toInputDate(ts) {
   if (!ts) return ''
@@ -34,7 +36,12 @@ export default function EnsaioModal({ ensaio, onClose }) {
     const q = query(collection(db, 'members'), orderBy('name'))
     return onSnapshot(q, (snap) => {
       if (!snap.empty) {
-        setBandMembers(snap.docs.map((d) => d.data().name))
+        // Guarda os apelidos junto: eles são o que liga um nome antigo salvo
+        // no evento ao nome de hoje do membro
+        setBandMembers(snap.docs.map((d) => ({
+          name: d.data().name,
+          aliases: d.data().aliases || [],
+        })))
       }
     })
   }, [])
@@ -47,13 +54,31 @@ export default function EnsaioModal({ ensaio, onClose }) {
     })
   }, [])
 
+  // Nomes salvos no evento traduzidos pro cadastro de hoje (por nome ou por
+  // apelido) e sem duplicatas. É isso que os checkboxes refletem, senão um
+  // evento antigo com "Marcio Braz" mostra "Marcio Filho" desmarcado
+  const selectedMembers = dedupMemberNames(
+    form.members.map((m) => canonicalMemberName(m, bandMembers) || m)
+  )
+
+  // Cadastro atual + nomes que o evento guarda de gente que saiu da banda,
+  // senão não tem como desmarcar quem não está mais cadastrado
+  const memberOptions = [
+    ...bandMembers.map((m) => m.name),
+    ...selectedMembers.filter((m) => !canonicalMemberName(m, bandMembers)),
+  ]
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
+  // Trabalha sobre a lista já traduzida, então desmarcar alguém tira junto
+  // os nomes antigos da mesma pessoa que estavam salvos no evento
   const toggleMember = (m) =>
-    setForm((f) => ({
-      ...f,
-      members: f.members.includes(m) ? f.members.filter((x) => x !== m) : [...f.members, m],
-    }))
+    setForm({
+      ...form,
+      members: selectedMembers.includes(m)
+        ? selectedMembers.filter((x) => x !== m)
+        : [...selectedMembers, m],
+    })
 
   const addPauta = () => {
     if (!newItem.trim()) return
@@ -112,6 +137,11 @@ export default function EnsaioModal({ ensaio, onClose }) {
     setSaving(true)
     const data = {
       ...form,
+      // Normaliza pro nome como está hoje em 'members' e tira duplicatas,
+      // pra um evento não guardar a mesma pessoa com dois nomes
+      members: dedupMemberNames(
+        form.members.map((m) => canonicalMemberName(m, bandMembers) || m)
+      ),
       pauta,
       setlist,
       date: Timestamp.fromDate(new Date(form.date + 'T12:00:00')),
@@ -231,10 +261,13 @@ export default function EnsaioModal({ ensaio, onClose }) {
           <div className="form-group">
             <p className="section-label">Membros presentes</p>
             <div className="members-check">
-              {bandMembers.map((m) => (
+              {memberOptions.map((m) => (
                 <label key={m} className="member-check-item">
-                  <input type="checkbox" checked={form.members.includes(m)} onChange={() => toggleMember(m)} />
+                  <input type="checkbox" checked={selectedMembers.includes(m)} onChange={() => toggleMember(m)} />
                   {m}
+                  {!canonicalMemberName(m, bandMembers) && (
+                    <span className="member-check-orphan" title="Não está mais cadastrado na banda"> · fora da banda</span>
+                  )}
                 </label>
               ))}
             </div>

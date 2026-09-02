@@ -1107,3 +1107,9 @@ button { font-family: inherit; }
   opacity: 0.95; border-color: var(--red);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+
+.member-check-orphan {
+  font-size: 0.7rem;
+  color: var(--text-muted);
+  font-style: italic;
+}
