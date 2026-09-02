@@ -98,6 +98,23 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
     }).catch(erroSalvar)
     setEditingMeta(false)
   }
+
+  // Card fica montado a visita inteira: se outro membro mudou tom/BPM/tags
+  // enquanto isso, o formulário abria com o valor de quando o card montou e
+  // "Salvar" revertia a edição do colega sem ninguém perceber. Re-semeia do
+  // song (o snapshot mais recente) toda vez que o editor abre.
+  const openMeta = () => {
+    setTom(song.tom || '')
+    setBpm(song.bpm || '')
+    setVideoUrl(song.videoUrl || '')
+    setTags(song.tags || [])
+    setNewTag('')
+    setEditingMeta(true)
+  }
+  const openNotes = () => {
+    setNotes(song.notes || '')
+    setEditing(true)
+  }
   const addTag = () => {
     const t = newTag.trim()
     if (!t || tags.some((x) => x.toLowerCase() === t.toLowerCase())) { setNewTag(''); return }
@@ -328,15 +345,15 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
         {song.bpm ? (
           <MetronomeButton bpm={song.bpm} />
         ) : (
-          <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>♩ + BPM</button>
+          <button className="btn-meta-add" onClick={openMeta}>♩ + BPM</button>
         )}
         {!videoId && (
-          <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>🎬 + vídeo</button>
+          <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
         )}
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
         ))}
-        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)}>✏️ Editar</button>
+        <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
       </div>
 
       {editingMeta && (
@@ -390,7 +407,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
           </div>
         </div>
       ) : (
-        <p className="song-notes" onClick={() => setEditing(true)}>
+        <p className="song-notes" onClick={openNotes}>
           {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
         </p>
       )}
