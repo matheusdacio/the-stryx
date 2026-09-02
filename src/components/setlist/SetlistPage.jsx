@@ -32,6 +32,14 @@ const SORTS = [
   { value: 'data',        label: '📅 Antigas' },
 ]
 
+// Compara só o dia — o evento é gravado ao meio-dia (EnsaioModal), e a
+// banda costuma votar o domínio logo depois do ensaio, então "ensaiado
+// hoje" já deve contar como passado, não só a partir de amanhã
+const diaDe = (ts) => {
+  const d = ts?.toDate ? ts.toDate() : new Date(ts)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
 const avgDifficulty = (song) => calcDifficulty(song.dificuldade).avg
 
 // Desconto pela dificuldade, no mesmo espírito da ordenação das sugestões:
@@ -53,6 +61,10 @@ export default function SetlistPage() {
   // novo voto não bata mais no filtro ativo — senão ela some debaixo do
   // dedo e a próxima sobe pro lugar exato do toque
   const [fixados, setFixados] = useState(new Set())
+  // Chip "Último ensaio" / "Próximo ensaio": toggle independente, combina
+  // com o filtro de nível (igual tagFilter)
+  const [eventoChip, setEventoChip] = useState(null)
+  const [ensaios, setEnsaios] = useState([])
   // O setlist é um acervo, não uma sequência: a ordem vem sempre de um
   // critério. Montar sequência é papel do repertório do evento
   const [sortBy, setSortBy] = useState('recentes')
@@ -90,11 +102,31 @@ export default function SetlistPage() {
     )
   }, [])
 
-  // Muda o filtro/tag/busca solta os cards fixados: eles só existem pra
-  // não sumir debaixo do dedo dentro do MESMO filtro
+  useEffect(() => {
+    return onSnapshot(collection(db, 'ensaios'), (snap) =>
+      setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    )
+  }, [])
+
+  // Muda o filtro/tag/busca/chip de evento solta os cards fixados: eles só
+  // existem pra não sumir debaixo do dedo dentro do MESMO filtro
   const mudarFiltro = (v) => { setFixados(new Set()); setFilter(v) }
   const mudarTagFilter = (v) => { setFixados(new Set()); setTagFilter(v) }
   const mudarSearch = (v) => { setFixados(new Set()); setSearch(v) }
+  const mudarEventoChip = (v) => { setFixados(new Set()); setEventoChip(v) }
+
+  // Só ensaio (não apresentação) e não cancelado — "último"/"próximo
+  // ensaio" é sobre o ciclo de rodagem, não sobre shows
+  const hoje = diaDe(new Date())
+  const ensaiosOrdenados = [...ensaios]
+    .filter((e) => e.type === 'ensaio' && e.status !== 'cancelado' && e.date)
+    .sort((a, b) => diaDe(a.date) - diaDe(b.date))
+  const passados = ensaiosOrdenados.filter((e) => diaDe(e.date) <= hoje)
+  const futuros = ensaiosOrdenados.filter((e) => diaDe(e.date) > hoje)
+  const ultimoEnsaio = passados[passados.length - 1] || null
+  const proximoEnsaio = futuros[0] || null
+  const idsUltimoEnsaio = new Set((ultimoEnsaio?.setlist || []).map((s) => s.id))
+  const idsProximoEnsaio = new Set((proximoEnsaio?.setlist || []).map((s) => s.id))
 
   const notaDe = notasPorMusica(sugestoes)
   const opinioesDe = opinioesPorMusica(sugestoes)
@@ -116,6 +148,7 @@ export default function SetlistPage() {
   const filtered = songs.filter((s) =>
     (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter) || fixados.has(s.id)) &&
     (!tagFilter || (s.tags || []).includes(tagFilter)) &&
+    (!eventoChip || (eventoChip === 'ultimo' ? idsUltimoEnsaio : idsProximoEnsaio).has(s.id)) &&
     matchesSearch(search, s.title, s.artist)
   )
 
@@ -183,6 +216,24 @@ export default function SetlistPage() {
         >
           🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
         </button>
+        {ultimoEnsaio && idsUltimoEnsaio.size > 0 && (
+          <button
+            className={`btn-filter ${eventoChip === 'ultimo' ? 'active' : ''}`}
+            onClick={() => mudarEventoChip(eventoChip === 'ultimo' ? null : 'ultimo')}
+            title="Músicas do último ensaio — hora de atualizar o domínio"
+          >
+            🎸 Último ensaio <span className="count">{idsUltimoEnsaio.size}</span>
+          </button>
+        )}
+        {proximoEnsaio && idsProximoEnsaio.size > 0 && (
+          <button
+            className={`btn-filter ${eventoChip === 'proximo' ? 'active' : ''}`}
+            onClick={() => mudarEventoChip(eventoChip === 'proximo' ? null : 'proximo')}
+            title="Músicas já escaladas pro próximo ensaio"
+          >
+            Próximo ensaio <span className="count">{idsProximoEnsaio.size}</span>
+          </button>
+        )}
       </div>
       <p className="filter-hint">O nível da música é o de quem está menos pronto nela.</p>
 
