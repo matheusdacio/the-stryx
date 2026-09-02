@@ -17,6 +17,7 @@ import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
 import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
+import { showToast } from '../../utils/toast'
 import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -53,6 +54,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
   const [comment, setComment] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
   const [saving, setSaving] = useState(false)
+  const [reopening, setReopening] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(sugestao.notes || '')
   const ref = doc(db, 'sugestoes', sugestao.id)
@@ -115,6 +117,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
   const approve = async () => {
     if (!confirm(`Enviar "${sugestao.title}" pro setlist?`)) return
+    setSaving(true)
 
     // Música nova entra crua pra todo mundo: ninguém ensaiou ainda. Cada um
     // muda o próprio voto no card do setlist quando pegar a música
@@ -124,29 +127,41 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString(), seeded: true }
     })
 
-    await addDoc(collection(db, 'songs'), {
-      dominio: { ...dominio, ...(sugestao.dominio || {}) },
-      title: sugestao.title,
-      artist: sugestao.artist || '',
-      videoUrl: sugestao.videoUrl || '',
-      status: 'ensaiando',
-      notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
-      tom: sugestao.tom || '',
-      bpm: sugestao.bpm || null,
-      tags: sugestao.tags || [],
-      // Escala única desde 80191d4: não precisa converter, só copiar
-      dificuldade: sugestao.dificuldade || {},
-      // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
-      sugestaoId: sugestao.id,
-      order: Date.now(),
-      createdAt: serverTimestamp(),
-    })
-    await updateDoc(ref, { status: 'aprovada' })
-    onClose()
+    try {
+      await addDoc(collection(db, 'songs'), {
+        dominio: { ...dominio, ...(sugestao.dominio || {}) },
+        title: sugestao.title,
+        artist: sugestao.artist || '',
+        videoUrl: sugestao.videoUrl || '',
+        status: 'ensaiando',
+        notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
+        tom: sugestao.tom || '',
+        bpm: sugestao.bpm || null,
+        tags: sugestao.tags || [],
+        // Escala única desde 80191d4: não precisa converter, só copiar
+        dificuldade: sugestao.dificuldade || {},
+        // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
+        sugestaoId: sugestao.id,
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+      })
+      await updateDoc(ref, { status: 'aprovada' })
+      showToast('Foi pro setlist ✓')
+      onClose()
+    } catch {
+      alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+      setSaving(false)
+    }
   }
 
 
-  const reopen = () => updateDoc(ref, { status: 'aberta' })
+  const reopen = () => {
+    setReopening(true)
+    updateDoc(ref, { status: 'aberta' })
+      .then(() => showToast('Reaberta pra votação'))
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+      .finally(() => setReopening(false))
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -218,7 +233,11 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
             {sugestao.status === 'aprovada' ? '✓ Enviada pro setlist' : '✕ Rejeitada'}
-            {isAdmin && <button className="btn-reopen" onClick={reopen}>Reabrir</button>}
+            {isAdmin && (
+              <button className="btn-reopen" onClick={reopen} disabled={reopening}>
+                {reopening ? 'Reabrindo...' : 'Reabrir'}
+              </button>
+            )}
           </div>
         )}
 
@@ -310,7 +329,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           <div className="admin-controls">
             <p className="section-label">Decisão final</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-approve" onClick={approve}>➤ Enviar pro setlist</button>
+              <button className="btn-approve" onClick={approve} disabled={saving}>
+                {saving ? 'Enviando...' : '➤ Enviar pro setlist'}
+              </button>
             </div>
           </div>
         )}

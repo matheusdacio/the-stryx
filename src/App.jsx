@@ -7,6 +7,7 @@ import Navbar from './components/Navbar'
 import BottomNav from './components/BottomNav'
 import NotifBanner from './components/NotifBanner'
 import WelcomeBanner from './components/WelcomeBanner'
+import Toast from './components/Toast'
 import { isIOS } from './utils/device'
 import SetlistPage from './components/setlist/SetlistPage'
 import CifrasPage from './components/cifras/CifrasPage'
@@ -68,6 +69,7 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </div>
+      <Toast />
       <BottomNav />
     </HashRouter>
   )

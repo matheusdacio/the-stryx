@@ -9,6 +9,7 @@ import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { DIFFICULTIES } from '../../utils/dificuldade'
 import { OPINIONS, fundirVotos } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
+import { showToast } from '../../utils/toast'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
@@ -24,6 +25,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
   const [newTag, setNewTag] = useState('')
+  const [busy, setBusy] = useState(false)
   const ref = doc(db, 'songs', song.id)
 
   // Dificuldade — voto de cada membro (mapa keyed por uid)
@@ -140,50 +142,58 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
   // senão cria uma sugestão nova em aberto.
   const backToSuggestions = async () => {
     if (!confirm(`Tirar "${song.title}" do setlist e mandar de volta pras sugestões?`)) return
+    if (busy) return
+    setBusy(true)
 
-    let reopened = false
-    if (song.sugestaoId) {
-      const sugRef = doc(db, 'sugestoes', song.sugestaoId)
-      const snap = await getDoc(sugRef)
-      if (snap.exists()) {
-        await updateDoc(sugRef, {
-          status: 'aberta',
-          ...(song.notes ? { notes: song.notes } : {}),
-          ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
-          ...(song.tom ? { tom: song.tom } : {}),
-          ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
+    try {
+      let reopened = false
+      if (song.sugestaoId) {
+        const sugRef = doc(db, 'sugestoes', song.sugestaoId)
+        const snap = await getDoc(sugRef)
+        if (snap.exists()) {
+          await updateDoc(sugRef, {
+            status: 'aberta',
+            ...(song.notes ? { notes: song.notes } : {}),
+            ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
+            ...(song.tom ? { tom: song.tom } : {}),
+            ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
+            bpm: song.bpm || null,
+            tags: song.tags || [],
+            dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade },
+            // Preserva as opiniões que rolaram no setlist — sem isso a volta
+            // apagava a única votação que as músicas importadas já tinham
+            opinoes: fundirVotos(snap.data().opinoes, song.opinoes),
+          })
+          reopened = true
+        }
+      }
+
+      if (!reopened) {
+        await addDoc(collection(db, 'sugestoes'), {
+          title: song.title,
+          artist: song.artist || '',
+          videoUrl: song.videoUrl || '',
+          description: '',
+          notes: song.notes || '',
+          tom: song.tom || '',
+          dominio: song.dominio || {},
           bpm: song.bpm || null,
           tags: song.tags || [],
-          dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade },
-          // Preserva as opiniões que rolaram no setlist — sem isso a volta
-          // apagava a única votação que as músicas importadas já tinham
-          opinoes: fundirVotos(snap.data().opinoes, song.opinoes),
+          status: 'aberta',
+          opinoes: song.opinoes || {},
+          dificuldade,
+          suggestedBy: user.displayName || user.email,
+          suggestedById: user.uid,
+          createdAt: serverTimestamp(),
         })
-        reopened = true
       }
-    }
 
-    if (!reopened) {
-      await addDoc(collection(db, 'sugestoes'), {
-        title: song.title,
-        artist: song.artist || '',
-        videoUrl: song.videoUrl || '',
-        description: '',
-        notes: song.notes || '',
-        tom: song.tom || '',
-        dominio: song.dominio || {},
-        bpm: song.bpm || null,
-        tags: song.tags || [],
-        status: 'aberta',
-        opinoes: song.opinoes || {},
-        dificuldade,
-        suggestedBy: user.displayName || user.email,
-        suggestedById: user.uid,
-        createdAt: serverTimestamp(),
-      })
+      await deleteDoc(ref)
+      showToast('Voltou pras sugestões')
+    } catch {
+      alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+      setBusy(false)
     }
-
-    await deleteDoc(ref)
   }
 
   const videoId = getYouTubeId(song.videoUrl)
@@ -433,10 +443,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], p
       )}
 
       <div className="song-card-footer">
-        <button className="btn-back-sug" onClick={backToSuggestions} title="Tirar do setlist e devolver pras sugestões">
-          ↩ Voltar pras sugestões
+        <button className="btn-back-sug" onClick={backToSuggestions} disabled={busy} title="Tirar do setlist e devolver pras sugestões">
+          {busy ? 'Devolvendo...' : '↩ Voltar pras sugestões'}
         </button>
-        <button className="btn-ghost-danger" onClick={remove} title="Apagar a música de vez">
+        <button className="btn-ghost-danger" onClick={remove} disabled={busy} title="Apagar a música de vez">
           Remover
         </button>
       </div>
