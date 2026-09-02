@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.29.1] — 2026-09-02
+- _fix:_ pente de correções de regressão dos últimos commits (revisão independente): vídeo inline do card volta a tocar sem cortar ao expandir/recolher, e não toca mais de um ao mesmo tempo; "Tocar as músicas" e "Tocar o set" congelam a fila enquanto tocam e param sozinhos ao abrir o Modo palco; "↩ Voltar pras sugestões" e "➤ Enviar pro setlist" voltam a levar opinião/dificuldade nos dois sentidos; rejeição por veto nas sugestões passa a ser gravada (badge, planilha e etiqueta da lista deixam de divergir), o banner de veto pendente diz quem falta votar, e a vetada oferece "Reabrir" em vez de mostrar "Enviar pro setlist" ao mesmo tempo que "Rejeitada"; a trava de música repetida diz se a existente está aberta, rejeitada ou aprovada, com "Abrir essa"/link pra Sugestões; a bolinha do card do setlist só mostra número em ordenação por nota/dificuldade; os três blocos de voto do card (domínio, opinião, dificuldade) ganham nomes e ícones distintos; ferramentas admin da Banda ficam num bloco recolhido, com as migrações de uso único separadas em "Já rodadas"; relatório de integridade mostra eventos por data em vez de id cru
+
 ## [1.29.0] — 2026-09-02
 - **Sugestões:** o filtro "Aprovadas" saiu — quem foi pro setlist já não aparece na lista — e o botão virou **"➤ Enviar pro setlist"**. Ao enviar, a música nasce marcada como **Crua para todos os membros**, já que ninguém ensaiou ainda; cada um muda o próprio voto depois
 - **Card do setlist mais limpo**: BPM e contagem de votos saem do resumo (seguem visíveis ao abrir a música), e o antigo ✎ apagadinho virou um botão **✏️ Editar** legível

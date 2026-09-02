@@ -398,6 +398,7 @@ const TABS = [
 export default function EnsaiosPage() {
   const { user } = useAuth()
   const [ensaios, setEnsaios] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [bandMembers, setBandMembers] = useState([])
   const [songs, setSongs] = useState({})
   const [modal, setModal]     = useState(null)
@@ -406,7 +407,10 @@ export default function EnsaiosPage() {
 
   useEffect(() => {
     const q = query(collection(db, 'ensaios'), orderBy('date', 'asc'))
-    return onSnapshot(q, (snap) => setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   useEffect(() => {
@@ -465,6 +469,10 @@ export default function EnsaiosPage() {
         <button className="btn-primary" onClick={() => setModal('add')}>+ Evento</button>
       </div>
 
+      {!loaded ? (
+        <p className="empty-state">Carregando os eventos...</p>
+      ) : (
+        <>
       {/* Tabs */}
       <div className="filter-bar">
         {TABS.map(t => (
@@ -553,6 +561,8 @@ export default function EnsaiosPage() {
               ))}
             </div>
           )}
+        </>
+      )}
         </>
       )}
 

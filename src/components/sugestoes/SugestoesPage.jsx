@@ -545,6 +545,7 @@ function exportToExcel(sugestoes, filterLabel) {
 export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
   const [musicasSetlist, setMusicasSetlist] = useState([])
   const [bandMembers, setBandMembers] = useState([])
@@ -586,7 +587,10 @@ export default function SugestoesPage() {
 
   useEffect(() => {
     const q = query(collection(db, 'sugestoes'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, (snap) => setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   // Atualiza o modal com dados frescos do Firestore
@@ -709,7 +713,9 @@ export default function SugestoesPage() {
         ))}
       </div>
 
-      {displayed.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando as sugestões...</p>
+      ) : displayed.length === 0 ? (
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma sugestão encontrada pra "{search.trim()}".</p>

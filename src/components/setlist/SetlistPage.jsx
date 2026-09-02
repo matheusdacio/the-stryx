@@ -41,6 +41,7 @@ function facilidade(song) {
 
 export default function SetlistPage() {
   const [songs, setSongs] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [sugestoes, setSugestoes] = useState([])
   const [filter, setFilter] = useState('all')
   const [tagFilter, setTagFilter] = useState(null)
@@ -57,7 +58,10 @@ export default function SetlistPage() {
 
   useEffect(() => {
     const q = query(collection(db, 'songs'), orderBy('order', 'asc'))
-    return onSnapshot(q, (snap) => setSongs(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setSongs(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   // As opiniões da banda vivem na sugestão que originou a música — é de lá
@@ -200,7 +204,9 @@ export default function SetlistPage() {
         </div>
       )}
 
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando o setlist...</p>
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma música encontrada pra "{search.trim()}".</p>
