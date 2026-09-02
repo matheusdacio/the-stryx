@@ -1,3 +1,5 @@
+import { collection, getDocs, writeBatch, doc } from 'firebase/firestore'
+import { db } from '../firebase/config'
 import { namesMatch, normalizeName } from './votes'
 
 // Primeiro nome — os chips e listas mostram só ele, pra não misturar
@@ -31,4 +33,46 @@ export function canonicalMemberName(name, bandMembers) {
       )
   )
   return found ? found.name : null
+}
+
+// Regrava os membros dos eventos com os nomes como estão hoje em 'members'.
+// Eventos guardam os membros como texto, então um evento criado quando o
+// cadastro dizia "Cristiano" ficou com esse nome; se depois alguém marcou
+// "Cristiano Dácio", o documento passou a ter a mesma pessoa duas vezes.
+// Toca só o campo members. Idempotente — pode rodar quantas vezes quiser.
+export async function normalizeEventMembers({ dryRun = false } = {}) {
+  const [membersSnap, ensaiosSnap] = await Promise.all([
+    getDocs(collection(db, 'members')),
+    getDocs(collection(db, 'ensaios')),
+  ])
+
+  const bandMembers = membersSnap.docs.map((d) => ({
+    name: d.data().name,
+    aliases: d.data().aliases || [],
+  }))
+
+  const changes = []
+  ensaiosSnap.forEach((docSnap) => {
+    const before = docSnap.data().members || []
+    if (!before.length) return
+    const after = dedupMemberNames(
+      before.map((m) => canonicalMemberName(m, bandMembers) || m)
+    )
+    const igual = after.length === before.length && after.every((n, i) => n === before[i])
+    if (igual) return
+    changes.push({
+      id: docSnap.id,
+      date: docSnap.data().date?.toDate?.().toLocaleDateString('pt-BR') || 's/ data',
+      before,
+      after,
+    })
+  })
+
+  if (!dryRun && changes.length) {
+    const batch = writeBatch(db)
+    changes.forEach((c) => batch.update(doc(db, 'ensaios', c.id), { members: c.after }))
+    await batch.commit()
+  }
+
+  return { changes, updated: dryRun ? 0 : changes.length }
 }

@@ -6,6 +6,7 @@ import {
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { mergeAllImportedVotes, namesMatch } from '../../utils/votes'
+import { normalizeEventMembers } from '../../utils/members'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -135,6 +136,73 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
 
 // ── Página principal ──────────────────────────────────────────────────
 
+// ── Ferramenta: normalizar membros dos eventos ────────────────────────
+// Eventos guardam os membros como texto, então quem foi renomeado no cadastro
+// depois do evento continua com o nome antigo lá — e pode ficar duplicado se
+// alguém marcar o nome novo. Dois passos: mostra o que muda, depois grava.
+function EventNormalizeTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await normalizeEventMembers({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhum evento com nome antigo.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { updated } = await normalizeEventMembers()
+      setMsg(`✅ ${updated} evento(s) normalizado(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '📅 Normalizar membros dos eventos'}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} evento(s) com nome antigo</p>
+          {pending.map((c) => (
+            <p key={c.id} className="event-normalize-item">
+              <strong>{c.date}</strong>: {c.before.join(', ')}
+              <br />→ {c.after.join(', ')}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length} evento(s)`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
@@ -238,6 +306,7 @@ export default function MembrosPage() {
           <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={deduping || merging}>
             {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
           </button>
+          <EventNormalizeTool />
           {msg && (
             <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
               {msg}
