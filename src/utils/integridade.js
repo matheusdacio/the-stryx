@@ -5,9 +5,18 @@ import { chaveMusica } from './score'
 import { DOMINIOS } from './dominio'
 import { PRESENCAS } from './presenca'
 
+// dd/mm · local — sem isso o relatório apontava eventos pelo id cru do
+// Firestore, e o admin não tinha como saber qual abrir
+function formatEvento(e) {
+  const d = e.date?.toDate ? e.date.toDate() : e.date ? new Date(e.date) : null
+  const data = d ? d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' }) : 's/ data'
+  return e.location ? `${data} · ${e.location}` : data
+}
+
 // Confere se os dados estão coerentes depois das migrações. Só lê — não
 // corrige nada. Cada item vira uma linha do relatório: ok quando está tudo
-// certo, alerta quando algo precisa de olho humano.
+// certo, alerta quando algo precisa de olho humano, ℹ️ quando é só
+// informativo (não é um problema, mas vale saber).
 export async function verificarIntegridade() {
   const [membersSnap, songsSnap, sugSnap, ensaiosSnap] = await Promise.all([
     getDocs(collection(db, 'members')),
@@ -33,6 +42,14 @@ export async function verificarIntegridade() {
       detalhe: problemas.length ? problemas.slice(0, 8) : [resumoOk],
       total: problemas.length,
     })
+  // Pra achados que não são "certo/errado" — só contexto que vale saber
+  const addInfo = (titulo, lista, vazio) =>
+    itens.push({
+      titulo,
+      info: true,
+      detalhe: lista.length ? lista.slice(0, 8) : [vazio],
+      total: lista.length,
+    })
 
   // ── Banda ──
   add(
@@ -52,27 +69,22 @@ export async function verificarIntegridade() {
   // ── Eventos: migração da presença ──
   add(
     'Eventos sem a lista de membros antiga',
-    eventos.filter((e) => e.members).map((e) => `${e.id} ainda tem o campo members`),
+    eventos.filter((e) => e.members).map((e) => `${formatEvento(e)} ainda tem o campo members`),
     `${eventos.length} eventos migrados pra presença por pessoa`
   )
 
   const presencaRuim = []
   eventos.forEach((e) => {
     Object.entries(e.presenca || {}).forEach(([uid, p]) => {
-      if (!uidsConhecidos.has(uid)) presencaRuim.push(`${e.id}: presença de uid desconhecido`)
-      else if (!statusPresenca.has(p?.status)) presencaRuim.push(`${e.id}: status "${p?.status}" inválido`)
+      if (!uidsConhecidos.has(uid)) presencaRuim.push(`${formatEvento(e)}: presença de uid desconhecido`)
+      else if (!statusPresenca.has(p?.status)) presencaRuim.push(`${formatEvento(e)}: status "${p?.status}" inválido`)
     })
   })
   const comPresenca = eventos.filter((e) => Object.keys(e.presenca || {}).length).length
   add('Presenças com membro e status válidos', presencaRuim, `${comPresenca} eventos com presença registrada`)
 
   const convidados = [...new Set(eventos.flatMap((e) => e.convidados || []))]
-  itens.push({
-    titulo: 'Convidados preservados (não são membros)',
-    ok: true,
-    detalhe: convidados.length ? convidados : ['Nenhum'],
-    total: convidados.length,
-  })
+  addInfo('Convidados preservados (não são membros)', convidados, 'Nenhum')
 
   // ── Setlist ──
   add(
@@ -128,27 +140,23 @@ export async function verificarIntegridade() {
     )
     return !noSetlist
   })
-  itens.push({
-    titulo: 'Aprovadas que saíram do setlist',
-    ok: true,
-    detalhe: aprovadasForaDoSetlist.length
-      ? aprovadasForaDoSetlist.map((s) => `${s.title} — ${s.artist || ''}`)
-      : ['Nenhuma'],
-    total: aprovadasForaDoSetlist.length,
-  })
+  addInfo(
+    'Aprovadas que saíram do setlist',
+    aprovadasForaDoSetlist.map((s) => `${s.title} — ${s.artist || ''}`),
+    'Nenhuma'
+  )
 
   // ── Votos importados ainda por fundir ──
   const importPendentes = sugestoes.filter((sug) =>
     Object.keys(sug.opinoes || {}).some((k) => k.startsWith('import_'))
   )
-  itens.push({
-    titulo: 'Sugestões com voto importado ainda não fundido',
-    ok: true,
-    detalhe: importPendentes.length
+  addInfo(
+    'Sugestões com voto importado ainda não fundido',
+    importPendentes.length
       ? [`${importPendentes.length} sugestões — rode "Fundir votos duplicados" se quiser vincular aos uids`]
-      : ['Nenhuma'],
-    total: importPendentes.length,
-  })
+      : [],
+    'Nenhuma'
+  )
 
   return itens
 }

@@ -1104,7 +1104,7 @@ button { font-family: inherit; }
   padding: 10px 12px;
   border: 1px solid var(--border);
   border-radius: 8px;
-  background: var(--bg-card);
+  background: var(--surface2);
 }
 .event-normalize-item {
   font-size: 0.75rem;
@@ -1330,3 +1330,23 @@ button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer;
 }
 .login-credito a { color: var(--text-muted); }
 .login-credito a:hover { color: var(--text); }
+
+/* Ferramentas de manutenção (admin) — recolhidas por padrão */
+.admin-tools {
+  margin-bottom: 16px;
+  padding: 10px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+}
+.admin-tools summary {
+  cursor: pointer;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-muted);
+  list-style: none;
+}
+.admin-tools summary::-webkit-details-marker { display: none; }
+.admin-tools summary::before { content: '▸ '; }
+.admin-tools[open] summary::before { content: '▾ '; }
+.admin-tools[open] summary { color: var(--text); margin-bottom: 4px; }

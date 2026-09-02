@@ -295,7 +295,7 @@ function IntegridadeTool() {
     setBusy(false)
   }
 
-  const alertas = (itens || []).filter((i) => !i.ok).length
+  const alertas = (itens || []).filter((i) => !i.info && !i.ok).length
 
   return (
     <>
@@ -308,14 +308,18 @@ function IntegridadeTool() {
           <p className="section-label">
             {alertas === 0 ? '✅ Nenhum problema encontrado' : `⚠️ ${alertas} ponto(s) pra olhar`}
           </p>
-          {itens.map((i) => (
-            <p key={i.titulo} className="event-normalize-item">
-              <strong style={{ color: i.ok ? 'var(--green)' : 'var(--red)' }}>{i.ok ? '✓' : '✕'} {i.titulo}</strong>
-              <br />
-              {i.detalhe.join(' · ')}
-              {i.total > 8 && ` … e mais ${i.total - 8}`}
-            </p>
-          ))}
+          {itens.map((i) => {
+            const icone = i.info ? 'ℹ️' : i.ok ? '✓' : '✕'
+            const cor = i.info ? 'var(--text-muted)' : i.ok ? 'var(--green)' : 'var(--red)'
+            return (
+              <p key={i.titulo} className="event-normalize-item">
+                <strong style={{ color: cor }}>{icone} {i.titulo}</strong>
+                <br />
+                {i.detalhe.join(' · ')}
+                {i.total > i.detalhe.length && ` … e mais ${i.total - i.detalhe.length}`}
+              </p>
+            )
+          })}
         </div>
       )}
     </>
@@ -618,27 +622,37 @@ export default function MembrosPage() {
         </span>
       </div>
 
-      {/* Ferramentas admin */}
+      {/* Ferramentas admin — recolhidas por padrão: são 8 botões que só o
+          admin usa, e metade são migrações já rodadas uma vez (ver
+          CHANGELOG). Abertas, empurravam os cards da banda pra baixo do
+          celular toda vez que a página abria. */}
       {isAdmin && (
-        <div style={{ display: 'flex', gap: 8, marginBottom: 16, alignItems: 'center', flexWrap: 'wrap' }}>
-          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleDedup} disabled={deduping || merging}>
-            {deduping ? 'Removendo...' : '🧹 Remover duplicatas'}
-          </button>
-          <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={deduping || merging}>
-            {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
-          </button>
-          <EventNormalizeTool />
-          <PresenceMigrateTool />
-          <IntegridadeTool />
-          <DedupSugestoesTool />
-          <DificuldadeTool />
-          <TomTool />
-          {msg && (
-            <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-              {msg}
-            </span>
-          )}
-        </div>
+        <details className="admin-tools">
+          <summary>🛠 Manutenção</summary>
+          <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleDedup} disabled={deduping || merging}>
+              {deduping ? 'Removendo...' : '🧹 Remover duplicatas'}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={deduping || merging}>
+              {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
+            </button>
+            <IntegridadeTool />
+            {msg && (
+              <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+                {msg}
+              </span>
+            )}
+          </div>
+
+          <p className="section-label" style={{ marginTop: 4 }}>Já rodadas</p>
+          <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
+            <EventNormalizeTool />
+            <PresenceMigrateTool />
+            <DedupSugestoesTool />
+            <DificuldadeTool />
+            <TomTool />
+          </div>
+        </details>
       )}
 
       {/* Grid de membros */}
