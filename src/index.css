@@ -116,6 +116,18 @@ button { font-family: inherit; }
 .btn-notif:hover { opacity: 1; }
 .btn-notif:disabled { cursor: wait; }
 
+/* ─── APP BANNER (avisos dispensáveis, acima do conteúdo) ─── */
+.app-banner {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  flex-wrap: wrap; max-width: 720px; margin: 0 auto; padding: 10px 16px;
+  background: var(--surface2); border-bottom: 1px solid var(--border);
+  font-size: 0.85rem; color: var(--text);
+}
+.app-banner-actions { display: flex; gap: 8px; flex-shrink: 0; }
+.app-banner-welcome { align-items: flex-start; }
+.app-banner-welcome ol { margin: 6px 0 0; padding-left: 18px; }
+.app-banner-welcome li { margin-bottom: 2px; }
+
 /* ─── BOTTOM NAV ─── */
 .bottom-nav {
   position: fixed; bottom: 0; left: 0; right: 0;

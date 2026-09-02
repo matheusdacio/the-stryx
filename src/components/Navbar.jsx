@@ -1,29 +1,15 @@
 import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useNotifications } from '../hooks/useNotifications'
 import { APP_VERSION } from '../version'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
-export default function Navbar() {
+export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
   const { user, logout } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
-  const { permissao, ativando, suportado, ativar, desativar } = useNotifications(user)
+  const { permissao, ativando, suportado } = notif
 
-  const handleNotifClick = async () => {
-    if (permissao === 'granted') {
-      if (window.confirm('Desativar notificações?')) await desativar()
-    } else {
-      const r = await ativar()
-      if (r === 'denied') {
-        alert('O navegador bloqueou as notificações. Desbloqueia nas configurações do site e tenta de novo.')
-      } else if (r === 'error') {
-        alert('Não consegui ativar agora. Tenta de novo com internet.')
-      } else if (r === 'ok') {
-        alert('Pronto! Você recebe aviso de sugestão nova e lembrete de ensaio.')
-      }
-    }
-  }
+  const handleNotifClick = () => (permissao === 'granted' ? onDesativarNotif() : onAtivarNotif())
 
   return (
     <nav className="navbar">
