@@ -29,20 +29,20 @@ const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-// Média de dificuldade entre quem votou; avg null se ninguém votou
+// Dificuldade entre quem votou: média (usada na ordenação) e o nível mais alto
+// votado (usado no chip do card). avg/max null se ninguém votou
 function calcDifficulty(dificuldade) {
   const list = Object.values(dificuldade || {})
-  if (!list.length) return { avg: null, total: 0 }
-  const sum = list.reduce((acc, v) => acc + (DIFF_BY_VALUE[v.level]?.weight || 0), 0)
-  return { avg: sum / list.length, total: list.length }
+  if (!list.length) return { avg: null, max: null, total: 0 }
+  const weights = list.map((v) => DIFF_BY_VALUE[v.level]?.weight || 0)
+  const sum = weights.reduce((acc, w) => acc + w, 0)
+  return { avg: sum / list.length, max: Math.max(...weights), total: list.length }
 }
 
-// Mapeia a média num dos 3 rótulos (pro chip do card)
-function avgDifficultyLabel(avg) {
-  if (avg === null) return null
-  if (avg < 1.67) return DIFF_BY_VALUE.facil
-  if (avg < 2.34) return DIFF_BY_VALUE.ok
-  return DIFF_BY_VALUE.dificil
+// Mapeia um peso num dos 3 rótulos. O card mostra o pior voto, não a média:
+// se alguém disse que é difícil, o chip fica Difícil
+function difficultyByWeight(weight) {
+  return DIFFICULTIES.find((d) => d.weight === weight) || null
 }
 
 // opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
@@ -379,6 +379,7 @@ const SORTS = [
   { value: 'media',       label: '⭐ Média' },
   { value: 'votes',       label: '🗳 Votos' },
   { value: 'dificuldade', label: '🎯 Dificuldade' },
+  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
   { value: 'recent',      label: '🕐 Recentes' },
 ]
 
@@ -407,6 +408,21 @@ function calcSongScore(opinoes) {
   const soma = list.reduce((acc, v) => acc + (SCORES[v.opinion] ?? 0), 0)
   const rounded = (n) => Math.round(n * 100) / 100
   return { soma: rounded(soma), media: rounded(soma / list.length), total: list.length }
+}
+
+// ── Nota combinada: média das opiniões com desconto por dificuldade ───
+// Fácil não desconta nada, Ok e Difícil descontam progressivamente. A nota
+// pesa mais que a dificuldade: uma música difícil precisa ser bem melhor
+// avaliada pra passar na frente de uma fácil, mas entre notas parecidas a
+// mais fácil sobe. Ajuste esses fatores se quiser a facilidade pesando mais.
+const EASE_BY_WEIGHT = { 1: 1, 2: 0.85, 3: 0.7 }
+const EASE_SEM_VOTO = EASE_BY_WEIGHT[2] // sem voto de dificuldade conta como Ok
+
+/** Média das opiniões descontada pela dificuldade votada (a mais alta) */
+function calcBalancedScore(opinoes, dificuldade) {
+  const { media, soma, total } = calcSongScore(opinoes)
+  const ease = EASE_BY_WEIGHT[calcDifficulty(dificuldade).max] ?? EASE_SEM_VOTO
+  return { valor: media * ease, media, soma, total, ease }
 }
 
 function exportToExcel(sugestoes, filterLabel) {
@@ -542,10 +558,18 @@ export default function SugestoesPage() {
       const tb = Object.keys(b.opinoes || {}).length
       return tb - ta || calcSongScore(b.opinoes).media - calcSongScore(a.opinoes).media
     }
+    if (sortBy === 'balanceada') {
+      // Melhor avaliada e mais fácil primeiro. Desempate igual ao da média:
+      // mais votos, depois maior soma
+      const ba = calcBalancedScore(a.opinoes, a.dificuldade)
+      const bb = calcBalancedScore(b.opinoes, b.dificuldade)
+      return bb.valor - ba.valor || bb.total - ba.total || bb.soma - ba.soma
+    }
     if (sortBy === 'dificuldade') {
-      // Mais fácil → mais difícil; sem votos de dificuldade vai pro fim
-      const da = calcDifficulty(a.dificuldade).avg
-      const db_ = calcDifficulty(b.dificuldade).avg
+      // Mais fácil → mais difícil, pelo nível mais alto votado (o mesmo que
+      // aparece no chip do card); sem votos de dificuldade vai pro fim
+      const da = calcDifficulty(a.dificuldade).max
+      const db_ = calcDifficulty(b.dificuldade).max
       if (da === null && db_ === null) return 0
       if (da === null) return 1
       if (db_ === null) return -1
@@ -633,7 +657,7 @@ export default function SugestoesPage() {
             const myVote = (s.opinoes || {})[user.uid]
             const { soma, media, total } = calcSongScore(s.opinoes)
             const showScore = total > 0
-            const diffLabel = avgDifficultyLabel(calcDifficulty(s.dificuldade).avg)
+            const diffLabel = difficultyByWeight(calcDifficulty(s.dificuldade).max)
             return (
               <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
                 {videoId && (
@@ -644,7 +668,7 @@ export default function SugestoesPage() {
                 <div className="sug-card-body">
                   <div className="sug-card-top">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {sortBy === 'media' && showScore && (
+                      {(sortBy === 'media' || sortBy === 'balanceada') && showScore && (
                         <span className="sug-rank-badge">#{rank + 1}</span>
                       )}
                       <div>
