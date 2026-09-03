@@ -397,7 +397,7 @@ button { font-family: inherit; }
 .btn-metronome:hover { border-color: var(--accent); color: var(--accent); }
 .btn-metronome.playing {
   background: rgba(16, 185, 129, 0.12); border-color: var(--green);
-  color: var(--green); animation: pulse-beat 0.5s infinite alternate;
+  color: var(--green); animation: pulse-beat 0.5s infinite alternate steps(1);
   box-shadow: 0 0 14px rgba(16, 185, 129, 0.25);
 }
 @keyframes pulse-beat { from { opacity: 1; } to { opacity: 0.55; } }
