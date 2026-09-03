@@ -455,10 +455,9 @@ button { font-family: inherit; }
 .badge-key { background: rgba(99, 102, 241, 0.15); color: #818cf8; border-color: rgba(99, 102, 241, 0.3); }
 .badge-bpm { background: rgba(245, 158, 11, 0.15); color: var(--yellow); border-color: rgba(245, 158, 11, 0.3); }
 
-.cifra-view { overflow-y: auto; max-height: 60vh; }
 .cifra-content {
-  font-family: 'Courier New', monospace; font-size: 0.88rem;
-  line-height: 1.7; white-space: pre-wrap; color: var(--text);
+  font-family: 'Courier New', monospace; font-size: var(--cifra-fs, 0.88rem);
+  line-height: 1.7; white-space: pre; overflow-x: auto; color: var(--text);
   background: var(--surface2); padding: 16px; border-radius: var(--radius);
 }
 .cifra-textarea { font-family: 'Courier New', monospace !important; font-size: 1rem; }
@@ -1289,8 +1288,8 @@ button { font-family: inherit; }
   max-height: 42vh; overflow-y: auto; text-align: left;
   background: rgba(0, 0, 0, 0.35); border-radius: var(--radius);
   padding: 16px; font-family: monospace;
-  font-size: clamp(1rem, 3vw, 1.3rem); line-height: 1.5;
-  color: var(--text); white-space: pre-wrap;
+  font-size: var(--cifra-fs, clamp(1rem, 3vw, 1.3rem)); line-height: 1.5;
+  color: var(--text); white-space: pre; overflow-x: auto;
 }
 
 /* ── Presença nos eventos ─────────────────────────────────────────── */

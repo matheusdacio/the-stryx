@@ -3,6 +3,8 @@ import { collection, onSnapshot, orderBy, query, deleteDoc, doc, addDoc, updateD
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
+import { matchesSearch } from '../../utils/search'
+import SearchLupa from '../SearchLupa'
 
 const TYPES = [
   { value: 'ideia', label: 'Ideia', color: '#a855f7' },
@@ -127,13 +129,16 @@ export default function RascunhosPage() {
   const [rascunhos, setRascunhos] = useState([])
   const [modal, setModal] = useState(null)
   const [filterType, setFilterType] = useState('all')
+  const [search, setSearch] = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'rascunhos'), orderBy('createdAt', 'desc'))
     return onSnapshot(q, (snap) => setRascunhos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
   }, [])
 
-  const filtered = filterType === 'all' ? rascunhos : rascunhos.filter((r) => r.type === filterType)
+  const filtered = rascunhos
+    .filter((r) => filterType === 'all' || r.type === filterType)
+    .filter((r) => matchesSearch(search, r.title, r.content))
 
   const remove = (r) => { if (confirm(`Apagar o rascunho "${r.title}"? Não dá pra desfazer.`)) deleteDoc(doc(db, 'rascunhos', r.id)) }
 
@@ -141,7 +146,10 @@ export default function RascunhosPage() {
     <div className="page">
       <div className="page-header">
         <h2>Rascunhos</h2>
-        <button className="btn-primary" onClick={() => setModal('add')}>+ Rascunho</button>
+        <div className="page-header-actions">
+          <SearchLupa value={search} onChange={setSearch} placeholder="Buscar rascunho..." />
+          <button className="btn-primary" onClick={() => setModal('add')}>+ Rascunho</button>
+        </div>
       </div>
       <p className="filter-hint" style={{ marginTop: -12 }}>Ideias, letras, riffs e estruturas de música da banda.</p>
 
@@ -167,7 +175,9 @@ export default function RascunhosPage() {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          {filterType !== 'all' ? (
+          {search.trim() ? (
+            <p>{`Nenhum rascunho pra "${search}".`}</p>
+          ) : filterType !== 'all' ? (
             <>
               <p>Nenhum rascunho do tipo {TYPES.find((t) => t.value === filterType)?.label} ainda.</p>
               <button className="btn-secondary" onClick={() => setFilterType('all')}>Ver todos</button>
