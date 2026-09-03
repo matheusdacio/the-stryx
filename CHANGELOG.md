@@ -13,6 +13,18 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.34.0] — 2026-09-03
+- Textos pequenos (chips, contadores, rótulos) ganham letra maior — estavam abaixo do confortável pra ler em pé no palco
+- Contraste maior em placeholders, botões "+" apagados e textos acinzentados (rejeitada, autor, "remover") que ficavam quase invisíveis
+- Apresentação muda de vermelho pra magenta/fuchsia em toda a tela — cor exclusiva, sem colidir com o vermelho de "urgente"/erro
+- Botões "+" (tag, pauta, apelido) deixam de parecer ação principal — viram secundários, do tamanho de "adicionar item pequeno"
+- Botões e campos sem rótulo visível (busca, ▲▼ reordenar, tirar tag, sair do palco) ganham nome pra leitor de tela
+- Vocabulário revisado: modais de criar/editar com o mesmo título em vez de "Adicionar X"/"Editar X", tom mais direto ("Toque pra..." em vez de "Clique para..."), "Membros"→"Banda" e "Ensaios"→"Eventos" nos textos visíveis do Importar
+- Mensagens de lista vazia explicam o motivo (filtro sem resultado, busca sem match) em vez de repetir sempre "nada aqui ainda", com atalho pra limpar o filtro
+- **Rascunhos abre em modo leitura** (era direto pro formulário, atropelava quem só queria ler) — "Editar" alterna pra edição, com busca por título/conteúdo
+- **Cifra ganha ajuste de tamanho de letra** (A−/A+ no modo leitura, preferência compartilhada com o Modo palco), Tom vira campo de texto livre com sugestões, e some o scroll duplo que travava o dedo
+- "Falta meu voto" (Setlist e Sugestões) combina com os outros filtros em vez de zerá-los — o visual de botão exclusivo enganava, mas sempre combinou na prática
+
 ## [1.33.0] — 2026-09-02
 - **Arrastar pra reordenar chega no modal de Evento**: mesma alça por toque do Setlist (arrasta só pelo ⠿, rolar a lista continua funcionando), com botões ▲▼ maiores como alternativa
 - **Músicas do evento viram link**: título abre a música filtrada no Setlist, e um botão "📄 Cifra" abre a cifra correspondente — no card do evento e dentro do Modo palco, sem sair da apresentação
