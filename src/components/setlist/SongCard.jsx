@@ -428,7 +428,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 placeholder="Ex: Acústico, Show Bar do Zé..."
               />
-              <button type="button" className="btn-primary" onClick={addTag}>+</button>
+              <button type="button" className="btn-secondary" onClick={addTag}>+</button>
             </div>
           </label>
           {tags.length > 0 && (

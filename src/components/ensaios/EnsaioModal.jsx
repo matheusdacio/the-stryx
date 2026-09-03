@@ -345,7 +345,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addPauta())}
                 placeholder="Adicionar item à pauta..."
               />
-              <button type="button" className="btn-primary" onClick={addPauta}>+</button>
+              <button type="button" className="btn-secondary" onClick={addPauta}>+</button>
             </div>
             {pauta.map((item, i) => (
               <div key={i} className="pauta-item-edit">

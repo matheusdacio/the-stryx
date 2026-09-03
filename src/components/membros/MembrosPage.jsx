@@ -86,7 +86,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
               <option value="">Instrumento...</option>
               {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
-            <button className="btn-primary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={saveRole}>✓</button>
+            <button className="btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={saveRole}>✓</button>
             <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} onClick={() => setEditingRole(false)}>✕</button>
           </div>
         ) : (
@@ -136,7 +136,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
                   placeholder="Ex: Marcio Braz"
                   style={{ fontSize: '0.78rem' }}
                 />
-                <button type="button" className="btn-primary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
+                <button type="button" className="btn-secondary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
               </div>
             </div>
 
