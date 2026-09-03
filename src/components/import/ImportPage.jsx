@@ -3,6 +3,7 @@ import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc, getDoc
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { normalizeName } from '../../utils/votes'
+import { chaveMusica } from '../../utils/score'
 import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -58,36 +59,57 @@ async function importMembros(membros) {
   const existingUids  = new Set(existing.docs.map(d => d.data().uid).filter(Boolean))
 
   const batch = writeBatch(db)
-  let added = 0
+  let added = 0, skipped = 0
   membros.forEach((m) => {
     const nameKey = (m.name || '').toLowerCase().trim()
-    if (existingNames.has(nameKey) || (m.uid && existingUids.has(m.uid))) return // já existe
+    if (existingNames.has(nameKey) || (m.uid && existingUids.has(m.uid))) { skipped++; return } // já existe
     const ref = doc(collection(db, 'members'))
     batch.set(ref, { name: m.name, uid: m.uid || '', role: '', createdAt: serverTimestamp() })
     added++
   })
   if (added > 0) await batch.commit()
-  return added
+  return { added, skipped }
 }
 
-async function importMusicas(musicas) {
+async function importMusicas(musicas, bandMembers) {
+  // Pula quem já está cadastrado (mesmo título+artista) — reimportar não
+  // deve duplicar o repertório inteiro
+  const existing = await getDocs(collection(db, 'songs'))
+  const existingKeys = new Set(existing.docs.map((d) => chaveMusica(d.data().title, d.data().artist)))
+
+  // Semeia "crua" pra banda toda, igual ao cadastro manual (AddSongModal) —
+  // senão a música importada nasce "Sem voto" e fica fora do "Trazer as
+  // menos dominadas" até alguém lembrar de votar nela
+  const dominio = {}
+  ;(bandMembers || []).forEach((m) => {
+    if (m.firebaseUid) dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString(), seeded: true }
+  })
+
+  let added = 0, skipped = 0
   for (let i = 0; i < musicas.length; i++) {
     const m = musicas[i]
-    // Músicas com tag "Extra" no Glissandoo → status extra no The Stryx
-    const isExtra = (m.tags || []).some(t => t === 'Extra' || /^extra$/i.test(t))
+    if (existingKeys.has(chaveMusica(m.title, m.artist))) { skipped++; continue }
     await addDoc(collection(db, 'songs'), {
       title: m.title,
       artist: m.artist || '',
-      status: isExtra ? 'extra' : 'pronta',
       notes: '',
+      dominio,
       order: i,
       createdAt: serverTimestamp(),
     })
+    added++
   }
+  return { added, skipped }
 }
 
 async function importSugestoes(sugestoes) {
+  // Mesma regra das músicas: título+artista repetido não vira sugestão nova
+  const existing = await getDocs(collection(db, 'sugestoes'))
+  const existingKeys = new Set(existing.docs.map((d) => chaveMusica(d.data().title, d.data().artist)))
+
+  let added = 0, skipped = 0
   for (const s of sugestoes) {
+    if (existingKeys.has(chaveMusica(s.title, s.artist))) { skipped++; continue }
     // Reconstrói URL do YouTube a partir do videoId exportado pelo extrator
     const videoUrl = s.videoId
       ? `https://www.youtube.com/watch?v=${s.videoId}`
@@ -103,14 +125,28 @@ async function importSugestoes(sugestoes) {
       suggestedById: 'import',
       createdAt: serverTimestamp(),
     })
+    added++
   }
+  return { added, skipped }
 }
 
 async function importEnsaios(ensaios) {
+  // Evento repetido = mesma data + mesmo local
+  const existing = await getDocs(collection(db, 'ensaios'))
+  const keyOf = (iso, location) => `${iso}|${(location || '').trim().toLowerCase()}`
+  const existingKeys = new Set(existing.docs.map((d) => {
+    const data = d.data()
+    const iso = data.date?.toDate ? data.date.toDate().toISOString().slice(0, 10) : ''
+    return keyOf(iso, data.location)
+  }))
+
+  let added = 0, skipped = 0
   for (const e of ensaios) {
+    if (!e.date) continue
+    if (existingKeys.has(keyOf(e.date, e.location))) { skipped++; continue }
     let date = null
     try {
-      if (e.date) date = Timestamp.fromDate(new Date(e.date + 'T12:00:00'))
+      date = Timestamp.fromDate(new Date(e.date + 'T12:00:00'))
     } catch (_) {}
     if (!date) continue
     await addDoc(collection(db, 'ensaios'), {
@@ -122,7 +158,9 @@ async function importEnsaios(ensaios) {
       pauta: e.pauta || [],
       createdAt: serverTimestamp(),
     })
+    added++
   }
+  return { added, skipped }
 }
 
 // ── Página principal ─────────────────────────────────────────────────
@@ -326,30 +364,38 @@ export default function ImportPage() {
 
   const handleImport = async () => {
     if (!data) return
-    setStatus('importing')
-    setProgress([])
 
     const steps = [
       { key: 'membros',   label: 'Membros',   fn: () => importMembros(data.membros || []) },
-      { key: 'musicas',   label: 'Músicas',    fn: () => importMusicas(data.musicas || []) },
+      { key: 'musicas',   label: 'Músicas',    fn: () => importMusicas(data.musicas || [], members) },
       { key: 'sugestoes', label: 'Sugestões',  fn: () => importSugestoes(data.sugestoes || []) },
       { key: 'ensaios',   label: 'Ensaios',    fn: () => importEnsaios(data.ensaios || []) },
     ]
+    const ativos = steps.filter((s) => selected[s.key] && (data[s.key] || []).length > 0)
 
-    for (const step of steps) {
-      if (!selected[step.key]) continue
+    const partes = ativos.map((s) => `${(data[s.key] || []).length} ${s.label.toLowerCase()}`)
+    const resumo = partes.length > 1
+      ? `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
+      : partes[0]
+    if (!confirm(`Vai gravar ${resumo}. Já cadastrado (por nome, título+artista ou data+local) é pulado. Continuar?`)) return
+
+    setStatus('importing')
+    setProgress([])
+
+    let erros = 0
+    for (const step of ativos) {
       const count = (data[step.key] || []).length
-      if (!count) continue
       setProgress((p) => [...p, { label: step.label, status: 'running', count }])
       try {
-        await step.fn()
-        setProgress((p) => p.map((x) => x.label === step.label ? { ...x, status: 'done' } : x))
+        const { added, skipped } = await step.fn()
+        setProgress((p) => p.map((x) => x.label === step.label ? { ...x, status: 'done', added, skipped } : x))
       } catch (err) {
+        erros++
         setProgress((p) => p.map((x) => x.label === step.label ? { ...x, status: 'error', err: err.message } : x))
       }
     }
 
-    setStatus('done')
+    setStatus(erros > 0 ? 'done_com_erros' : 'done')
   }
 
   const totalSelected = data
@@ -490,7 +536,11 @@ export default function ImportPage() {
                   {p.status === 'running' && <span className="spinner">⏳</span>}
                   {p.status === 'done'    && <span>✅</span>}
                   {p.status === 'error'   && <span>❌</span>}
-                  <span>{p.label} ({p.count})</span>
+                  <span>
+                    {p.label} ({p.status === 'done'
+                      ? `${p.added} adicionado(s)${p.skipped ? `, ${p.skipped} pulado(s)` : ''}`
+                      : p.count})
+                  </span>
                   {p.err && <span style={{ color: 'var(--red)', fontSize: '0.75rem' }}>{p.err}</span>}
                 </div>
               ))}
@@ -500,6 +550,11 @@ export default function ImportPage() {
           {status === 'done' && (
             <div className="import-success">✅ Importação concluída! Confira cada módulo no menu.</div>
           )}
+          {status === 'done_com_erros' && (
+            <div className="import-success" style={{ background: 'rgba(230,57,70,0.12)', borderColor: 'var(--red)', color: 'var(--red)' }}>
+              ⚠️ Concluída com erro(s) — confira os itens em vermelho acima e tente de novo (o que já foi gravado não duplica).
+            </div>
+          )}
 
           {status !== 'done' && totalSelected > 0 && (
             <button
@@ -508,7 +563,7 @@ export default function ImportPage() {
               onClick={handleImport}
               disabled={status === 'importing'}
             >
-              {status === 'importing' ? 'Importando...' : `Importar dados selecionados`}
+              {status === 'importing' ? 'Importando...' : status === 'done_com_erros' ? '🔁 Tentar novamente' : 'Importar dados selecionados'}
             </button>
           )}
         </>
