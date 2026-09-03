@@ -3,48 +3,43 @@ import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, ser
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
+import { getYouTubeId } from '../../utils/youtube'
+import VideoInline from '../VideoInline'
+import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
+import { DIFFICULTIES } from '../../utils/dificuldade'
+import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
+import { todosVotaram } from '../../utils/rejeicao'
+import { showToast } from '../../utils/toast'
+import CifraModal from '../cifras/CifraModal'
 
-const STATUS_LABELS = { ensaiando: 'Ensaiando', pronta: 'Pronta', extra: 'Extra' }
-
-// Níveis de dificuldade (votados por cada membro nas músicas em Ensaiando)
-// 'nao_vi' é neutro: não conta na média de dificuldade (ver avgDifficulty na SetlistPage)
-const DIFFICULTIES = [
-  { value: 'nao_vi',   label: 'Ainda não vi',       short: 'Não viu',    color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-  { value: 'de_boa',   label: 'De boa',             short: 'De boa',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ok',       label: 'OK',                 short: 'OK',         color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'sofrendo', label: 'Estou sofrendo',     short: 'Sofrendo',   color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'travado',  label: 'Preciso de um tempo', short: 'Travado',   color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-  { value: 'moises',   label: 'Moisés, não consegue né', short: 'Moisés', color: '#a855f7', bg: 'rgba(168,85,247,0.12)' },
-]
-
-// Volta pras sugestões: o setlist tem 5 níveis de dificuldade e a sugestão só 3.
-// 'nao_vi' é neutro e não vira voto lá.
-const DIFF_TO_SUGESTAO = {
-  de_boa: 'facil',
-  ok: 'ok',
-  sofrendo: 'dificil',
-  travado: 'dificil',
-  moises: 'dificil',
-}
-
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|v\/|watch\?v=|&v=)([^#&?]{11})/)
-  return match ? match[1] : null
-}
+const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
+const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, position, hideReorder, dragHandleProps }) {
+// Explica por que uma música sem votação nenhuma aparece lá no topo de
+// "Recentes" — sem o chip parece só ordem aleatória
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
+const ehNovo = (createdAt) => {
+  if (!createdAt) return false
+  const d = createdAt.toDate ? createdAt.toDate() : new Date(createdAt)
+  return Date.now() - d.getTime() < SETE_DIAS
+}
+
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], cifras = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
+  const [verCifra, setVerCifra] = useState(false)
+  const cifra = acharCifra(cifras, song.title, song.artist)
   const [editing, setEditing] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
+  const [tom, setTom] = useState(song.tom || '')
   const [bpm, setBpm] = useState(song.bpm || '')
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
   const [newTag, setNewTag] = useState('')
+  const [busy, setBusy] = useState(false)
   const ref = doc(db, 'songs', song.id)
 
   // Dificuldade — voto de cada membro (mapa keyed por uid)
@@ -65,15 +60,85 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
     }
   }
 
-  const changeStatus = (status) => updateDoc(ref, { status })
-  const saveNotes = async () => { await updateDoc(ref, { notes }); setEditing(false) }
-  const saveMeta = async () => {
-    await updateDoc(ref, {
+  // Domínio — o quanto cada um se sente pronto nesta música
+  const dominio = song.dominio || {}
+  const myDominio = dominio[user.uid]?.level
+  const voteDominio = (level) => {
+    // Fixa o card na lista antes de votar: com filtro por nível ativo, o
+    // card some da tela na hora (voto grava local, sem esperar o servidor)
+    // e o próximo sobe pro lugar do dedo — um segundo toque vota errado
+    onVotou?.(song.id)
+    if (myDominio === level) {
+      updateDoc(ref, { [`dominio.${user.uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`dominio.${user.uid}`]: {
+          userName: user.displayName || user.email,
+          level,
+          at: new Date().toISOString(),
+        },
+      })
+    }
+  }
+  const piorDominio = dominioPorPeso(calcDominio(dominio, uidsAtivosDe(bandMembers)).pior)
+  // "Crua" semeada pra todo mundo ao aprovar (ninguém ensaiou ainda) não é
+  // voto de verdade — enquanto só houver semeados, nem selo nem pill devem
+  // afirmar um voto que não aconteceu
+  const dominioVotos = Object.values(dominio)
+  const soSemeados = dominioVotos.length > 0 && dominioVotos.every((v) => v.seeded)
+
+  // Opinião da banda sobre a música. A votação vive aqui também porque as
+  // 32 músicas importadas nunca passaram por sugestão — sem isso elas nunca
+  // teriam nota. O voto dado aqui vence o que veio da sugestão de origem.
+  const minhaOpiniao = opinoes[user.uid]?.opinion
+  const bandaJaOpinou = todosVotaram({ opinoes }, bandMembers)
+  const votarOpiniao = (opinion) => {
+    if (minhaOpiniao === opinion) {
+      updateDoc(ref, { [`opinoes.${user.uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`opinoes.${user.uid}`]: {
+          userName: user.displayName || user.email,
+          opinion,
+          comment: '',
+          at: new Date().toISOString(),
+        },
+      })
+    }
+  }
+
+  // Fecha a caixa na hora: esperar o await deixava a caixa aberta sem
+  // resposta quando não tinha sinal, e o botão Salvar continuava clicável
+  const erroSalvar = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+  const saveNotes = () => {
+    updateDoc(ref, { notes }).catch(erroSalvar)
+    setEditing(false)
+  }
+  const saveMeta = () => {
+    updateDoc(ref, {
+      tom: tom.trim(),
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
       tags,
-    })
+    }).catch(erroSalvar)
     setEditingMeta(false)
+  }
+
+  // Card fica montado a visita inteira: se outro membro mudou tom/BPM/tags
+  // enquanto isso, o formulário abria com o valor de quando o card montou e
+  // "Salvar" revertia a edição do colega sem ninguém perceber. Re-semeia do
+  // song (o snapshot mais recente) toda vez que o editor abre.
+  const openMeta = () => {
+    setTom(song.tom || '')
+    setBpm(song.bpm || '')
+    setVideoUrl(song.videoUrl || '')
+    setTags(song.tags || [])
+    setNewTag('')
+    setEditingMeta(true)
+  }
+  const openNotes = () => {
+    setNotes(song.notes || '')
+    setEditing(true)
   }
   const addTag = () => {
     const t = newTag.trim()
@@ -82,79 +147,82 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
     setNewTag('')
   }
   const removeTag = (t) => setTags(tags.filter((x) => x !== t))
-  const remove = () => { if (confirm(`Remover "${song.title}"?`)) deleteDoc(ref) }
+  const remove = () => {
+    if (confirm(`Apagar "${song.title}" de vez? Votos de domínio, dificuldade e opinião, tom, BPM, tags e observações vão junto. Se é só tirar do setlist, use "↩ Voltar pras sugestões".`)) deleteDoc(ref)
+  }
 
   // Tira a música do setlist e devolve pra aba de Sugestões.
   // Se ela veio de uma sugestão aprovada, reabre a original (preserva as opiniões);
   // senão cria uma sugestão nova em aberto.
   const backToSuggestions = async () => {
     if (!confirm(`Tirar "${song.title}" do setlist e mandar de volta pras sugestões?`)) return
+    if (busy) return
+    setBusy(true)
 
-    const dificuldadeSug = {}
-    Object.entries(dificuldade).forEach(([uid, v]) => {
-      const level = DIFF_TO_SUGESTAO[v.level]
-      if (level) dificuldadeSug[uid] = { userName: v.userName, level, at: v.at }
-    })
+    try {
+      let reopened = false
+      if (song.sugestaoId) {
+        const sugRef = doc(db, 'sugestoes', song.sugestaoId)
+        const snap = await getDoc(sugRef)
+        if (snap.exists()) {
+          await updateDoc(sugRef, {
+            status: 'aberta',
+            ...(song.notes ? { notes: song.notes } : {}),
+            ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
+            ...(song.tom ? { tom: song.tom } : {}),
+            ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
+            bpm: song.bpm || null,
+            tags: song.tags || [],
+            dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade },
+            // Preserva as opiniões que rolaram no setlist — sem isso a volta
+            // apagava a única votação que as músicas importadas já tinham
+            opinoes: fundirVotos(snap.data().opinoes, song.opinoes),
+          })
+          reopened = true
+        }
+      }
 
-    let reopened = false
-    if (song.sugestaoId) {
-      const sugRef = doc(db, 'sugestoes', song.sugestaoId)
-      const snap = await getDoc(sugRef)
-      if (snap.exists()) {
-        await updateDoc(sugRef, {
-          status: 'aberta',
-          ...(song.notes ? { notes: song.notes } : {}),
-          ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
+      if (!reopened) {
+        await addDoc(collection(db, 'sugestoes'), {
+          title: song.title,
+          artist: song.artist || '',
+          videoUrl: song.videoUrl || '',
+          description: '',
+          notes: song.notes || '',
+          tom: song.tom || '',
+          dominio: song.dominio || {},
           bpm: song.bpm || null,
           tags: song.tags || [],
-          dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldadeSug },
+          status: 'aberta',
+          opinoes: song.opinoes || {},
+          dificuldade,
+          suggestedBy: user.displayName || user.email,
+          suggestedById: user.uid,
+          createdAt: serverTimestamp(),
         })
-        reopened = true
       }
-    }
 
-    if (!reopened) {
-      await addDoc(collection(db, 'sugestoes'), {
-        title: song.title,
-        artist: song.artist || '',
-        videoUrl: song.videoUrl || '',
-        description: '',
-        notes: song.notes || '',
-        bpm: song.bpm || null,
-        tags: song.tags || [],
-        status: 'aberta',
-        opinoes: {},
-        dificuldade: dificuldadeSug,
-        suggestedBy: user.displayName || user.email,
-        suggestedById: user.uid,
-        createdAt: serverTimestamp(),
-      })
+      await deleteDoc(ref)
+      showToast('Voltou pras sugestões')
+    } catch {
+      alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+      setBusy(false)
     }
-
-    await deleteDoc(ref)
   }
 
   const videoId = getYouTubeId(song.videoUrl)
-  const diffCount = Object.keys(dificuldade).length
 
   return (
-    <div className={`song-card status-${song.status} ${expanded ? 'expanded' : ''}`}>
+    <div
+      className={`song-card ${expanded ? 'expanded' : ''}`}
+      style={{ borderLeftColor: piorDominio?.color || 'var(--border)' }}
+    >
       <div className="song-header">
-        <div className="song-order-wrap">
-          <span
-            className={`song-position ${dragHandleProps ? 'drag-handle' : ''}`}
-            title={dragHandleProps ? 'Arraste para reordenar' : undefined}
-            {...(dragHandleProps || {})}
-          >
-            {position}
-          </span>
-          {!hideReorder && (
-            <div className="order-btns">
-              <button className="btn-order" onClick={onMoveUp} disabled={isFirst} title="Mover para cima">▲</button>
-              <button className="btn-order" onClick={onMoveDown} disabled={isLast} title="Mover para baixo">▼</button>
-            </div>
-          )}
-        </div>
+        {position != null && (
+          <div className="song-order-wrap">
+            <span className="song-position">#{position}</span>
+          </div>
+        )}
         <div className="song-info" onClick={() => setExpanded(!expanded)} title={expanded ? 'Recolher' : 'Ver detalhes'}>
           <span className="song-title">{song.title}</span>
           {song.artist && <span className="song-artist"> — {song.artist}</span>}
@@ -166,46 +234,134 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         >
           ›
         </button>
-        <button className="btn-remove" onClick={remove} title="Remover">✕</button>
       </div>
+
+      {/* Vídeo — uma instância só, fora do expandir/recolher, senão trocar de
+          estado desmonta o player e a música para no meio */}
+      {videoId && (
+        <div className="song-video-slot">
+          <VideoInline
+            url={song.videoUrl}
+            title={song.title}
+            compacto
+            aberto={tocandoVideo}
+            onToggle={(v) => onTocarVideo?.(v ? song.id : null)}
+          />
+        </div>
+      )}
 
       {/* Resumo compacto — aparece só quando recolhido */}
       {!expanded && (
         <div className="song-collapsed" onClick={() => setExpanded(true)}>
-          <span className={`status-dot status-${song.status}`}>{STATUS_LABELS[song.status]}</span>
-          {song.bpm && <span className="mini-chip">♩ {song.bpm}</span>}
-          {videoId && <span className="mini-chip">▶ vídeo</span>}
-          {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
-          {song.status === 'ensaiando' && diffCount > 0 && (
-            <span className="mini-chip">🎯 {diffCount} {diffCount === 1 ? 'voto' : 'votos'}</span>
+          {piorDominio ? (
+            <span className="status-dot" style={{ color: piorDominio.color, background: piorDominio.bg }}>
+              {soSemeados ? `${piorDominio.label} (ninguém votou ainda)` : piorDominio.label}
+            </span>
+          ) : (
+            <span className="status-dot status-sem-voto">Sem voto</span>
           )}
+          {nota && (
+            <span className="mini-chip" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
+              ⭐ {formatarNota(nota.media)}
+            </span>
+          )}
+          {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
+          {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
+          {ehNovo(song.createdAt) && <span className="mini-chip" title="Adicionada nos últimos 7 dias">🆕</span>}
         </div>
       )}
 
-      {expanded && <>
-      <div className="song-status-bar">
-        {Object.keys(STATUS_LABELS).map((s) => (
-          <button
-            key={s}
-            className={`btn-status ${song.status === s ? 'active' : ''} status-btn-${s}`}
-            onClick={() => changeStatus(s)}
-          >
-            {STATUS_LABELS[s]}
-          </button>
-        ))}
+      {/* Domínio — sempre visível, mesmo com o card fechado: é o voto
+          que alimenta a escolha do que ensaiar */}
+      <div className="difficulty-section">
+        <p className="section-label">✅ Você se sente pronto nessa?</p>
+        <div className="difficulty-btns">
+          {DOMINIOS.map((d) => (
+            <button
+              key={d.value}
+              className={`btn-diff ${myDominio === d.value ? 'active' : ''}`}
+              style={myDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              aria-pressed={myDominio === d.value}
+              onClick={() => voteDominio(d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Dificuldade — só nas músicas em Ensaiando */}
-      {song.status === 'ensaiando' && (
-        <div className="difficulty-section">
-          <p className="section-label">Como tá pra você?</p>
+      {expanded && <>
+
+      {/* Quem votou o quê em domínio — só no card aberto; fechado fica só
+          o selo (compacta o card, que é a tela mais rolada do app) */}
+      {dominioVotos.length > 0 && (
+        <div className="difficulty-summary" style={{ marginTop: -4, marginBottom: 10 }}>
+          {DOMINIOS.map((d) => {
+            const voters = dominioVotos.filter((v) => v.level === d.value && !v.seeded)
+            if (!voters.length) return null
+            return (
+              <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
+                {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
+              </span>
+            )
+          })}
+          {dominioVotos.some((v) => v.seeded) && (
+            <span className="diff-pill diff-pill-seeded">
+              Ainda não disseram: {dominioVotos.filter((v) => v.seeded).map((v) => firstName(v.userName)).join(', ')}
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Opinião da banda — fecha quando todos já opinaram */}
+      <div className="difficulty-section-flat">
+        <p className="section-label">
+          {bandaJaOpinou ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
+        </p>
+        {!bandaJaOpinou && (
+          <div className="difficulty-btns">
+            {OPINIONS.map((o) => (
+              <button
+                key={o.value}
+                className={`btn-diff ${minhaOpiniao === o.value ? 'active' : ''}`}
+                style={minhaOpiniao === o.value ? { borderColor: o.color, color: o.color } : {}}
+                aria-pressed={minhaOpiniao === o.value}
+                onClick={() => votarOpiniao(o.value)}
+              >
+                {o.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {Object.keys(opinoes).length > 0 && (
+          <div className="difficulty-summary">
+            {OPINIONS.map((o) => {
+              const voters = Object.values(opinoes).filter((v) => v.opinion === o.value)
+              if (!voters.length) return null
+              return (
+                <span key={o.value} className="diff-pill" style={{ color: o.color, background: o.bg }}>
+                  {o.short}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                </span>
+              )
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* Dificuldade pra tocar — o quanto a música é difícil, não o quanto a
+          banda já a domina (isso é o bloco de cima) */}
+      {(
+        <div className="difficulty-section-flat">
+          <p className="section-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d.value}
                 className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
-                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
+                aria-pressed={myDiff === d.value}
                 onClick={() => voteDiff(d.value)}
               >
                 {d.label}
@@ -220,7 +376,7 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
                 if (!voters.length) return null
                 return (
                   <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                    {d.short}: {voters.map((v) => firstName(v.userName)).join(', ')}
+                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
                   </span>
                 )
               })}
@@ -234,30 +390,28 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
         {song.bpm ? (
           <MetronomeButton bpm={song.bpm} />
         ) : (
-          <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>♩ + BPM</button>
+          <button className="btn-meta-add" onClick={openMeta}>♩ + BPM</button>
         )}
-        {videoId ? (
-          <a
-            href={song.videoUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="song-video-link"
-            title="Abrir no YouTube"
-          >
-            ▶ YouTube
-          </a>
-        ) : (
-          <button className="btn-meta-add" onClick={() => setEditingMeta(true)}>🎬 + vídeo</button>
+        {!videoId && (
+          <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
+        )}
+        {cifra && (
+          <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 Cifra</button>
         )}
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
         ))}
-        <button className="btn-meta-edit" onClick={() => setEditingMeta(!editingMeta)} title="Editar BPM, vídeo e tags">✎</button>
+        <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
       </div>
+
+      {verCifra && <CifraModal cifra={cifra} onClose={() => setVerCifra(false)} KEYS={CIFRA_KEYS} />}
 
       {editingMeta && (
         <div className="song-meta-edit">
           <div className="form-row">
+            <label>Tom
+              <input value={tom} onChange={(e) => setTom(e.target.value)} placeholder="Ex: Sol, Am" />
+            </label>
             <label>BPM
               <input type="number" min="20" max="300" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="Ex: 120" />
             </label>
@@ -303,14 +457,17 @@ export default function SongCard({ song, onMoveUp, onMoveDown, isFirst, isLast, 
           </div>
         </div>
       ) : (
-        <p className="song-notes" onClick={() => setEditing(true)}>
+        <p className="song-notes" onClick={openNotes}>
           {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
         </p>
       )}
 
       <div className="song-card-footer">
-        <button className="btn-back-sug" onClick={backToSuggestions} title="Tirar do setlist e devolver pras sugestões">
-          ↩ Voltar pras sugestões
+        <button className="btn-back-sug" onClick={backToSuggestions} disabled={busy} title="Tirar do setlist e devolver pras sugestões">
+          {busy ? 'Devolvendo...' : '↩ Voltar pras sugestões'}
+        </button>
+        <button className="btn-ghost-danger" onClick={remove} disabled={busy} title="Apagar a música de vez">
+          Remover
         </button>
       </div>
       </>}

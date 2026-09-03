@@ -70,6 +70,10 @@ export default function MetronomeButton({ bpm }) {
   return (
     <button
       className={`btn-metronome ${playing ? 'playing' : ''}`}
+      // O pulso visual piscava num ritmo fixo de 0.5s, igual pra 60 ou
+      // 180 BPM — inútil como referência quando o clique some no barulho
+      // da sala. Duração do ciclo = duração da batida
+      style={playing ? { animationDuration: `${60 / bpm}s` } : undefined}
       onClick={toggle}
       title={playing ? 'Parar metrônomo' : `Tocar metrônomo a ${bpm} BPM`}
     >

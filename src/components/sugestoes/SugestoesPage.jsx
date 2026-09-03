@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import {
   collection, onSnapshot, orderBy, query,
   addDoc, updateDoc, doc, serverTimestamp, deleteField
@@ -7,65 +8,39 @@ import * as XLSX from 'xlsx'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import SearchLupa from '../SearchLupa'
+import MusicLookup from '../MusicLookup'
+import VideoInline from '../VideoInline'
+import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
+import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
+import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
+import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
+import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
+import { showToast } from '../../utils/toast'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
+import { getYouTubeId } from '../../utils/youtube'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
-const OPINIONS = [
-  { value: 'hino',     label: 'Hino',                        color: '#facc15', bg: 'rgba(250,204,21,0.12)' },
-  { value: 'escopo',   label: '✓ Entra no escopo',           color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ajustar',  label: '~ Ajustar pro nosso estilo',  color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'fora',     label: '✕ Não faz sentido',           color: '#f97316', bg: 'rgba(249,115,22,0.12)' },
-  { value: 'nao_gosto',label: '– Não curti',                 color: '#6b7280', bg: 'rgba(107,114,128,0.12)' },
-]
-
-// Dificuldade da música (votada por cada membro na sugestão)
-const DIFFICULTIES = [
-  { value: 'facil',   label: 'Fácil',   weight: 1, color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'ok',      label: 'Ok',      weight: 2, color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
-  { value: 'dificil', label: 'Difícil', weight: 3, color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
-]
-const DIFF_BY_VALUE = Object.fromEntries(DIFFICULTIES.map((d) => [d.value, d]))
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
-// Média de dificuldade entre quem votou; avg null se ninguém votou
-function calcDifficulty(dificuldade) {
-  const list = Object.values(dificuldade || {})
-  if (!list.length) return { avg: null, total: 0 }
-  const sum = list.reduce((acc, v) => acc + (DIFF_BY_VALUE[v.level]?.weight || 0), 0)
-  return { avg: sum / list.length, total: list.length }
-}
+// Sugestão nova sem voto nenhum ia pro fim de "Melhores e fáceis", empatada
+// em 0 com as reprovadas — o chip explica por que ela aparece lá em cima
+const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
-// Mapeia a média num dos 3 rótulos (pro chip do card)
-function avgDifficultyLabel(avg) {
-  if (avg === null) return null
-  if (avg < 1.67) return DIFF_BY_VALUE.facil
-  if (avg < 2.34) return DIFF_BY_VALUE.ok
-  return DIFF_BY_VALUE.dificil
+const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
+const ehNovo = (createdAt) => {
+  if (!createdAt) return false
+  const d = createdAt.toDate ? createdAt.toDate() : new Date(createdAt)
+  return Date.now() - d.getTime() < SETE_DIAS
 }
 
 // opinoes é um mapa { [userId]: { userName, opinion, comment, at } }
 // Isso garante 1 voto por usuário — sobrescreve se votar de novo
 function opinoesArray(opinoes) {
   return Object.entries(opinoes || {}).map(([uid, data]) => ({ userId: uid, ...data }))
-}
-
-function getYouTubeId(url) {
-  if (!url) return null
-  const match = url.match(/(?:youtu\.be\/|v\/|watch\?v=|&v=)([^#&?]{11})/)
-  return match ? match[1] : null
-}
-
-function YouTubeThumbnail({ url, title }) {
-  const id = getYouTubeId(url)
-  if (!id) return null
-  return (
-    <a href={url} target="_blank" rel="noreferrer" className="yt-thumb-wrap" title="Abrir no YouTube">
-      <img src={`https://img.youtube.com/vi/${id}/hqdefault.jpg`} alt={title} className="yt-thumb" />
-      <div className="yt-play-icon">▶</div>
-    </a>
-  )
 }
 
 function OpinionSummary({ opinoes }) {
@@ -77,7 +52,7 @@ function OpinionSummary({ opinoes }) {
         if (!count) return null
         return (
           <span key={o.value} className="opinion-pill" style={{ color: o.color, background: o.bg }}>
-            {o.label.split(' ')[0]} {count}
+            {o.short} {count}
           </span>
         )
       })}
@@ -85,12 +60,16 @@ function OpinionSummary({ opinoes }) {
   )
 }
 
-function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
-  const [myOpinion, setMyOpinion] = useState(null)
-  const [comment, setComment] = useState('')
+function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou }) {
+  useFecharComVoltar(onClose)
   const [saving, setSaving] = useState(false)
+  const [reopening, setReopening] = useState(false)
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(sugestao.notes || '')
+  const [editingComment, setEditingComment] = useState(false)
+  // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
+  // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
+  const [commentDraft, setCommentDraft] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
   const ref = doc(db, 'sugestoes', sugestao.id)
 
   const list = opinoesArray(sugestao.opinoes)
@@ -105,6 +84,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
   const dificuldade = sugestao.dificuldade || {}
   const myDiff = dificuldade[userId]?.level
   const voteDiff = (level) => {
+    // Fixa a sugestão na lista antes de votar: com "Falta meu voto" ativo,
+    // ela pode sair do filtro assim que grava, sumindo atrás do modal
+    onVotou?.(sugestao.id)
     if (myDiff === level) {
       updateDoc(ref, { [`dificuldade.${userId}`]: deleteField() })
     } else {
@@ -114,49 +96,90 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
     }
   }
 
-  const submitOpinion = async () => {
-    if (!myOpinion) return
-    setSaving(true)
-    // Chave é o userId — sobrescreve automaticamente opinião anterior
-    await updateDoc(ref, {
-      [`opinoes.${userId}`]: {
-        userName,
-        opinion: myOpinion,
-        comment: comment.trim(),
-        at: new Date().toISOString(),
-      },
-    })
-    setSaving(false)
-    setMyOpinion(null)
-    setComment('')
+  const removerOpiniao = () => {
+    updateDoc(ref, { [`opinoes.${userId}`]: deleteField() })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+  }
+
+  // Grava no toque, igual ao voto de dificuldade (e ao de domínio no
+  // Setlist) — tocar de novo na opção já marcada desfaz o voto. O
+  // comentário é campo à parte, com salvar próprio, pra não se perder
+  // quando a pessoa só quer trocar de opinião
+  const votarOpiniao = (opinion) => {
+    if (existing?.opinion === opinion) {
+      removerOpiniao()
+      return
+    }
+    if (VETOS.includes(opinion) && !confirm('Marcar isso veta a música: quando a banda toda opinar, ela sai da fila. Confirma?')) return
+    onVotou?.(sugestao.id)
+    const voto = { userName, opinion, comment: existing?.comment || '', at: new Date().toISOString() }
+    const opinoesDepois = { ...(sugestao.opinoes || {}), [userId]: voto }
+    const update = { [`opinoes.${userId}`]: voto }
+
+    // Grava a rejeição no momento em que o último voto fecha com veto — sem
+    // isso ela era só calculada na hora (estaRejeitada), e o badge do
+    // rodapé, a planilha exportada e a lista divergiam entre si
+    if (todosVotaram({ opinoes: opinoesDepois }, bandMembers) && temVeto({ opinoes: opinoesDepois })) {
+      update.status = 'rejeitada'
+      update.rejeitadaPor = 'veto'
+    }
+
+    updateDoc(ref, update).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+  }
+
+  const saveComment = () => {
+    updateDoc(ref, { [`opinoes.${userId}.comment`]: commentDraft.trim() })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    setEditingComment(false)
   }
 
   const approve = async () => {
-    if (!confirm(`Aprovar "${sugestao.title}" e mover pro setlist como "Ensaiando"?`)) return
-    await addDoc(collection(db, 'songs'), {
-      title: sugestao.title,
-      artist: sugestao.artist || '',
-      videoUrl: sugestao.videoUrl || '',
-      status: 'ensaiando',
-      notes: sugestao.notes || `Aprovada da sugestão de ${sugestao.suggestedBy}`,
-      bpm: sugestao.bpm || null,
-      tags: sugestao.tags || [],
-      // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
-      sugestaoId: sugestao.id,
-      order: Date.now(),
-      createdAt: serverTimestamp(),
+    if (!confirm(`Enviar "${sugestao.title}" pro setlist? Ela some daqui e entra como Crua pra todo mundo.`)) return
+    setSaving(true)
+
+    // Música nova entra crua pra todo mundo: ninguém ensaiou ainda. Cada um
+    // muda o próprio voto no card do setlist quando pegar a música
+    const dominio = {}
+    bandMembers.forEach((m) => {
+      if (!m.firebaseUid) return
+      dominio[m.firebaseUid] = { userName: m.name, level: 'crua', at: new Date().toISOString(), seeded: true }
     })
-    await updateDoc(ref, { status: 'aprovada' })
-    onClose()
+
+    try {
+      await addDoc(collection(db, 'songs'), {
+        dominio: { ...dominio, ...(sugestao.dominio || {}) },
+        title: sugestao.title,
+        artist: sugestao.artist || '',
+        videoUrl: sugestao.videoUrl || '',
+        status: 'ensaiando',
+        notes: sugestao.notes || `Veio da sugestão de ${sugestao.suggestedBy}`,
+        tom: sugestao.tom || '',
+        bpm: sugestao.bpm || null,
+        tags: sugestao.tags || [],
+        // Escala única desde 80191d4: não precisa converter, só copiar
+        dificuldade: sugestao.dificuldade || {},
+        // Guarda o vínculo pra poder reabrir esta mesma sugestão se a música voltar
+        sugestaoId: sugestao.id,
+        order: Date.now(),
+        createdAt: serverTimestamp(),
+      })
+      await updateDoc(ref, { status: 'aprovada' })
+      showToast('Foi pro setlist, marcada Crua pra geral')
+      onClose()
+    } catch {
+      alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+      setSaving(false)
+    }
   }
 
-  const reject = async () => {
-    if (!confirm(`Rejeitar a sugestão "${sugestao.title}"?`)) return
-    await updateDoc(ref, { status: 'rejeitada' })
-    onClose()
-  }
 
-  const reopen = () => updateDoc(ref, { status: 'aberta' })
+  const reopen = () => {
+    setReopening(true)
+    updateDoc(ref, { status: 'aberta' })
+      .then(() => showToast('Reaberta pra votação'))
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+      .finally(() => setReopening(false))
+  }
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -173,11 +196,84 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           Sugerida por <strong>{sugestao.suggestedBy}</strong>
         </p>
 
-        {sugestao.videoUrl && <YouTubeThumbnail url={sugestao.videoUrl} title={sugestao.title} />}
+        {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
 
         {sugestao.description && (
           <p className="sug-description">{sugestao.description}</p>
         )}
+
+        {sugestao.status !== 'aberta' && (
+          <div className={`sug-status-banner sug-${sugestao.status}`}>
+            {sugestao.status === 'aprovada' ? '✓ Enviada pro setlist' : '✕ Rejeitada'}
+            {isAdmin && (
+              <button className="btn-reopen" onClick={reopen} disabled={reopening}>
+                {reopening ? 'Reabrindo...' : 'Reabrir'}
+              </button>
+            )}
+          </div>
+        )}
+
+        {sugestao.status === 'aberta' && temVeto(sugestao) && (
+          todosVotaram(sugestao, bandMembers) ? (
+            <div className="sug-status-banner sug-rejeitada">
+              ✕ Rejeitada — a banda toda opinou e alguém marcou "Não curti" ou "Não faz sentido"
+            </div>
+          ) : (
+            <div className="sug-status-banner sug-veto-pendente">
+              ⚠️ Tem veto, mas ainda falta gente votar — segue em aberto até todos opinarem.
+              {' '}Faltam: {quemFalta(sugestao, bandMembers).map(firstName).join(', ')}
+            </div>
+          )
+        )}
+
+        {/* Opinar é o gesto mais frequente da tela — logo abaixo do vídeo,
+            grava no toque (igual à dificuldade), sem precisar rolar até o
+            fim nem tocar num botão "Enviar" à parte */}
+        <div className="opinion-form">
+          <p className="section-label">
+            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? 'A banda toda já opinou' : 'Vale tocar?'}
+          </p>
+          {!(sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers)) && (
+            <div className="opinion-btns">
+              {OPINIONS.map((o) => (
+                <button
+                  key={o.value}
+                  className={`btn-opinion ${existing?.opinion === o.value ? 'selected' : ''}`}
+                  style={existing?.opinion === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
+                  aria-pressed={existing?.opinion === o.value}
+                  onClick={() => votarOpiniao(o.value)}
+                >
+                  {o.label}
+                </button>
+              ))}
+            </div>
+          )}
+          {existing && (
+            editingComment ? (
+              <div className="notes-edit">
+                <textarea
+                  value={commentDraft}
+                  onChange={(e) => setCommentDraft(e.target.value)}
+                  rows={2}
+                  autoFocus
+                  placeholder="Considerações (opcional)..."
+                />
+                <div className="notes-actions">
+                  <button className="btn-secondary" onClick={() => setEditingComment(false)}>Cancelar</button>
+                  <button className="btn-primary" onClick={saveComment}>Salvar</button>
+                </div>
+              </div>
+            ) : (
+              <p className="existing-vote">
+                {existing.comment || <span className="placeholder">Adicionar comentário...</span>}
+                {' '}
+                <button className="btn-link-inline" onClick={() => { setCommentDraft(existing.comment || ''); setEditingComment(true) }}>Editar</button>
+                {' '}
+                <button className="btn-link-inline" onClick={removerOpiniao}>Remover opinião</button>
+              </p>
+            )
+          )}
+        </div>
 
         {/* Observações da banda — editável por qualquer membro */}
         {editingNotes ? (
@@ -195,14 +291,15 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
         )}
 
         {/* Dificuldade pra tocar */}
-        <div className="difficulty-section" style={{ marginBottom: 12 }}>
+        <div className="difficulty-section-flat" style={{ marginBottom: 12 }}>
           <p className="section-label">Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
                 key={d.value}
                 className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
-                style={myDiff === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
+                aria-pressed={myDiff === d.value}
                 onClick={() => voteDiff(d.value)}
               >
                 {d.label}
@@ -224,13 +321,6 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           )}
         </div>
 
-        {sugestao.status !== 'aberta' && (
-          <div className={`sug-status-banner sug-${sugestao.status}`}>
-            {sugestao.status === 'aprovada' ? '✓ Aprovada — adicionada ao setlist' : '✕ Rejeitada'}
-            {isAdmin && <button className="btn-reopen" onClick={reopen}>Reabrir</button>}
-          </div>
-        )}
-
         {list.length > 0 && (
           <div className="opinions-list">
             <p className="section-label">Opiniões da banda ({list.length})</p>
@@ -249,81 +339,69 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName }) {
           </div>
         )}
 
-        {sugestao.status === 'aberta' && (
-          <div className="opinion-form">
-            <p className="section-label">{existing ? 'Alterar minha opinião' : 'Deixar minha opinião'}</p>
-            {existing && (
-              <p className="existing-vote">
-                Sua opinião atual:{' '}
-                <span style={{ color: OPINIONS.find((o) => o.value === existing.opinion)?.color }}>
-                  {OPINIONS.find((o) => o.value === existing.opinion)?.label}
-                </span>
-              </p>
-            )}
-            <div className="opinion-btns">
-              {OPINIONS.map((o) => (
-                <button
-                  key={o.value}
-                  className={`btn-opinion ${myOpinion === o.value ? 'selected' : ''}`}
-                  style={myOpinion === o.value ? { background: o.bg, borderColor: o.color, color: o.color } : {}}
-                  onClick={() => setMyOpinion(myOpinion === o.value ? null : o.value)}
-                >
-                  {o.label}
-                </button>
-              ))}
-            </div>
-            {myOpinion && (
-              <>
-                <textarea
-                  className="opinion-comment-input"
-                  placeholder="Considerações (opcional)..."
-                  value={comment}
-                  onChange={(e) => setComment(e.target.value)}
-                  rows={2}
-                />
-                <button className="btn-primary" onClick={submitOpinion} disabled={saving}>
-                  {saving ? 'Enviando...' : existing ? 'Atualizar opinião' : 'Enviar opinião'}
-                </button>
-              </>
-            )}
-          </div>
-        )}
-
         {isAdmin && sugestao.status === 'aberta' && (
           <div className="admin-controls">
             <p className="section-label">Decisão final</p>
             <div style={{ display: 'flex', gap: 10 }}>
-              <button className="btn-approve" onClick={approve}>✓ Aprovar e mover pro setlist</button>
-              <button className="btn-reject" onClick={reject}>✕ Rejeitar</button>
+              <button className="btn-approve" onClick={approve} disabled={saving}>
+                {saving ? 'Enviando...' : '➤ Enviar pro setlist'}
+              </button>
             </div>
           </div>
         )}
+
+        <div className="modal-actions">
+          <button className="btn-secondary" onClick={onClose}>Fechar</button>
+        </div>
       </div>
     </div>
   )
 }
 
-function AddSugestaoModal({ onClose, userId, userName }) {
-  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '' })
+function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente }) {
+  useFecharComVoltar(onClose)
+  // tom e bpm não têm campo no formulário: vêm da busca automática quando
+  // disponível e viajam pro setlist se a sugestão for aprovada
+  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })
+  const [achado, setAchado] = useState(null)
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
 
+  // Trava o cadastro de música que já existe, e avisa quando só o título bate
+  const duplicata = checarDuplicata(form.title, form.artist, acervo)
+  const { bloqueio, parecidas } = duplicata
+
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleSubmit = async (e) => {
+  // Preenche com o que a busca trouxe, sem apagar o que a pessoa já escreveu
+  const aplicarAchado = (dados) => {
+    setForm((f) => ({
+      ...f,
+      title: dados.title || f.title,
+      artist: f.artist.trim() || dados.artist || '',
+      videoUrl: f.videoUrl.trim() || dados.videoUrl || '',
+      tom: f.tom || dados.tom || '',
+      bpm: f.bpm || dados.bpm || null,
+    }))
+    setAchado(dados)
+  }
+
+  const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.title.trim()) return
+    if (!form.title.trim() || bloqueio) return
     setSaving(true)
-    await addDoc(collection(db, 'sugestoes'), {
+    // Fecha na hora — não espera nenhuma das duas gravações. A fila de
+    // notificação é só um "avise a banda" por trás, nunca deve travar quem
+    // está sugerindo esperando o mesmo tempo que o processamento do lote
+    addDoc(collection(db, 'sugestoes'), {
       ...form,
       status: 'aberta',
       opinoes: {},
       suggestedBy: userName,
       suggestedById: userId,
       createdAt: serverTimestamp(),
-    })
-    // Enfileira notificação para os outros membros votarem
-    await addDoc(collection(db, 'notification_queue'), {
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    addDoc(collection(db, 'notification_queue'), {
       tipo: 'nova_sugestao',
       titulo: form.title.trim(),
       artista: form.artist?.trim() || '',
@@ -331,7 +409,7 @@ function AddSugestaoModal({ onClose, userId, userName }) {
       suggestedById: userId,
       processado: false,
       criadoEm: serverTimestamp(),
-    })
+    }).catch(() => {})
     onClose()
   }
 
@@ -341,9 +419,39 @@ function AddSugestaoModal({ onClose, userId, userName }) {
         <h2>Nova Sugestão</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
-            <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus /></label>
+            <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
             <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
           </div>
+
+          {bloqueio && (
+            <p className="aviso-duplicata bloqueio">
+              ⛔ {mensagemBloqueio(duplicata)}
+              {bloqueio === 'sugestao' && (
+                <button
+                  type="button"
+                  className="btn-link-inline"
+                  onClick={() => onAbrirExistente(duplicata.sugestaoExistente)}
+                >
+                  Abrir essa
+                </button>
+              )}
+            </p>
+          )}
+          {!bloqueio && parecidas?.length > 0 && (
+            <p className="aviso-duplicata">
+              ⚠️ Já existe algo parecido: {parecidas.join(' · ')} — confira o artista antes de sugerir.
+            </p>
+          )}
+
+          <MusicLookup titulo={form.title} onPick={aplicarAchado} />
+          {(achado?.tom || achado?.bpm) && (
+            <p className="lookup-aviso">
+              Da gravação original{achado.tom ? `, tom ${achado.tom}` : ''}{achado.bpm ? `, ${achado.bpm} BPM` : ''} — confira antes de confiar, a banda pode tocar em outro tom.
+              {buscaTomAtiva && (
+                <> Dados de <a href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>.</>
+              )}
+            </p>
+          )}
           <label>
             Link do YouTube
             <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." />
@@ -360,7 +468,7 @@ function AddSugestaoModal({ onClose, userId, userName }) {
           </label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Enviando...' : 'Sugerir'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Enviando...' : 'Sugerir'}</button>
           </div>
         </form>
       </div>
@@ -371,19 +479,16 @@ function AddSugestaoModal({ onClose, userId, userName }) {
 const FILTERS = [
   { value: 'all',       label: 'Todas' },
   { value: 'aberta',    label: 'Em aberto' },
-  { value: 'aprovada',  label: 'Aprovadas' },
   { value: 'rejeitada', label: 'Rejeitadas' },
 ]
 
 const SORTS = [
-  { value: 'media',       label: '⭐ Média' },
-  { value: 'votes',       label: '🗳 Votos' },
-  { value: 'dificuldade', label: '🎯 Dificuldade' },
-  { value: 'recent',      label: '🕐 Recentes' },
+  { value: 'balanceada',  label: '⚖️ Melhores e fáceis', hint: 'Melhores e fáceis: nota da banda, descontada se a galera achou difícil' },
+  { value: 'media',       label: '⭐ Média', hint: 'Média: nota de 0 a 1,2 — Hino vale 1,2, Não curti vale 0' },
+  { value: 'votes',       label: '👥 Mais votadas', hint: 'Mais votadas: quem recebeu mais opiniões aparece primeiro' },
+  { value: 'dificuldade', label: '🎯 Dificuldade', hint: 'Dificuldade: da mais fácil pra mais difícil, pelo nível mais votado' },
+  { value: 'recent',      label: '🕐 Recentes', hint: 'Recentes: quem foi sugerida por último aparece primeiro' },
 ]
-
-// ── Pontuação por tipo de opinião ─────────────────────────────────────
-const SCORES = { hino: 1.2, escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
 
 // Labels com score para as células da planilha (ex: "1 - Escopo")
 const SCORE_LABELS_XLS = {
@@ -400,13 +505,19 @@ const STATUS_LABELS_XLS = {
   rejeitada: 'Rejeitada',
 }
 
-/** Calcula pontuação de uma sugestão */
-function calcSongScore(opinoes) {
-  const list = Object.values(opinoes || {})
-  if (!list.length) return { soma: 0, media: 0, total: 0 }
-  const soma = list.reduce((acc, v) => acc + (SCORES[v.opinion] ?? 0), 0)
-  const rounded = (n) => Math.round(n * 100) / 100
-  return { soma: rounded(soma), media: rounded(soma / list.length), total: list.length }
+// ── Nota combinada: média das opiniões com desconto por dificuldade ───
+// Fácil não desconta nada, Ok e Difícil descontam progressivamente. A nota
+// pesa mais que a dificuldade: uma música difícil precisa ser bem melhor
+// avaliada pra passar na frente de uma fácil, mas entre notas parecidas a
+// mais fácil sobe. Ajuste esses fatores se quiser a facilidade pesando mais.
+const EASE_BY_WEIGHT = { 1: 1, 2: 0.85, 3: 0.7 }
+const EASE_SEM_VOTO = EASE_BY_WEIGHT[2] // sem voto de dificuldade conta como Ok
+
+/** Média das opiniões descontada pela dificuldade votada (a mais alta) */
+function calcBalancedScore(opinoes, dificuldade) {
+  const { media, soma, total } = calcSongScore(opinoes)
+  const ease = EASE_BY_WEIGHT[calcDifficulty(dificuldade).max] ?? EASE_SEM_VOTO
+  return { valor: media * ease, media, soma, total, ease }
 }
 
 function exportToExcel(sugestoes, filterLabel) {
@@ -501,18 +612,80 @@ function exportToExcel(sugestoes, filterLabel) {
 export default function SugestoesPage() {
   const { user } = useAuth()
   const [sugestoes, setSugestoes] = useState([])
-  const [filter, setFilter] = useState('aberta')
-  const [sortBy, setSortBy] = useState('media')
-  const [onlyUnvoted, setOnlyUnvoted] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [noSetlist, setNoSetlist] = useState({ ids: new Set(), chaves: new Set() })
+  const [musicasSetlist, setMusicasSetlist] = useState([])
+  const [bandMembers, setBandMembers] = useState([])
+  const [searchParams, setSearchParams] = useSearchParams()
+  // Push de sugestão nova chega com ?ordem=recentes&naovotei=1 — quem toca
+  // no aviso cai já olhando a música anunciada, não no fim da lista padrão
+  const [filter, setFilter] = useState(() => searchParams.get('naovotei') === '1' ? 'falta_meu_voto' : 'aberta')
+  // Ordenação persiste (dura semanas — quem prefere "Recentes" reescolheria
+  // toda vez), mas o link do push sempre manda: sugestão nova precisa
+  // aparecer perto do topo, não onde a pessoa deixou salvo
+  const [sortBy, setSortBy] = useState(() => {
+    if (searchParams.get('ordem')) return searchParams.get('ordem')
+    try {
+      return localStorage.getItem('stryx-sugestoes-sortby') || 'balanceada'
+    } catch {
+      return 'balanceada'
+    }
+  })
+  const mudarSortBy = (v) => {
+    setSortBy(v)
+    try { localStorage.setItem('stryx-sugestoes-sortby', v) } catch { /* localStorage indisponível */ }
+  }
   const [search, setSearch] = useState('')
   const [modal, setModal] = useState(null)
   const [addModal, setAddModal] = useState(false)
+  // Sugestão recém-votada continua na lista até o filtro mudar — senão ela
+  // some da tela atrás do modal assim que deixa de faltar o voto
+  const [fixados, setFixados] = useState(new Set())
+  const mudarFiltro = (v) => { setFixados(new Set()); setFilter(v) }
+  const mudarSearch = (v) => { setFixados(new Set()); setSearch(v) }
 
   const isAdmin = user.email === ADMIN_EMAIL
 
   useEffect(() => {
+    if (searchParams.size) setSearchParams({}, { replace: true })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    // Quem já está no setlist não aparece mais aqui — o lugar dela agora é lá.
+    // Casa pelo vínculo gravado na aprovação e, pras aprovadas antigas que não
+    // têm esse vínculo, pelo título + artista normalizados
+    return onSnapshot(collection(db, 'songs'), (snap) => {
+      const ids = new Set()
+      const chaves = new Set()
+      snap.docs.forEach((d) => {
+        const song = d.data()
+        if (song.sugestaoId) ids.add(song.sugestaoId)
+        chaves.add(chaveMusica(song.title, song.artist))
+      })
+      setNoSetlist({ ids, chaves })
+      setMusicasSetlist(snap.docs.map((d) => ({ title: d.data().title, artist: d.data().artist || '' })))
+    })
+  }, [])
+
+  useEffect(() => {
+    // Quem saiu da banda (ativo:false) fica fora daqui — não conta mais
+    // pra "todo mundo votou", nem recebe voto crua semeado na aprovação
+    return onSnapshot(collection(db, 'members'), (snap) =>
+      setBandMembers(snap.docs.filter((d) => d.data().ativo !== false).map((d) => ({
+        name: d.data().name,
+        aliases: d.data().aliases || [],
+        firebaseUid: d.data().firebaseUid || null,
+      })))
+    )
+  }, [])
+
+  useEffect(() => {
     const q = query(collection(db, 'sugestoes'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, (snap) => setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setSugestoes(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   // Atualiza o modal com dados frescos do Firestore
@@ -522,11 +695,22 @@ export default function SugestoesPage() {
     if (fresh) setModal(fresh)
   }, [sugestoes])
 
-  const byStatus = (filter === 'all' ? sugestoes : sugestoes.filter((s) => s.status === filter))
+  const visiveis = sugestoes.filter(
+    (s) => !noSetlist.ids.has(s.id) && !noSetlist.chaves.has(chaveMusica(s.title, s.artist))
+  )
+
+  const noFiltro = (s) => {
+    if (filter === 'all') return true
+    if (filter === 'rejeitada') return estaRejeitada(s, bandMembers)
+    if (filter === 'falta_meu_voto') return faltaVotar(s, user, noSetlist, bandMembers) || fixados.has(s.id)
+    return s.status === 'aberta' && !estaRejeitada(s, bandMembers)
+  }
+
+  const filtered = visiveis.filter(noFiltro)
     .filter((s) => matchesSearch(search, s.title, s.artist))
-  const unvotedCount = byStatus.filter((s) => !(s.opinoes || {})[user.uid]).length
-  const filtered = onlyUnvoted ? byStatus.filter((s) => !(s.opinoes || {})[user.uid]) : byStatus
-  const pendingCount = sugestoes.filter((s) => s.status === 'aberta').length
+  // "falta pra mim" — mesma conta pro badge do título e pro botão de filtro,
+  // pra não mostrar dois números diferentes pra mesma coisa
+  const pendingCount = countSugestoesPendentes(visiveis, user, noSetlist, bandMembers)
 
   // ── Ordenação ──────────────────────────────────────────────────────
   const displayed = [...filtered].sort((a, b) => {
@@ -542,10 +726,23 @@ export default function SugestoesPage() {
       const tb = Object.keys(b.opinoes || {}).length
       return tb - ta || calcSongScore(b.opinoes).media - calcSongScore(a.opinoes).media
     }
+    if (sortBy === 'balanceada') {
+      // Melhor avaliada e mais fácil primeiro. Desempate igual ao da média:
+      // mais votos, depois maior soma
+      const ba = calcBalancedScore(a.opinoes, a.dificuldade)
+      const bb = calcBalancedScore(b.opinoes, b.dificuldade)
+      // Sem nenhuma opinião ainda não é "nota zero" — é diferente de uma
+      // reprovada; vai pro topo, não empata em 0 com quem já foi mal avaliada
+      if (ba.total === 0 && bb.total === 0) return 0
+      if (ba.total === 0) return -1
+      if (bb.total === 0) return 1
+      return bb.valor - ba.valor || bb.total - ba.total || bb.soma - ba.soma
+    }
     if (sortBy === 'dificuldade') {
-      // Mais fácil → mais difícil; sem votos de dificuldade vai pro fim
-      const da = calcDifficulty(a.dificuldade).avg
-      const db_ = calcDifficulty(b.dificuldade).avg
+      // Mais fácil → mais difícil, pelo nível mais alto votado (o mesmo que
+      // aparece no chip do card); sem votos de dificuldade vai pro fim
+      const da = calcDifficulty(a.dificuldade).max
+      const db_ = calcDifficulty(b.dificuldade).max
       if (da === null && db_ === null) return 0
       if (da === null) return 1
       if (db_ === null) return -1
@@ -554,6 +751,28 @@ export default function SugestoesPage() {
     // 'recent' — já vem do Firestore por createdAt desc, mantém ordem original
     return 0
   })
+
+  // Congela a posição enquanto a página está aberta: um voto alheio não
+  // pula o card debaixo de quem está lendo. Recalcula do zero só quando
+  // filtro/ordenação/busca mudam (chave abaixo) — ajustar state durante o
+  // render, não em efeito, é o padrão que o próprio React recomenda pra
+  // "resetar ao mudar uma dependência" sem o flash de um efeito
+  const [ordemCongelada, setOrdemCongelada] = useState(() => displayed.map((s) => s.id))
+  const chaveOrdem = `${filter}|${sortBy}|${search}`
+  const [chaveAnterior, setChaveAnterior] = useState(chaveOrdem)
+  if (chaveOrdem !== chaveAnterior) {
+    setChaveAnterior(chaveOrdem)
+    setOrdemCongelada(displayed.map((s) => s.id))
+  }
+  // Sair da lista (virou rejeitada, ou meu próprio voto some com "Falta meu
+  // voto") é imediato — só a POSIÇÃO de quem continua na lista é que
+  // congela; ids novos entram no fim
+  const idsAtuais = new Set(displayed.map((s) => s.id))
+  const porId = Object.fromEntries(displayed.map((s) => [s.id, s]))
+  const presentesNaOrdem = ordemCongelada.filter((id) => idsAtuais.has(id))
+  const novos = displayed.filter((s) => !ordemCongelada.includes(s.id))
+  const displayedCongelado = [...presentesNaOrdem.map((id) => porId[id]), ...novos]
+  const ordemDivergente = displayedCongelado.some((s, i) => s.id !== displayed[i]?.id)
 
   const currentFilterLabel = FILTERS.find((f) => f.value === filter)?.label || ''
 
@@ -570,7 +789,7 @@ export default function SugestoesPage() {
           {pendingCount > 0 && <span className="pending-badge">{pendingCount}</span>}
         </h2>
         <div className="page-header-actions">
-          <SearchLupa value={search} onChange={setSearch} />
+          <SearchLupa value={search} onChange={mudarSearch} placeholder="Filtrar por nome ou artista..." />
           {isAdmin && filtered.length > 0 && (
             <button className="btn-secondary" onClick={handleExport} title="Exportar para Excel">
               📊 Exportar
@@ -583,41 +802,42 @@ export default function SugestoesPage() {
       {/* Filtros de status */}
       <div className="filter-bar">
         {FILTERS.map((f) => {
-          const count = f.value === 'all' ? sugestoes.length : sugestoes.filter((s) => s.status === f.value).length
+          const count = f.value === 'all'
+            ? visiveis.length
+            : f.value === 'rejeitada'
+              ? visiveis.filter((s) => estaRejeitada(s, bandMembers)).length
+              : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
           return (
-            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => setFilter(f.value)}>
+            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => mudarFiltro(f.value)}>
               {f.label} <span className="count">{count}</span>
             </button>
           )
         })}
-      </div>
-
-      {/* Ordenação + filtro de não votadas */}
-      <div className="sort-bar">
-        <span className="sort-label">Ordenar:</span>
-        {SORTS.map((s) => (
-          <button
-            key={s.value}
-            className={`btn-sort ${sortBy === s.value ? 'active' : ''}`}
-            onClick={() => setSortBy(s.value)}
-          >
-            {s.label}
-          </button>
-        ))}
         <button
-          className={`btn-unvoted ${onlyUnvoted ? 'active' : ''}`}
-          onClick={() => setOnlyUnvoted(!onlyUnvoted)}
-          title="Mostrar só as músicas que você ainda não votou"
+          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
+          title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
-          🗳 Não votei <span className="count">{unvotedCount}</span>
+          🗳 Falta meu voto <span className="count">{pendingCount}</span>
         </button>
       </div>
 
-      {displayed.length === 0 ? (
+      {/* Ordenação */}
+      <div className="sort-bar">
+        <span className="sort-label">Ordenar:</span>
+        <select className="btn-sort-select" value={sortBy} onChange={(e) => mudarSortBy(e.target.value)}>
+          {SORTS.map((s) => <option key={s.value} value={s.value}>{s.label}</option>)}
+        </select>
+      </div>
+      <p className="filter-hint">{SORTS.find((s) => s.value === sortBy)?.hint}</p>
+
+      {!loaded ? (
+        <p className="empty-state">Carregando as sugestões...</p>
+      ) : displayed.length === 0 ? (
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma sugestão encontrada pra "{search.trim()}".</p>
-          ) : onlyUnvoted ? (
+          ) : filter === 'falta_meu_voto' ? (
             <p>🎉 Você já votou em todas as músicas daqui!</p>
           ) : (
             <>
@@ -628,14 +848,23 @@ export default function SugestoesPage() {
         </div>
       ) : (
         <div className="sug-list">
-          {displayed.map((s, rank) => {
+          {ordemDivergente && (
+            <button className="chip-reordenar" onClick={() => setOrdemCongelada(displayed.map((s) => s.id))}>
+              Ordem mudou · reordenar
+            </button>
+          )}
+          {displayedCongelado.map((s, rank) => {
             const videoId = getYouTubeId(s.videoUrl)
             const myVote = (s.opinoes || {})[user.uid]
             const { soma, media, total } = calcSongScore(s.opinoes)
             const showScore = total > 0
-            const diffLabel = avgDifficultyLabel(calcDifficulty(s.dificuldade).avg)
+            const diffLabel = difficultyByWeight(calcDifficulty(s.dificuldade).max)
             return (
-              <div key={s.id} className={`sug-card sug-card-${s.status}`} onClick={() => setModal(s)}>
+              <div
+                key={s.id}
+                className={`sug-card sug-card-${estaRejeitada(s, bandMembers) ? 'rejeitada' : s.status}`}
+                onClick={() => setModal(s)}
+              >
                 {videoId && (
                   <div className="sug-thumb-wrap">
                     <img src={`https://img.youtube.com/vi/${videoId}/hqdefault.jpg`} alt={s.title} className="sug-thumb" />
@@ -644,18 +873,19 @@ export default function SugestoesPage() {
                 <div className="sug-card-body">
                   <div className="sug-card-top">
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap' }}>
-                      {sortBy === 'media' && showScore && (
+                      {(sortBy === 'media' || sortBy === 'balanceada') && showScore && (
                         <span className="sug-rank-badge">#{rank + 1}</span>
                       )}
                       <div>
                         <span className="sug-card-title">{s.title}</span>
                         {s.artist && <span className="sug-card-artist"> — {s.artist}</span>}
+                        {ehNovo(s.createdAt) && <span className="mini-chip" title="Sugerida nos últimos 7 dias">🆕</span>}
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
                       {showScore && (
-                        <span className="sug-score-chip" title={`Média ${media.toFixed(2)} · Soma ${soma.toFixed(1)} · ${total} voto(s)`}>
-                          ⭐ {media.toFixed(2)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
+                        <span className="sug-score-chip" title={`Média ${formatarNota(media)} · Soma ${soma.toLocaleString('pt-BR')} · ${total} voto(s)`}>
+                          ⭐ {formatarNota(media)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
                         </span>
                       )}
                       {diffLabel && (
@@ -663,9 +893,13 @@ export default function SugestoesPage() {
                           🎯 {diffLabel.label}
                         </span>
                       )}
-                      {s.status !== 'aberta' && (
-                        <span className={`sug-status-tag sug-${s.status}`}>
-                          {s.status === 'aprovada' ? '✓ Aprovada' : '✕ Rejeitada'}
+                      {s.status === 'aprovada' ? (
+                        <span className="sug-status-tag sug-aprovada">✓ No setlist</span>
+                      ) : estaRejeitada(s, bandMembers) ? (
+                        <span className="sug-status-tag sug-rejeitada">✕ Rejeitada</span>
+                      ) : temVeto(s) && (
+                        <span className="sug-status-tag sug-veto-pendente" title="Um voto já veta — falta a banda toda opinar pra fechar">
+                          ⚠️ veto
                         </span>
                       )}
                     </div>
@@ -692,8 +926,10 @@ export default function SugestoesPage() {
           sugestao={modal}
           onClose={() => setModal(null)}
           isAdmin={isAdmin}
+          bandMembers={bandMembers}
           userId={user.uid}
           userName={user.displayName}
+          onVotou={(id) => setFixados((prev) => new Set(prev).add(id))}
         />
       )}
       {addModal && (
@@ -701,6 +937,8 @@ export default function SugestoesPage() {
           onClose={() => setAddModal(false)}
           userId={user.uid}
           userName={user.displayName}
+          acervo={{ musicas: musicasSetlist, sugestoes, bandMembers }}
+          onAbrirExistente={(sug) => { setAddModal(false); setModal(sug) }}
         />
       )}
     </div>

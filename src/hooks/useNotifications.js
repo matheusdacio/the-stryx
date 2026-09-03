@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { getMessaging, getToken, onMessage } from 'firebase/messaging'
-import { doc, setDoc, deleteDoc } from 'firebase/firestore'
+import { doc, getDoc, setDoc, deleteDoc } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { initializeApp, getApps } from 'firebase/app'
 
@@ -20,44 +20,92 @@ function getApp() {
   return getApps()[0] ?? initializeApp(firebaseConfig)
 }
 
+async function salvarToken(user) {
+  const sw = await navigator.serviceWorker.register('/the-stryx/firebase-messaging-sw.js')
+  const messaging = getMessaging(getApp())
+  const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
+  await setDoc(doc(db, 'fcm_tokens', user.uid), {
+    token,
+    name: user.displayName || user.email,
+    email: user.email,
+    atualizadoEm: new Date().toISOString(),
+  })
+}
+
 export function useNotifications(user) {
-  const [permissao, setPermissao] = useState(
-    typeof Notification !== 'undefined' ? Notification.permission : 'default'
-  )
+  // Começa em 'default' (🔕) mesmo que o navegador já tenha concedido a
+  // permissão: só vira 'granted' depois de confirmar que existe um token
+  // gravado, senão o sino mente (permissão ok mas setDoc nunca rodou/falhou).
+  const [permissao, setPermissao] = useState('default')
   const [ativando, setAtivando] = useState(false)
   const suportado = typeof Notification !== 'undefined' && 'serviceWorker' in navigator
 
-  // Escuta mensagens com app em foreground
+  useEffect(() => {
+    if (!suportado || !user || Notification.permission !== 'granted') return
+    getDoc(doc(db, 'fcm_tokens', user.uid))
+      .then((snap) => {
+        if (!snap.exists()) return
+        setPermissao('granted')
+        salvarToken(user).catch(() => {})
+      })
+      .catch(() => {})
+  }, [suportado, user])
+
+  // Escuta mensagens com app em foreground. `new Notification(...)` é
+  // construtor de página e o Chrome Android recusa ("Illegal constructor") —
+  // só dá pra notificar por registration.showNotification, que é o mesmo
+  // caminho que o service worker usa em segundo plano. `data.FCM_MSG` é o
+  // formato interno que o próprio SDK usa pra reconhecer a notificação como
+  // dele (getMessaging()/onNotificationClick do SW) — embrulhar assim faz o
+  // toque, mesmo com o app já aberto, cair no mesmo tratamento de clique
+  // (foco + link) que o SW já dá às notificações em segundo plano
   useEffect(() => {
     if (!suportado || permissao !== 'granted') return
     const messaging = getMessaging(getApp())
     const unsub = onMessage(messaging, (payload) => {
       const title = payload.notification?.title ?? 'The Stryx'
       const body = payload.notification?.body ?? ''
-      new Notification(title, { body, icon: '/favicon.svg' })
+      const icone = import.meta.env.BASE_URL + 'icon-192.png'
+      navigator.serviceWorker.ready.then((reg) =>
+        reg.showNotification(title, {
+          body,
+          icon: icone,
+          badge: import.meta.env.BASE_URL + 'badge-96.png',
+          data: { FCM_MSG: payload },
+        })
+      )
     })
     return unsub
   }, [permissao, suportado])
 
+  // Depois do clique (foreground ou segundo plano), o SW foca a aba já
+  // aberta mas não navega pra URL do link — só manda essa mensagem de
+  // volta. É aqui que a gente troca o hash pra cair na tela certa
+  useEffect(() => {
+    if (!suportado) return
+    const onMessageFromSW = (event) => {
+      if (event.data?.messageType !== 'notification-clicked') return
+      const link = event.data?.fcmOptions?.link
+      if (!link) return
+      const hash = new URL(link).hash
+      if (hash) window.location.hash = hash.slice(1)
+    }
+    navigator.serviceWorker.addEventListener('message', onMessageFromSW)
+    return () => navigator.serviceWorker.removeEventListener('message', onMessageFromSW)
+  }, [suportado])
+
   async function ativar() {
-    if (!suportado || !user) return false
+    if (!suportado || !user) return 'error'
     setAtivando(true)
     try {
       const perm = await Notification.requestPermission()
-      setPermissao(perm)
-      if (perm !== 'granted') return false
+      if (perm !== 'granted') return perm === 'denied' ? 'denied' : 'error'
 
-      const sw = await navigator.serviceWorker.register('/the-stryx/firebase-messaging-sw.js')
-      const messaging = getMessaging(getApp())
-      const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
-
-      await setDoc(doc(db, 'fcm_tokens', user.uid), {
-        token,
-        name: user.displayName || user.email,
-        email: user.email,
-        atualizadoEm: new Date().toISOString(),
-      })
-      return true
+      await salvarToken(user)
+      setPermissao('granted')
+      return 'ok'
+    } catch {
+      return 'error'
     } finally {
       setAtivando(false)
     }

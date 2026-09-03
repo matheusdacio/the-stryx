@@ -10,21 +10,9 @@ firebase.initializeApp({
   appId: "1:544479308598:web:69ef136c14fbe8d9de6197",
 });
 
-const messaging = firebase.messaging();
-
-messaging.onBackgroundMessage((payload) => {
-  const title = payload.notification?.title ?? 'The Stryx';
-  const body = payload.notification?.body ?? '';
-  self.registration.showNotification(title, {
-    body,
-    icon: '/favicon.svg',
-    vibrate: [200, 100, 200],
-    data: { url: payload.fcmOptions?.link ?? 'https://matheusdacio.github.io/the-stryx/' },
-  });
-});
-
-self.addEventListener('notificationclick', (event) => {
-  event.notification.close();
-  const url = event.notification.data?.url ?? 'https://matheusdacio.github.io/the-stryx/';
-  event.waitUntil(clients.openWindow(url));
-});
+// Só isso: o SDK do Firebase já mostra a notificação sozinho (usando
+// notification.icon/badge/vibrate que os scripts de envio já mandam) e, no
+// toque, foca a aba aberta ou abre o link. Um onBackgroundMessage +
+// notificationclick próprios aqui duplicavam a notificação com o app fechado
+// (o SDK mostra a dele, e este handler mostrava outra por cima).
+firebase.messaging();

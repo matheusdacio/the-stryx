@@ -1,5 +1,5 @@
 import { initializeApp } from 'firebase/app'
-import { getFirestore } from 'firebase/firestore'
+import { initializeFirestore, persistentLocalCache, persistentMultipleTabManager } from 'firebase/firestore'
 import { getAuth, GoogleAuthProvider } from 'firebase/auth'
 
 const firebaseConfig = {
@@ -13,6 +13,12 @@ const firebaseConfig = {
 }
 
 const app = initializeApp(firebaseConfig)
-export const db = getFirestore(app)
+// Cache persistente: o setlist, os eventos e as sugestões abrem do cache sem
+// rede (inclusive o Modo palco no ensaio), e um voto/presença dado sem sinal
+// não se perde se a aba fechar antes de a rede voltar — antes só ficava em
+// memória e sumia
+export const db = initializeFirestore(app, {
+  localCache: persistentLocalCache({ tabManager: persistentMultipleTabManager() }),
+})
 export const auth = getAuth(app)
 export const googleProvider = new GoogleAuthProvider()

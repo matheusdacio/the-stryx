@@ -1,8 +1,9 @@
 import { useState } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
-export default function CifraModal({ cifra, onClose, KEYS }) {
+export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
   const isView = cifra && !cifra._editing
   const [editing, setEditing] = useState(!cifra)
   const [form, setForm] = useState({
@@ -13,36 +14,52 @@ export default function CifraModal({ cifra, onClose, KEYS }) {
     content: cifra?.content || '',
   })
   const [saving, setSaving] = useState(false)
+  const [mexeu, setMexeu] = useState(false)
 
-  const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
+  const handleChange = (e) => {
+    setMexeu(true)
+    setForm({ ...form, [e.target.name]: e.target.value })
+  }
 
-  const handleSave = async (e) => {
+  // Em edição, só sai por Cancelar (com aviso se mexeu em algo) — tocar
+  // fora não deve descartar cifra digitada por acidente
+  const cancelar = () => {
+    if (mexeu && !confirm('Descartar o que você digitou?')) return
+    onClose()
+  }
+
+  useFecharComVoltar(cancelar)
+
+  const handleSave = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
+    // Fecha na hora — sem sinal, o await deixava o modal preso em "Salvando..."
+    const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (cifra) {
-      await updateDoc(doc(db, 'cifras', cifra.id), form)
+      updateDoc(doc(db, 'cifras', cifra.id), form).catch(erro)
     } else {
-      await addDoc(collection(db, 'cifras'), { ...form, createdAt: serverTimestamp() })
+      addDoc(collection(db, 'cifras'), { ...form, createdAt: serverTimestamp() }).catch(erro)
     }
     onClose()
   }
 
   return (
-    <div className="modal-overlay" onClick={onClose}>
+    <div className="modal-overlay" onClick={editing ? undefined : onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-top">
           <h2>{editing ? (cifra ? 'Editar Cifra' : 'Nova Cifra') : form.title}</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             {cifra && !editing && <button className="btn-secondary" onClick={() => setEditing(true)}>Editar</button>}
-            <button className="btn-secondary" onClick={onClose}>Fechar</button>
+            {onRemove && <button className="btn-ghost-danger" onClick={onRemove}>Remover</button>}
+            {!editing && <button className="btn-secondary" onClick={onClose}>Fechar</button>}
           </div>
         </div>
 
         {editing ? (
           <form onSubmit={handleSave}>
             <div className="form-row">
-              <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus /></label>
+              <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
               <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
             </div>
             <div className="form-row">
@@ -66,7 +83,7 @@ export default function CifraModal({ cifra, onClose, KEYS }) {
               />
             </label>
             <div className="modal-actions">
-              <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
+              <button type="button" className="btn-secondary" onClick={cancelar}>Cancelar</button>
               <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>

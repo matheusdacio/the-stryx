@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, onSnapshot, orderBy, query, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
+import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 const TYPES = [
   { value: 'ideia', label: 'Ideia', color: '#a855f7' },
@@ -10,13 +11,12 @@ const TYPES = [
   { value: 'estrutura', label: 'Estrutura', color: '#10b981' },
 ]
 
-function RascunhoCard({ r, onEdit, onDelete }) {
+function RascunhoCard({ r, onEdit }) {
   const type = TYPES.find((t) => t.value === r.type) || TYPES[0]
   return (
     <div className="rascunho-card" onClick={() => onEdit(r)}>
       <div className="rascunho-header">
         <span className="rascunho-title">{r.title}</span>
-        <button className="btn-remove" onClick={(e) => { e.stopPropagation(); onDelete(r) }}>✕</button>
       </div>
       <span className="badge" style={{ background: type.color + '33', color: type.color, borderColor: type.color + '55' }}>
         {type.label}
@@ -27,21 +27,24 @@ function RascunhoCard({ r, onEdit, onDelete }) {
   )
 }
 
-function RascunhoModal({ rascunho, onClose }) {
+function RascunhoModal({ rascunho, onClose, onRemove }) {
+  useFecharComVoltar(onClose)
   const { user } = useAuth()
   const [form, setForm] = useState({ title: rascunho?.title || '', type: rascunho?.type || 'ideia', content: rascunho?.content || '' })
   const [saving, setSaving] = useState(false)
 
   const handleChange = (e) => setForm({ ...form, [e.target.name]: e.target.value })
 
-  const handleSave = async (e) => {
+  const handleSave = (e) => {
     e.preventDefault()
     if (!form.title.trim()) return
     setSaving(true)
+    // Fecha na hora — sem sinal, o await deixava o modal preso em "Salvando..."
+    const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (rascunho) {
-      await updateDoc(doc(db, 'rascunhos', rascunho.id), form)
+      updateDoc(doc(db, 'rascunhos', rascunho.id), form).catch(erro)
     } else {
-      await addDoc(collection(db, 'rascunhos'), { ...form, createdBy: user.displayName, createdAt: serverTimestamp() })
+      addDoc(collection(db, 'rascunhos'), { ...form, createdBy: user.displayName, createdAt: serverTimestamp() }).catch(erro)
     }
     onClose()
   }
@@ -52,7 +55,7 @@ function RascunhoModal({ rascunho, onClose }) {
         <h2>{rascunho ? 'Editar Rascunho' : 'Novo Rascunho'}</h2>
         <form onSubmit={handleSave}>
           <div className="form-row">
-            <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Ideia pro refrão" autoFocus /></label>
+            <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Ideia pro refrão" autoFocus required /></label>
             <label>Tipo
               <select name="type" value={form.type} onChange={handleChange}>
                 {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
@@ -71,6 +74,7 @@ function RascunhoModal({ rascunho, onClose }) {
             />
           </label>
           <div className="modal-actions">
+            {onRemove && <button type="button" className="btn-ghost-danger" style={{ marginRight: 'auto' }} onClick={onRemove}>Remover</button>}
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn-primary" disabled={saving}>{saving ? 'Salvando...' : 'Salvar'}</button>
           </div>
@@ -92,7 +96,7 @@ export default function RascunhosPage() {
 
   const filtered = filterType === 'all' ? rascunhos : rascunhos.filter((r) => r.type === filterType)
 
-  const remove = (r) => { if (confirm(`Remover "${r.title}"?`)) deleteDoc(doc(db, 'rascunhos', r.id)) }
+  const remove = (r) => { if (confirm(`Apagar o rascunho "${r.title}"? Não dá pra desfazer.`)) deleteDoc(doc(db, 'rascunhos', r.id)) }
 
   return (
     <div className="page">
@@ -105,15 +109,20 @@ export default function RascunhosPage() {
         <button className={`btn-filter ${filterType === 'all' ? 'active' : ''}`} onClick={() => setFilterType('all')}>
           Todos <span className="count">{rascunhos.length}</span>
         </button>
-        {TYPES.map((t) => (
-          <button
-            key={t.value}
-            className={`btn-filter ${filterType === t.value ? 'active' : ''}`}
-            onClick={() => setFilterType(t.value)}
-          >
-            {t.label} <span className="count">{rascunhos.filter((r) => r.type === t.value).length}</span>
-          </button>
-        ))}
+        {TYPES.map((t) => {
+          const active = filterType === t.value
+          return (
+            <button
+              key={t.value}
+              className={`btn-filter ${active ? 'active' : ''}`}
+              style={active ? { background: t.color + '33', borderColor: t.color, color: t.color } : {}}
+              onClick={() => setFilterType(t.value)}
+            >
+              <span className="filter-dot" style={{ background: t.color }} />
+              {t.label} <span className="count">{rascunhos.filter((r) => r.type === t.value).length}</span>
+            </button>
+          )
+        })}
       </div>
 
       {filtered.length === 0 ? (
@@ -124,12 +133,18 @@ export default function RascunhosPage() {
       ) : (
         <div className="card-grid">
           {filtered.map((r) => (
-            <RascunhoCard key={r.id} r={r} onEdit={setModal} onDelete={remove} />
+            <RascunhoCard key={r.id} r={r} onEdit={setModal} />
           ))}
         </div>
       )}
 
-      {modal && <RascunhoModal rascunho={modal === 'add' ? null : modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <RascunhoModal
+          rascunho={modal === 'add' ? null : modal}
+          onClose={() => setModal(null)}
+          onRemove={modal !== 'add' ? () => { remove(modal); setModal(null) } : undefined}
+        />
+      )}
     </div>
   )
 }

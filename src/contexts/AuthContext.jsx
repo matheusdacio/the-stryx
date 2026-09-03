@@ -87,7 +87,16 @@ export function AuthProvider({ children }) {
 
   return (
     <AuthContext.Provider value={{ user, loading, login, logout }}>
-      {!loading && children}
+      {loading ? (
+        // Mesmo visual da tela de login (index.html tem o mesmo placeholder
+        // estático pro tempo de download do bundle) — trocar preto por logo,
+        // não elimina o pulo pra quem já tá logado (a tela seguinte é outra)
+        <div className="login-page">
+          <div className="login-box">
+            <h1 className="band-name">THE STRYX</h1>
+          </div>
+        </div>
+      ) : children}
     </AuthContext.Provider>
   )
 }

@@ -1,23 +1,11 @@
-import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
-import { useNotifications } from '../hooks/useNotifications'
 import { APP_VERSION } from '../version'
 
-const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
-
-export default function Navbar() {
+export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
   const { user, logout } = useAuth()
-  const isAdmin = user.email === ADMIN_EMAIL
-  const { permissao, ativando, suportado, ativar, desativar } = useNotifications(user)
+  const { permissao, ativando, suportado } = notif
 
-  const handleNotifClick = async () => {
-    if (permissao === 'granted') {
-      if (window.confirm('Desativar notificações?')) await desativar()
-    } else {
-      const ok = await ativar()
-      if (!ok && permissao === 'denied') alert('Notificações bloqueadas. Habilite nas configurações do navegador.')
-    }
-  }
+  const handleNotifClick = () => (permissao === 'granted' ? onDesativarNotif() : onAtivarNotif())
 
   return (
     <nav className="navbar">
@@ -26,16 +14,6 @@ export default function Navbar() {
         <span className="navbar-version">v{APP_VERSION}</span>
       </span>
       <div className="navbar-user">
-        {isAdmin && (
-          <>
-            <Link to="/membros" className="btn-import" title="Membros da banda">
-              👥 Banda
-            </Link>
-            <Link to="/import" className="btn-import" title="Importar do Glissandoo">
-              ⬆ Importar
-            </Link>
-          </>
-        )}
         {suportado && (
           <button
             className="btn-notif"

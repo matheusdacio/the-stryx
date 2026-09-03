@@ -1,7 +1,6 @@
 import { NavLink } from 'react-router-dom'
-import { useEffect, useState } from 'react'
-import { collection, onSnapshot, query, where } from 'firebase/firestore'
-import { db } from '../firebase/config'
+import { useAuth } from '../contexts/AuthContext'
+import { usePendencias } from '../hooks/usePendencias'
 
 const NAV_ITEMS = [
   {
@@ -68,12 +67,8 @@ const NAV_ITEMS = [
 ]
 
 export default function BottomNav() {
-  const [pendingCount, setPendingCount] = useState(0)
-
-  useEffect(() => {
-    const q = query(collection(db, 'sugestoes'), where('status', '==', 'aberta'))
-    return onSnapshot(q, (snap) => setPendingCount(snap.size))
-  }, [])
+  const { user } = useAuth()
+  const { sugestoesPendentes: pendingCount } = usePendencias(user)
 
   return (
     <nav className="bottom-nav">

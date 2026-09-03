@@ -1,23 +1,14 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useAuth } from '../../contexts/AuthContext'
+import { firstName } from '../../utils/members'
+import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
+import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
+import { formatData } from '../../utils/data'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
-
-function formatDate(ts, opts = {}) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('pt-BR', {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-    ...opts
-  })
-}
-
-function formatDateShort(ts) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
-}
+import SetPlayer from '../SetPlayer'
 
 function relativeLabel(ts) {
   if (!ts) return ''
@@ -30,10 +21,116 @@ function relativeLabel(ts) {
   return `${Math.abs(days)} dias atrás`
 }
 
-function isPast(ts) {
+// Marcar o que foi ensaiado só faz sentido do dia do evento em diante.
+// Compara por dia: o evento é gravado ao meio-dia, então usar a hora faria
+// o ensaio de hoje contar como futuro até o meio-dia
+function jaComecou(ts) {
   if (!ts) return false
   const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d < new Date()
+  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return dia(d) <= dia(new Date())
+}
+
+// Já passou do dia: não faz sentido perguntar se a pessoa vai, e o resumo
+// passa a falar no passado
+function jaPassou(ts) {
+  if (!ts) return false
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return dia(d) < dia(new Date())
+}
+
+// Primeiras músicas do evento, pra dar o tom do que vai ser ensaiado sem
+// precisar abrir os detalhes
+function SetlistPreview({ setlist, limite = 5 }) {
+  const lista = setlist || []
+  if (!lista.length) return null
+  const restantes = lista.length - limite
+  return (
+    <div className="setlist-preview">
+      <ol className="event-songs-list">
+        {lista.slice(0, limite).map((s, i) => (
+          <li key={s.id || i}>
+            {s.title}
+            {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+          </li>
+        ))}
+      </ol>
+      {restantes > 0 && (
+        <p className="setlist-preview-more">+ {restantes} {restantes === 1 ? 'música' : 'músicas'}</p>
+      )}
+    </div>
+  )
+}
+
+// ── Presença ──────────────────────────────────────────────────────────
+
+// Cada um responde pela própria presença. Clicar de novo na mesma resposta
+// desfaz, igual aos votos de dificuldade
+function PresencaBar({ ensaio, uid, userName }) {
+  const meu = (ensaio.presenca || {})[uid]?.status
+
+  const responder = (status) => {
+    const ref = doc(db, 'ensaios', ensaio.id)
+    if (meu === status) {
+      updateDoc(ref, { [`presenca.${uid}`]: deleteField() })
+    } else {
+      updateDoc(ref, {
+        [`presenca.${uid}`]: { status, name: userName, at: new Date().toISOString() },
+      })
+    }
+  }
+
+  return (
+    <div className="presenca-bar" onClick={(e) => e.stopPropagation()}>
+      <span className="section-label">Você vai?</span>
+      {PRESENCAS.map((p) => (
+        <button
+          key={p.value}
+          className={`btn-presenca ${meu === p.value ? 'active' : ''}`}
+          style={meu === p.value ? { background: p.bg, borderColor: p.color, color: p.color } : {}}
+          aria-pressed={meu === p.value}
+          onClick={() => responder(p.value)}
+        >
+          {p.label}
+        </button>
+      ))}
+    </div>
+  )
+}
+
+function PresencaResumo({ ensaio, bandMembers, passado }) {
+  const { vao, nao, pendentes, convidados } = splitPresenca(ensaio, bandMembers)
+  if (!bandMembers.length) return null
+
+  const linha = (titulo, lista, cor) => lista.length > 0 && (
+    <div className="presenca-linha">
+      <span className="presenca-linha-titulo" style={{ color: cor }}>{titulo} ({lista.length})</span>
+      <div className="members-tags">
+        {lista.map((m) => (
+          <span key={m.name} className="member-tag" style={{ borderColor: cor, color: cor }} title={m.name}>
+            {firstName(m.name)}
+          </span>
+        ))}
+      </div>
+    </div>
+  )
+
+  return (
+    <div className="presenca-resumo">
+      {linha(passado ? 'Foram' : 'Vão', vao, PRESENCAS[0].color)}
+      {linha(passado ? 'Não foram' : 'Não vão', nao, PRESENCAS[1].color)}
+      {linha('Sem resposta', pendentes, 'var(--text-muted)')}
+      {convidados.length > 0 && (
+        <div className="presenca-linha">
+          <span className="presenca-linha-titulo">Convidados ({convidados.length})</span>
+          <div className="members-tags">
+            {convidados.map((n) => <span key={n} className="member-tag" title={n}>{firstName(n)}</span>)}
+          </div>
+        </div>
+      )}
+    </div>
+  )
 }
 
 function TypeBadge({ type }) {
@@ -47,46 +144,140 @@ function TypeBadge({ type }) {
 
 // ── Card expandível ───────────────────────────────────────────────────
 
-function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
-  const [open, setOpen] = useState(false)
+// `compacto` é a aba de pendências: ali a tarefa é responder presença, então
+// ela vem primeiro e o repertório fica só como prévia
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false, colapsavel = false }) {
+  // Realizados/Cancelados nascem recolhidos — repertório completo, presença
+  // e 4-5 botões por evento, pra TODOS de uma vez, virava rolagem sem fim
+  const [open, setOpen] = useState(!colapsavel)
   const hasPauta   = ensaio.pauta?.length > 0
-  const hasMembers = ensaio.members?.length > 0
+  const { vao, nao } = splitPresenca(ensaio, bandMembers)
+
+  // Registro do que foi realmente tocado no ensaio. Quem diz se a música ficou
+  // pronta é o voto de domínio de cada um, não esta marcação
+  const ensaiadas = ensaio.ensaiadas || []
+  // arrayUnion/arrayRemove em vez de regravar o array inteiro: duas pessoas
+  // marcando músicas diferentes ao mesmo tempo não se pisam mais (quem
+  // gravasse por último apagava a marcação do outro)
+  const toggleEnsaiada = (id) => {
+    if (!id) return
+    const campo = ensaiadas.includes(id) ? arrayRemove(id) : arrayUnion(id)
+    updateDoc(doc(db, 'ensaios', ensaio.id), { ensaiadas: campo })
+  }
+
+  const [tocando, setTocando] = useState(false)
+  const podeMarcar = jaComecou(ensaio.date)
+  const passado = jaPassou(ensaio.date)
+
   const hasNotes   = !!ensaio.notes
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
-    <div className={`ensaio-row ${open ? 'open' : ''}`}>
-      <div className="ensaio-row-header" onClick={() => setOpen(!open)}>
-        <div className="ensaio-row-left">
-          <span className="ensaio-row-date">{formatDateShort(ensaio.date)}</span>
-          <TypeBadge type={ensaio.type} />
-          {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
-        </div>
-        <div className="ensaio-row-right">
-          {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
-          {hasMembers && <span className="ensaio-row-members">👥 {ensaio.members.length}</span>}
-          <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>
-        </div>
+    <div className={`ensaio-row ${open ? 'open' : ''} ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
+      <div
+        className={`ensaio-row-header ${destaque ? 'destaque-header' : ''}`}
+        onClick={colapsavel ? () => setOpen(!open) : undefined}
+        style={colapsavel ? { cursor: 'pointer' } : undefined}
+      >
+        {destaque ? (
+          <>
+            <div>
+              <p className="next-ensaio-label">
+                {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
+              </p>
+              <p className="next-ensaio-date">{formatData(ensaio.date)}</p>
+              {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
+            </div>
+            <div style={{ textAlign: 'right' }}>
+              <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
+              {vao.length > 0 && <p className="next-ensaio-members presenca-vai">✓ {vao.length} confirmados</p>}
+              {hasSetlist && <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>}
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="ensaio-row-left">
+              <span className="ensaio-row-date">{formatData(ensaio.date, { curta: true })}</span>
+              <TypeBadge type={ensaio.type} />
+              {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
+            </div>
+            <div className="ensaio-row-right">
+              {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
+              {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
+              {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
+              {colapsavel && <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>}
+            </div>
+          </>
+        )}
       </div>
 
       {open && (
-        <div className="ensaio-row-body">
-          {hasSetlist && (
+      <div className="ensaio-row-body">
+          {compacto && (
+            <div>
+              {!passado && (
+                <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+              )}
+              <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
+            </div>
+          )}
+
+          {hasSetlist && compacto && (
+            <div className="pauta-block">
+              <p className="section-label">Músicas ({ensaio.setlist.length})</p>
+              <SetlistPreview setlist={ensaio.setlist} limite={3} />
+            </div>
+          )}
+
+          {hasSetlist && !compacto && (
             <div className="pauta-block">
               <p className="section-label">Músicas ({ensaio.setlist.length})</p>
               <ol className="event-songs-list">
-                {ensaio.setlist.map((s, i) => (
-                  <li key={i}>
-                    {s.title}
-                    {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                    {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                  </li>
-                ))}
+                {ensaio.setlist.map((s, i) => {
+                  const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
+                  const q = encodeURIComponent(s.title)
+                  const texto = (
+                    <span>
+                      <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
+                      {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                      {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                      <a
+                        href={`#/cifras?q=${q}`}
+                        className="mini-chip"
+                        style={{ marginLeft: 6 }}
+                        title="Ver cifra"
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        📄
+                      </a>
+                      {nivel && (
+                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                          {nivel.label}
+                        </span>
+                      )}
+                    </span>
+                  )
+                  return (
+                    <li key={s.id || i}>
+                      {podeMarcar ? (
+                        <label className="song-ensaiada">
+                          <input
+                            type="checkbox"
+                            checked={ensaiadas.includes(s.id)}
+                            onChange={() => toggleEnsaiada(s.id)}
+                            title="Marcar como ensaiada neste evento"
+                          />
+                          {texto}
+                        </label>
+                      ) : texto}
+                    </li>
+                  )
+                })}
               </ol>
             </div>
           )}
 
-          {hasPauta && (
+          {hasPauta && !compacto && (
             <div className="pauta-block" style={{ marginTop: hasSetlist ? 10 : 0 }}>
               <p className="section-label">Pauta</p>
               {ensaio.pauta.map((item, i) => (
@@ -98,127 +289,100 @@ function EnsaioRow({ ensaio, onEdit, onRemove, onTogglePauta, onPerform }) {
             </div>
           )}
 
-          {hasMembers && (
+          {!compacto && (
             <div style={{ marginTop: 10 }}>
-              <p className="section-label">Membros</p>
-              <div className="members-tags">
-                {ensaio.members.map((m, i) => <span key={i} className="member-tag">{m}</span>)}
-              </div>
+              {!passado && (
+                <PresencaBar ensaio={ensaio} uid={user.uid} userName={user.displayName || user.email} />
+              )}
+              <PresencaResumo ensaio={ensaio} bandMembers={bandMembers} passado={passado} />
             </div>
           )}
 
-          {hasNotes && (
+          {hasNotes && !compacto && (
             <div style={{ marginTop: 10 }}>
               <p className="section-label">Observações</p>
               <p className="ensaio-notes">{ensaio.notes}</p>
             </div>
           )}
 
+          {tocando && (
+            <SetPlayer setlist={ensaio.setlist} />
+          )}
+
           <div className="ensaio-row-actions">
             {hasSetlist && (
-              <button className="btn-primary" onClick={() => onPerform(ensaio)}>🎤 Modo palco</button>
+              <button
+                className="btn-primary"
+                onClick={() => { setTocando(false); onPerform(ensaio) }}
+              >
+                🎤 Modo palco
+              </button>
+            )}
+            {hasSetlist && (
+              <button className="btn-secondary" onClick={() => setTocando(!tocando)}>
+                {tocando ? '■ Parar' : '▶ Tocar as músicas'}
+              </button>
             )}
             <button className="btn-secondary" onClick={() => onEdit(ensaio)}>Editar</button>
+            <button className="btn-secondary" onClick={() => onCopy(ensaio)}>⧉ Copiar</button>
             <button className="btn-ghost-danger" onClick={() => onRemove(ensaio)}>Remover</button>
           </div>
-        </div>
+      </div>
       )}
     </div>
   )
 }
 
-// ── Card destaque — próximo evento ────────────────────────────────────
-
-function NextEnsaioCard({ ensaio, onEdit, onPerform }) {
-  const [open, setOpen] = useState(false)
-  const hasSetlist = ensaio.setlist?.length > 0
-
-  return (
-    <div className={`next-ensaio-card ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}`}>
-      <div className="next-ensaio-top">
-        <div>
-          <p className="next-ensaio-label">
-            {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
-          </p>
-          <p className="next-ensaio-date">{formatDate(ensaio.date)}</p>
-          {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
-        </div>
-        <div style={{ textAlign: 'right' }}>
-          <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
-          {ensaio.members?.length > 0 && (
-            <p className="next-ensaio-members">👥 {ensaio.members.length} membros</p>
-          )}
-          {hasSetlist && (
-            <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>
-          )}
-        </div>
-      </div>
-
-      {hasSetlist && open && (
-        <div className="pauta-block" style={{ marginTop: 10 }}>
-          <ol className="event-songs-list">
-            {ensaio.setlist.map((s, i) => (
-              <li key={i}>
-                {s.title}
-                {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-              </li>
-            ))}
-          </ol>
-        </div>
-      )}
-
-      {ensaio.pauta?.length > 0 && open && (
-        <div className="pauta-block" style={{ marginTop: 8 }}>
-          <p className="section-label">Pauta</p>
-          {ensaio.pauta.map((item, i) => (
-            <label key={i} className="pauta-item">
-              <input type="checkbox" checked={!!item.done} readOnly />
-              <span className={item.done ? 'done' : ''}>{item.text}</span>
-            </label>
-          ))}
-        </div>
-      )}
-
-      <div style={{ display: 'flex', gap: 8, marginTop: 12, flexWrap: 'wrap' }}>
-        {hasSetlist && (
-          <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={() => onPerform(ensaio)}>
-            🎤 Modo palco
-          </button>
-        )}
-        {(hasSetlist || ensaio.pauta?.length > 0) && (
-          <button className="btn-ghost" style={{ fontSize: '0.8rem' }} onClick={() => setOpen(!open)}>
-            {open ? '▲ Fechar detalhes' : '▼ Ver detalhes'}
-          </button>
-        )}
-        <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => onEdit(ensaio)}>
-          Editar
-        </button>
-      </div>
-    </div>
-  )
-}
 
 // ── Página principal ──────────────────────────────────────────────────
 
 const TABS = [
   { key: 'proximos',   label: 'Próximos' },
+  { key: 'pendentes',  label: '⏳ Presença pendente' },
   { key: 'realizados', label: 'Realizados' },
   { key: 'cancelados', label: 'Cancelados' },
 ]
 
 export default function EnsaiosPage() {
+  const { user } = useAuth()
   const [ensaios, setEnsaios] = useState([])
+  const [loaded, setLoaded] = useState(false)
+  const [bandMembers, setBandMembers] = useState([])
+  const [songs, setSongs] = useState({})
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
   const [performing, setPerforming] = useState(null)
 
   useEffect(() => {
     const q = query(collection(db, 'ensaios'), orderBy('date', 'asc'))
-    return onSnapshot(q, (snap) => setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    return onSnapshot(collection(db, 'songs'), (snap) => {
+      const map = {}
+      snap.docs.forEach((d) => { map[d.id] = d.data() })
+      setSongs(map)
+    })
+  }, [])
+
+  useEffect(() => {
+    // Quem saiu da banda (ativo:false) fica fora daqui — não fica "Sem
+    // resposta" pra sempre em todo evento novo
+    const q = query(collection(db, 'members'), orderBy('name'))
+    return onSnapshot(q, (snap) => setBandMembers(
+      snap.docs.filter((d) => d.data().ativo !== false).map((d) => ({
+        name: d.data().name,
+        firebaseUid: d.data().firebaseUid || null,
+      }))
+    ))
   }, [])
 
   const remove = (e) => {
-    if (confirm(`Remover evento de ${formatDate(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
+    if (confirm(`Remover evento de ${formatData(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
   }
 
   const togglePauta = async (ensaio, index) => {
@@ -228,16 +392,30 @@ export default function EnsaiosPage() {
   }
 
   // Separa por categoria
-  const futuros    = ensaios.filter(e => !isPast(e.date) && e.status !== 'cancelado')
-  const realizados = ensaios.filter(e =>  isPast(e.date) && e.status !== 'cancelado').reverse()
+  // jaPassou (não isPast): evento de hoje fica em Próximos o dia inteiro,
+  // coerente com a pergunta de presença e o filtro de pendências, que já
+  // usam jaPassou/jaComecou. Antes, o card destaque sumia ao meio-dia.
+  const futuros    = ensaios.filter(e => !jaPassou(e.date) && e.status !== 'cancelado')
+  const realizados = ensaios.filter(e =>  jaPassou(e.date) && e.status !== 'cancelado').reverse()
   const cancelados = ensaios.filter(e => e.status === 'cancelado')
 
   const nextEnsaio = futuros[0] || null
   const restantes  = futuros.slice(1)
 
-  const counts = { proximos: futuros.length, realizados: realizados.length, cancelados: cancelados.length }
+  // Futuros que eu ainda não respondi — é o que o filtro de pendências mostra
+  const pendentes = futuros.filter((e) => faltaResponder(e, user.uid))
 
-  const listForTab = tab === 'proximos' ? restantes : tab === 'realizados' ? realizados : cancelados
+  const counts = {
+    proximos: futuros.length,
+    pendentes: pendentes.length,
+    realizados: realizados.length,
+    cancelados: cancelados.length,
+  }
+
+  const listForTab = tab === 'pendentes' ? pendentes
+    : tab === 'realizados' ? realizados
+    : tab === 'cancelados' ? cancelados
+    : restantes
 
   return (
     <div className="page">
@@ -246,6 +424,10 @@ export default function EnsaiosPage() {
         <button className="btn-primary" onClick={() => setModal('add')}>+ Evento</button>
       </div>
 
+      {!loaded ? (
+        <p className="empty-state">Carregando os eventos...</p>
+      ) : (
+        <>
       {/* Tabs */}
       <div className="filter-bar">
         {TABS.map(t => (
@@ -264,7 +446,18 @@ export default function EnsaiosPage() {
       {tab === 'proximos' && (
         <>
           {nextEnsaio
-            ? <NextEnsaioCard ensaio={nextEnsaio} onEdit={setModal} onPerform={setPerforming} />
+            ? <EnsaioRow
+                ensaio={nextEnsaio}
+                onEdit={setModal}
+                onCopy={(x) => setModal({ copiar: x })}
+                onRemove={remove}
+                onTogglePauta={togglePauta}
+                onPerform={setPerforming}
+                bandMembers={bandMembers}
+                user={user}
+                songs={songs}
+                destaque
+              />
             : (
               <div className="empty-state" style={{ marginTop: 12 }}>
                 <p>Nenhum evento planejado.</p>
@@ -282,9 +475,13 @@ export default function EnsaiosPage() {
                     key={e.id}
                     ensaio={e}
                     onEdit={setModal}
+                    onCopy={(x) => setModal({ copiar: x })}
                     onRemove={remove}
                     onTogglePauta={togglePauta}
                     onPerform={setPerforming}
+                    bandMembers={bandMembers}
+                    user={user}
+                    songs={songs}
                   />
                 ))}
               </div>
@@ -293,12 +490,16 @@ export default function EnsaiosPage() {
         </>
       )}
 
-      {/* Aba Realizados / Cancelados */}
+      {/* Abas de lista simples */}
       {tab !== 'proximos' && (
         <>
           {listForTab.length === 0 ? (
             <div className="empty-state" style={{ marginTop: 12 }}>
-              <p>Nenhum evento {tab === 'realizados' ? 'realizado' : 'cancelado'} aqui.</p>
+              <p>
+                {tab === 'pendentes'
+                  ? 'Você já indicou presença em todos os eventos futuros. 🎉'
+                  : `Nenhum evento ${tab === 'realizados' ? 'realizado' : 'cancelado'} aqui.`}
+              </p>
             </div>
           ) : (
             <div className="ensaio-list" style={{ marginTop: 8 }}>
@@ -307,17 +508,32 @@ export default function EnsaiosPage() {
                   key={e.id}
                   ensaio={e}
                   onEdit={setModal}
+                  onCopy={(x) => setModal({ copiar: x })}
                   onRemove={remove}
                   onTogglePauta={togglePauta}
                   onPerform={setPerforming}
+                  bandMembers={bandMembers}
+                  user={user}
+                  songs={songs}
+                  compacto={tab === 'pendentes'}
+                  colapsavel={tab === 'realizados' || tab === 'cancelados'}
                 />
               ))}
             </div>
           )}
         </>
       )}
+        </>
+      )}
 
-      {modal && <EnsaioModal ensaio={modal === 'add' ? null : modal} onClose={() => setModal(null)} />}
+      {modal && (
+        <EnsaioModal
+          ensaio={modal === 'add' ? null : modal.copiar || modal}
+          copiando={!!modal.copiar}
+          onClose={() => setModal(null)}
+          bandMembers={bandMembers}
+        />
+      )}
       {performing && <PerformanceMode event={performing} onClose={() => setPerforming(null)} />}
     </div>
   )
