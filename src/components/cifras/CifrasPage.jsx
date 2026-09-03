@@ -80,7 +80,11 @@ export default function CifrasPage() {
                 {cifra.key && <span className="mini-chip">♪ {cifra.key}</span>}
                 {cifra.bpm && <span className="badge badge-bpm">{cifra.bpm} BPM</span>}
               </div>
-              <p className="cifra-preview">{cifra.content?.slice(0, 80)}...</p>
+              <p className="cifra-preview">
+                {cifra.content
+                  ? cifra.content.slice(0, 80) + (cifra.content.length > 80 ? '…' : '')
+                  : <span className="placeholder">Sem conteúdo</span>}
+              </p>
             </div>
           ))}
         </div>
