@@ -316,7 +316,7 @@ button { font-family: inherit; }
 .status-dot.status-pronta    { background: rgba(16,185,129,0.14); color: var(--green); }
 .status-dot.status-extra     { background: rgba(139,92,246,0.14); color: #c4b5fd; }
 .mini-chip {
-  font-size: 0.7rem; color: var(--text-muted);
+  font-size: 0.78rem; color: var(--text-muted);
   background: var(--surface2); border: 1px solid var(--border);
   border-radius: 10px; padding: 2px 8px; white-space: nowrap;
 }
@@ -359,7 +359,7 @@ button { font-family: inherit; }
 .btn-diff.active { font-weight: 700; }
 .difficulty-summary { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 9px; }
 .diff-pill {
-  font-size: 0.7rem; padding: 2px 9px; border-radius: 10px; font-weight: 600;
+  font-size: 0.78rem; padding: 2px 9px; border-radius: 10px; font-weight: 600;
 }
 .diff-pill-seeded { color: var(--text-muted); background: var(--surface2); }
 .filter-hint { font-size: 0.75rem; color: var(--text-muted); margin: -6px 0 14px; }
@@ -708,7 +708,7 @@ button { font-family: inherit; }
 .btn-ghost:hover { color: var(--text); }
 
 /* Elementos compartilhados */
-.section-label { font-size: 0.72rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 1.2px; margin-bottom: 6px; }
+.section-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
 .pauta-block { display: flex; flex-direction: column; gap: 6px; }
 .pauta-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem; }
 .pauta-item input { accent-color: var(--red); width: 15px; height: 15px; }
@@ -886,7 +886,7 @@ button { font-family: inherit; }
 
 .opinion-summary { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
 .opinion-pill {
-  font-size: 0.7rem; padding: 2px 8px;
+  font-size: 0.78rem; padding: 2px 8px;
   border-radius: 10px; font-weight: 600;
 }
 .my-vote-label { font-size: 0.72rem; color: var(--text-muted); margin-top: 2px; }
@@ -934,7 +934,7 @@ button { font-family: inherit; }
 
 /* Chip de dificuldade no card de sugestão — vazado, pra não confundir com as opiniões */
 .sug-diff-chip {
-  font-size: 0.68rem; font-weight: 600; white-space: nowrap;
+  font-size: 0.78rem; font-weight: 600; white-space: nowrap;
   padding: 1px 8px; border-radius: 10px;
   border: 1px solid currentColor; background: transparent;
 }
@@ -1313,7 +1313,7 @@ button { font-family: inherit; }
 .presenca-resumo { display: flex; flex-direction: column; gap: 7px; }
 .presenca-linha { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
 .presenca-linha-titulo {
-  font-size: 0.68rem;
+  font-size: 0.75rem;
   text-transform: uppercase;
   letter-spacing: 0.06em;
   color: var(--text-muted);
