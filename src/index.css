@@ -709,6 +709,9 @@ button { font-family: inherit; }
 
 /* Elementos compartilhados */
 .section-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.6px; margin-bottom: 6px; }
+/* Pergunta de voto (ação principal do card), não título de seção — caixa
+   normal e mais legível que .section-label, que fica só pra rótulos */
+.prompt-label { font-size: 0.82rem; font-weight: 600; color: var(--text); margin-bottom: 7px; }
 .pauta-block { display: flex; flex-direction: column; gap: 6px; }
 .pauta-item { display: flex; align-items: center; gap: 8px; cursor: pointer; font-size: 0.88rem; }
 .pauta-item input { accent-color: var(--red); width: 15px; height: 15px; }

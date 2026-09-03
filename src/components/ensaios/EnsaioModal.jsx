@@ -224,7 +224,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
         {copiando && (
-          <p className="section-label" style={{ marginBottom: 10 }}>
+          <p className="filter-hint" style={{ margin: '0 0 12px' }}>
             Músicas e pauta vieram do evento de {formatData(ensaio?.date)}. Escolha a data nova — a presença começa em branco.
           </p>
         )}

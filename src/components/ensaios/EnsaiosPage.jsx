@@ -74,7 +74,7 @@ function PresencaBar({ ensaio, uid, userName }) {
 
   return (
     <div className="presenca-bar" onClick={(e) => e.stopPropagation()}>
-      <span className="section-label">Você vai?</span>
+      <span className="prompt-label">Você vai?</span>
       {PRESENCAS.map((p) => (
         <button
           key={p.value}

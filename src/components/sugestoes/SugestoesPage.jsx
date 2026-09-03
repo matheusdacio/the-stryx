@@ -230,7 +230,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             grava no toque (igual à dificuldade), sem precisar rolar até o
             fim nem tocar num botão "Enviar" à parte */}
         <div className="opinion-form">
-          <p className="section-label">
+          <p className="prompt-label">
             {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? 'A banda toda já opinou' : 'Vale tocar?'}
           </p>
           {!(sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers)) && (
@@ -292,7 +292,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
         {/* Dificuldade pra tocar */}
         <div className="difficulty-section-flat" style={{ marginBottom: 12 }}>
-          <p className="section-label">Dificuldade pra tocar</p>
+          <p className="prompt-label">Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
