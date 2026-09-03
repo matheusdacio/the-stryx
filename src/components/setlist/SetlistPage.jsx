@@ -246,7 +246,7 @@ export default function SetlistPage() {
           )
         })}
         <button
-          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          className={`btn-tag ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam você indicar domínio, dificuldade ou opinião"
         >

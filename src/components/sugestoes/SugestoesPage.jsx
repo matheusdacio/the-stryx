@@ -814,7 +814,7 @@ export default function SugestoesPage() {
           )
         })}
         <button
-          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          className={`btn-tag ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
