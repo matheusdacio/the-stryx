@@ -26,7 +26,7 @@ export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
         )}
         <img src={user.photoURL} alt={user.displayName} className="avatar" />
         <span className="navbar-username">{user.displayName.split(' ')[0]}</span>
-        <button className="btn-logout" onClick={logout}>Sair</button>
+        <button className="btn-logout" onClick={() => confirm('Sair da conta?') && logout()}>Sair</button>
       </div>
     </nav>
   )
