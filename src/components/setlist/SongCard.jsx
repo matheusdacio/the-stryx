@@ -261,7 +261,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
             <span className="status-dot status-sem-voto">Sem voto</span>
           )}
           {nota && (
-            <span className="mini-chip" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
+            <span className="mini-chip mini-chip-nota" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
               ⭐ {formatarNota(nota.media)}
             </span>
           )}

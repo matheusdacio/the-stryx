@@ -475,13 +475,13 @@ button { font-family: inherit; }
   cursor: pointer; transition: all 0.15s;
 }
 .btn-event-type.active { background: rgba(59, 130, 246, 0.12); border-color: #3b82f6; color: #60a5fa; box-shadow: 0 1px 12px rgba(59, 130, 246, 0.2); }
-.btn-event-type.active.apresentacao { background: rgba(225, 29, 72, 0.12); border-color: #e11d48; color: #fb7185; box-shadow: 0 1px 12px rgba(225, 29, 72, 0.2); }
+.btn-event-type.active.apresentacao { background: rgba(217, 70, 239, 0.12); border-color: #d946ef; color: #e879f9; box-shadow: 0 1px 12px rgba(217, 70, 239, 0.2); }
 .event-type-badge {
   font-size: 0.68rem; font-weight: 600; padding: 1px 8px;
   border-radius: 10px; white-space: nowrap;
   background: rgba(59, 130, 246, 0.12); color: #60a5fa;
 }
-.event-type-badge.apresentacao { background: rgba(225, 29, 72, 0.12); color: #fb7185; }
+.event-type-badge.apresentacao { background: rgba(217, 70, 239, 0.12); color: #e879f9; }
 
 /* Busca de músicas no modal de evento */
 .song-search-results {
@@ -647,7 +647,7 @@ button { font-family: inherit; }
 }
 
 .next-ensaio-label { font-size: 0.7rem; font-weight: 700; color: #60a5fa; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
-.apresentacao .next-ensaio-label { color: #fb7185; }
+.apresentacao .next-ensaio-label { color: #e879f9; }
 .next-ensaio-date { font-weight: 800; font-size: 1.05rem; }
 .next-ensaio-loc { font-size: 0.83rem; color: var(--text-muted); margin-top: 2px; }
 .next-ensaio-relative {
@@ -655,7 +655,7 @@ button { font-family: inherit; }
   background: rgba(59, 130, 246, 0.12); border: 1px solid rgba(59, 130, 246, 0.25);
   padding: 3px 10px; border-radius: 12px; white-space: nowrap;
 }
-.apresentacao .next-ensaio-relative { color: #fb7185; background: rgba(225, 29, 72, 0.12); border-color: rgba(225, 29, 72, 0.25); }
+.apresentacao .next-ensaio-relative { color: #e879f9; background: rgba(217, 70, 239, 0.12); border-color: rgba(217, 70, 239, 0.25); }
 .next-ensaio-members { font-size: 0.78rem; color: var(--text-muted); margin-top: 6px; text-align: right; }
 
 /* Linha compacta de evento */
@@ -673,8 +673,8 @@ button { font-family: inherit; }
   box-shadow: var(--shadow-card);
 }
 .ensaio-row.destaque.apresentacao {
-  background: linear-gradient(150deg, rgba(225, 29, 72, 0.08) 0%, var(--surface) 45%);
-  border-left-color: #e11d48; border-color: #4a2230;
+  background: linear-gradient(150deg, rgba(217, 70, 239, 0.08) 0%, var(--surface) 45%);
+  border-left-color: #d946ef; border-color: #3d1f45;
 }
 .ensaio-row-header {
   display: flex; align-items: center; justify-content: space-between;
@@ -867,7 +867,8 @@ button { font-family: inherit; }
 .sug-card-aprovada { border-left: 4px solid var(--green); }
 .sug-card-rejeitada { border-left: 4px solid var(--gray); }
 .sug-card-rejeitada .sug-thumb { opacity: 0.5; filter: grayscale(1); }
-.sug-card-aberta { border-left: 4px solid #3b82f6; }
+.sug-card-aberta { border-left: 4px solid var(--border); }
+.mini-chip-nota { color: #fbbf24; font-weight: 600; }
 
 .sug-thumb-wrap { flex-shrink: 0; width: 110px; overflow: hidden; }
 .sug-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
