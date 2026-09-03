@@ -13,6 +13,25 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.33.0] — 2026-09-02
+- **Arrastar pra reordenar chega no modal de Evento**: mesma alça por toque do Setlist (arrasta só pelo ⠿, rolar a lista continua funcionando), com botões ▲▼ maiores como alternativa
+- **Músicas do evento viram link**: título abre a música filtrada no Setlist, e um botão "📄 Cifra" abre a cifra correspondente — no card do evento e dentro do Modo palco, sem sair da apresentação
+- **Modo palco**: navega por swipe (toque simples parava de acordar a tela sem querer); tocar no contador "N / total" abre lista pra pular direto pra qualquer música; layout adaptado pra celular deitado e tipografia maior; avisa "Repertório atualizado · aplicar" se o líder editar o evento durante o show, sem trocar a música no meio da execução
+- Pulso do metrônomo agora bate no andamento real (BPM), não num piscar fixo igual pra qualquer música
+- Card do próximo evento deixa de ser uma versão reduzida: mostra a lista completa, com checkbox de ensaiada e Remover, igual às outras linhas
+- Busca de música no modal de Evento não apaga mais o texto a cada música adicionada, ignora acento e mostra o nível de domínio de cada resultado
+- Abas Realizados e Cancelados (Eventos) vêm recolhidas por padrão
+- Select "Status: Planejado/Realizado/Cancelado" do evento vira um botão só — "Cancelar este evento" / "Reativar" (Realizado não fazia nada além da data)
+- Data do evento usa o mesmo formato em toda tela (Eventos, editar evento, Importar, ferramentas admin) — antes cada lugar mostrava um jeito diferente, às vezes dois na mesma aba
+- Vocabulário unificado: "Setlist" pro acervo, "Músicas do evento" pra lista do evento, "Última música do evento!" no palco (eram "repertório"/"set" misturados)
+- **Migração "pra presença por pessoa" não sobrescreve mais respostas reais** — o filtro deixava passar todo evento com presença já registrada e zerava Vou/Não vou; "Remover duplicatas" de membro ganha preview (apaga X · mantém Y) em vez de apagar direto no clique
+- **Importar do Glissandoo** passa a confirmar antes de gravar, pula música/sugestão/evento repetido em vez de duplicar, e avisa "concluída com erro(s)" quando algo falha (antes dizia sucesso mesmo assim)
+- Ferramentas de manutenção da Banda mostram erro em português (era o texto cru do Firebase em inglês) numa mensagem só, que some sozinha depois de alguns segundos
+- **Membro que saiu da banda** ganha um toggle "Tá na banda"/"Saiu" — para de contar como "Sem resposta" em todo evento novo e de puxar música pra "Crua" pra sempre no domínio, mas o histórico de votos continua gravado
+- Tela preta na entrada do app vira o logo (mesmo cartão da tela de login) enquanto o Firebase decide se tem sessão; botão de login mostra "Entrando..." e avisa quando o popup falha (comum em quem abre o link pelo WhatsApp)
+- Tocar o repertório do evento sem internet avisa em vez de travar numa caixa preta
+- Navbar do admin perde o link "Banda" (duplicado do rodapé); "Importar do Glissandoo" muda pra dentro das ferramentas da página Banda, junto das outras
+
 ## [1.32.0] — 2026-09-02
 - **Veto fica explícito nas Sugestões**: "Não faz sentido" e "Não curti" ganham "· tira da fila" e viram vermelho de alerta (eram laranja/cinza, cara de opção neutra); linha de ajuda antes dos botões; confirm só nessas duas; "Remover" a própria opinião fica sempre visível, mesmo depois que a banda toda já opinou — antes o botão sumia bem quando alguém precisava desfazer um veto por engano
 - **Opinar vira 1 toque**: bloco de opinião sobe pra logo abaixo do vídeo (antes ficava depois de observações, dificuldade e da lista de opiniões dos outros) e grava direto, igual à dificuldade — sem escolher, rolar e apertar "Enviar"; comentário vira campo à parte, com "Editar" e "Salvar" próprios, então trocar de opinião não apaga mais o que foi escrito
