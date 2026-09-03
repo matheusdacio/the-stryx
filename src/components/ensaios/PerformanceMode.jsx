@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { collection, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
@@ -18,6 +18,7 @@ export default function PerformanceMode({ event, onClose }) {
       return 0
     }
   })
+  const [mostrarLista, setMostrarLista] = useState(false)
 
   useEffect(() => {
     try { sessionStorage.setItem(`perf-idx-${event.id}`, String(idx)) } catch { /* sem storage, segue sem lembrar */ }
@@ -63,6 +64,19 @@ export default function PerformanceMode({ event, onClose }) {
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
   const goPrev = useCallback(() => setIdx((i) => Math.max(i - 1, 0)), [])
+
+  // Swipe horizontal em vez de toque simples — a área central é quase a
+  // tela inteira, e um toque só (pra acordar a tela, ajeitar o pedestal,
+  // ler o tom ou as observações) pulava a música no meio do set
+  const touchStartX = useRef(null)
+  const onTouchStart = (e) => { touchStartX.current = e.touches[0].clientX }
+  const onTouchEnd = (e) => {
+    if (touchStartX.current === null) return
+    const delta = e.changedTouches[0].clientX - touchStartX.current
+    touchStartX.current = null
+    if (delta <= -60) goNext()
+    else if (delta >= 60) goPrev()
+  }
 
   // Teclado: setas navegam (Esc sai via useFecharComVoltar)
   useEffect(() => {
@@ -112,15 +126,36 @@ export default function PerformanceMode({ event, onClose }) {
     <div className="perf-overlay">
       {/* Topo: progresso e sair */}
       <div className="perf-top">
-        <span className="perf-progress">{idxAtual + 1} / {setlist.length}</span>
+        <button className="perf-progress" onClick={() => setMostrarLista(!mostrarLista)} title="Pular pra outra música">
+          {idxAtual + 1} / {setlist.length}
+        </button>
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {event.location || ''}
         </span>
         <button className="perf-close" onClick={onClose}>✕</button>
       </div>
 
+      {mostrarLista && (
+        <div className="perf-lista-overlay" onClick={() => setMostrarLista(false)}>
+          <ol className="perf-lista">
+            {setlist.map((s, i) => (
+              <li key={s.id || i}>
+                <button
+                  className={`perf-lista-item ${i === idxAtual ? 'active' : ''}`}
+                  onClick={(e) => { e.stopPropagation(); setIdx(i); setMostrarLista(false) }}
+                >
+                  <span className="perf-lista-pos">{i + 1}</span>
+                  {s.title}
+                  {s.artist && <span className="perf-next-artist"> — {s.artist}</span>}
+                </button>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
       {/* Música atual */}
-      <div className="perf-current" onClick={goNext}>
+      <div className="perf-current" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
         <p className="perf-now-label">Tocando agora</p>
         <h1 className="perf-title">{current.title}</h1>
         {current.artist && <p className="perf-artist">{current.artist}</p>}
