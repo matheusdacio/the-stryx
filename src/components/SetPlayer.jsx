@@ -16,6 +16,7 @@ export default function SetPlayer({ setlist }) {
   const [setlistCongelado] = useState(() => setlist)
   const [idx, setIdx] = useState(0)
   const [erroDe, setErroDe] = useState(null)
+  const [apiFalhou, setApiFalhou] = useState(false)
   const playerRef = useRef(null)
   const containerRef = useRef(null)
   const totalRef = useRef(0)
@@ -72,6 +73,8 @@ export default function SetPlayer({ setlist }) {
           onError: () => setErroDe(playerRef.current?.getVideoData?.().video_id || null),
         },
       })
+    }).catch(() => {
+      if (!cancelado) setApiFalhou(true)
     })
     return () => {
       cancelado = true
@@ -94,6 +97,11 @@ export default function SetPlayer({ setlist }) {
 
       <div className="perf-player-box"><div ref={containerRef} /></div>
 
+      {apiFalhou && (
+        <p className="lookup-aviso">
+          Não consegui carregar o YouTube — sem internet? Fecha e tenta de novo quando o sinal voltar.
+        </p>
+      )}
       {erro && (
         <p className="lookup-aviso">
           O dono do vídeo não permite tocar fora do YouTube. Pule pra próxima.
