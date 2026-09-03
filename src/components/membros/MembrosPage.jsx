@@ -20,6 +20,14 @@ const INSTRUMENTS = [
   'Vocal', 'Teclado', 'Outro',
 ]
 
+// Toda ferramenta admin mostrava o erro cru do Firebase em inglês
+// ("Missing or insufficient permissions") — ninguém decifra isso sem abrir
+// o console, e é o console que deveria mostrar o detalhe mesmo
+function msgErro(e) {
+  console.error(e)
+  return '❌ Não deu certo — tenta de novo (detalhe no console).'
+}
+
 // ── Card de membro ────────────────────────────────────────────────────
 
 function MemberCard({ member, isAdmin, currentUid, onRemove }) {
@@ -145,10 +153,9 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
 // Eventos guardam os membros como texto, então quem foi renomeado no cadastro
 // depois do evento continua com o nome antigo lá — e pode ficar duplicado se
 // alguém marcar o nome novo. Dois passos: mostra o que muda, depois grava.
-function EventNormalizeTool() {
+function EventNormalizeTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -158,7 +165,7 @@ function EventNormalizeTool() {
       setPending(changes)
       if (!changes.length) setMsg('✅ Nenhum evento com nome antigo.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -170,7 +177,7 @@ function EventNormalizeTool() {
       setMsg(`✅ ${updated} evento(s) normalizado(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -180,11 +187,6 @@ function EventNormalizeTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '📅 Normalizar membros dos eventos'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} evento(s) com nome antigo</p>
@@ -212,10 +214,9 @@ function EventNormalizeTool() {
 // A lista antiga era um texto marcado por qualquer um. Eventos já realizados
 // guardam o histórico como "Vou"; os futuros nascem em branco pra banda
 // confirmar de verdade. Quem não está no cadastro vira "convidado".
-function PresenceMigrateTool() {
+function PresenceMigrateTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -225,7 +226,7 @@ function PresenceMigrateTool() {
       setPending(changes)
       if (!changes.length) setMsg('✅ Nenhum evento com lista antiga.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -237,7 +238,7 @@ function PresenceMigrateTool() {
       setMsg(`✅ ${updated} evento(s) migrado(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -247,11 +248,6 @@ function PresenceMigrateTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '👥 Migrar pra presença por pessoa'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} evento(s)</p>
@@ -279,10 +275,9 @@ function PresenceMigrateTool() {
 
 // ── Ferramenta: conferir a integridade dos dados ──────────────────────
 // Só lê. Serve pra checar depois de uma migração se sobrou alguma ponta solta
-function IntegridadeTool() {
+function IntegridadeTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [itens, setItens] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const rodar = async () => {
     setBusy(true)
@@ -290,7 +285,7 @@ function IntegridadeTool() {
     try {
       setItens(await verificarIntegridade())
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -302,7 +297,6 @@ function IntegridadeTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={rodar} disabled={busy}>
         {busy ? 'Conferindo...' : '🔎 Conferir integridade dos dados'}
       </button>
-      {msg && <span style={{ fontSize: '0.8rem', color: 'var(--red)' }}>{msg}</span>}
       {itens && (
         <div className="event-normalize-preview">
           <p className="section-label">
@@ -327,10 +321,9 @@ function IntegridadeTool() {
 }
 
 // ── Ferramenta: sugestões duplicadas ──────────────────────────────────
-function DedupSugestoesTool() {
+function DedupSugestoesTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -340,7 +333,7 @@ function DedupSugestoesTool() {
       setPending(changes)
       if (!changes.length) setMsg('✅ Nenhuma sugestão duplicada.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -352,7 +345,7 @@ function DedupSugestoesTool() {
       setMsg(`✅ ${updated} duplicata(s) resolvida(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -362,11 +355,6 @@ function DedupSugestoesTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '🎵 Fundir sugestões duplicadas'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} música(s) com sugestão repetida</p>
@@ -394,10 +382,9 @@ function DedupSugestoesTool() {
 }
 
 // ── Ferramenta: escala única de dificuldade ───────────────────────────
-function DificuldadeTool() {
+function DificuldadeTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -407,7 +394,7 @@ function DificuldadeTool() {
       setPending(changes)
       if (!changes.length) setMsg('✅ Nenhum voto na escala antiga.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -419,7 +406,7 @@ function DificuldadeTool() {
       setMsg(`✅ ${updated} música(s) convertida(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -429,11 +416,6 @@ function DificuldadeTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '🎯 Converter dificuldade pra escala única'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} música(s) com voto na escala antiga</p>
@@ -459,10 +441,9 @@ function DificuldadeTool() {
 }
 
 // ── Ferramenta: "Tonalidade: X" das observações vira campo Tom ────────
-function TomTool() {
+function TomTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -472,7 +453,7 @@ function TomTool() {
       setPending(changes)
       if (!changes.length) setMsg('✅ Nenhuma observação com tonalidade.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -484,7 +465,7 @@ function TomTool() {
       setMsg(`✅ ${updated} música(s) atualizada(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -496,11 +477,6 @@ function TomTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '♪ Tonalidade das observações → campo Tom'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} música(s) com tonalidade na observação</p>
@@ -531,10 +507,9 @@ function TomTool() {
 // Junta cadastros de membro que são a mesma pessoa ("Albano" e "Albano
 // Borba") — apagava direto no clique, sem confirmar; agora segue o mesmo
 // preview → Aplicar das ferramentas vizinhas, mostrando quem fica e quem some
-function DedupMembersTool() {
+function DedupMembersTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
   const [pending, setPending] = useState(null)
-  const [msg, setMsg] = useState('')
 
   const preview = async () => {
     setBusy(true)
@@ -563,7 +538,7 @@ function DedupMembersTool() {
       setPending(duplicadas)
       if (!duplicadas.length) setMsg('✅ Nenhuma duplicata encontrada.')
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -580,7 +555,7 @@ function DedupMembersTool() {
       setMsg(`✅ ${removed} duplicata(s) removida(s).`)
       setPending(null)
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setBusy(false)
   }
@@ -590,11 +565,6 @@ function DedupMembersTool() {
       <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
         {busy && !pending ? 'Verificando...' : '🧹 Remover duplicatas'}
       </button>
-      {msg && (
-        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-          {msg}
-        </span>
-      )}
       {pending?.length > 0 && (
         <div className="event-normalize-preview">
           <p className="section-label">{pending.length} grupo(s) duplicado(s)</p>
@@ -632,6 +602,14 @@ export default function MembrosPage() {
     })
   }, [])
 
+  // Um msg só pras oito ferramentas admin — antes cada uma tinha o seu, e
+  // duas ou três mensagens antigas coexistiam lado a lado na mesma linha
+  useEffect(() => {
+    if (!msg) return
+    const t = setTimeout(() => setMsg(''), 5000)
+    return () => clearTimeout(t)
+  }, [msg])
+
   const handleRemove = async (member) => {
     if (!confirm(`Remover "${member.name}" da banda?`)) return
     await deleteDoc(doc(db, 'members', member.id))
@@ -649,7 +627,7 @@ export default function MembrosPage() {
         setMsg('✅ Nenhum voto pendente de fusão.')
       }
     } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
+      setMsg(msgErro(e))
     }
     setMerging(false)
   }
@@ -673,26 +651,27 @@ export default function MembrosPage() {
         <details className="admin-tools">
           <summary>🛠 Manutenção</summary>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <DedupMembersTool />
+            <DedupMembersTool setMsg={setMsg} />
             <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={merging}>
               {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
             </button>
-            <IntegridadeTool />
-            {msg && (
-              <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
-                {msg}
-              </span>
-            )}
+            <IntegridadeTool setMsg={setMsg} />
           </div>
 
           <p className="section-label" style={{ marginTop: 4 }}>Já rodadas</p>
           <div style={{ display: 'flex', gap: 8, marginTop: 6, alignItems: 'center', flexWrap: 'wrap' }}>
-            <EventNormalizeTool />
-            <PresenceMigrateTool />
-            <DedupSugestoesTool />
-            <DificuldadeTool />
-            <TomTool />
+            <EventNormalizeTool setMsg={setMsg} />
+            <PresenceMigrateTool setMsg={setMsg} />
+            <DedupSugestoesTool setMsg={setMsg} />
+            <DificuldadeTool setMsg={setMsg} />
+            <TomTool setMsg={setMsg} />
           </div>
+
+          {msg && (
+            <p style={{ fontSize: '0.8rem', marginTop: 8, color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+              {msg}
+            </p>
+          )}
         </details>
       )}
 
