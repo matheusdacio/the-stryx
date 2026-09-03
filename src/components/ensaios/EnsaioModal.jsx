@@ -249,13 +249,16 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
             <label>Data *<input type="date" name="date" value={form.date} onChange={handleChange} required /></label>
             <label>Local<input name="location" value={form.location} onChange={handleChange} placeholder={isApresentacao ? 'Ex: Bar do Zé' : 'Ex: Estúdio X'} /></label>
           </div>
-          <label>Status
-            <select name="status" value={form.status} onChange={handleChange}>
-              <option value="planejado">Planejado</option>
-              <option value="realizado">Realizado</option>
-              <option value="cancelado">Cancelado</option>
-            </select>
-          </label>
+          {/* "Realizado" não fazia nada — as abas Próximos/Realizados são
+              calculadas pela data. Só cancelado muda algo, então o controle
+              vira um toggle com o verbo certo */}
+          <button
+            type="button"
+            className={`btn-cancelar-evento ${form.status === 'cancelado' ? 'cancelado' : ''}`}
+            onClick={() => { setMexeu(true); setForm({ ...form, status: form.status === 'cancelado' ? 'planejado' : 'cancelado' }) }}
+          >
+            {form.status === 'cancelado' ? '↩ Reativar' : '✕ Cancelar este evento'}
+          </button>
 
           {/* Setlist do evento */}
           <div className="form-group">

@@ -780,6 +780,16 @@ button { font-family: inherit; }
 }
 .btn-remove:hover { color: var(--red); background: rgba(230, 57, 70, 0.1); }
 
+.btn-cancelar-evento {
+  width: 100%; margin-bottom: 12px; padding: 8px 12px;
+  border-radius: var(--radius); font-size: 0.85rem; cursor: pointer;
+  background: none; border: 1px solid var(--border); color: var(--text-muted);
+  transition: all 0.2s;
+}
+.btn-cancelar-evento:hover { color: var(--red); border-color: var(--red); background: rgba(230, 57, 70, 0.08); }
+.btn-cancelar-evento.cancelado { color: var(--green); border-color: var(--green); background: rgba(16, 185, 129, 0.08); }
+.btn-cancelar-evento.cancelado:hover { background: rgba(16, 185, 129, 0.15); }
+
 /* ─── MODAL ─── */
 .modal-overlay {
   position: fixed; inset: 0; background: rgba(5, 5, 8, 0.78);
