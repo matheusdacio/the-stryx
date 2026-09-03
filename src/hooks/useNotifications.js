@@ -104,7 +104,8 @@ export function useNotifications(user) {
       await salvarToken(user)
       setPermissao('granted')
       return 'ok'
-    } catch {
+    } catch (e) {
+      console.error('ativar notificações:', e)
       return 'error'
     } finally {
       setAtivando(false)
