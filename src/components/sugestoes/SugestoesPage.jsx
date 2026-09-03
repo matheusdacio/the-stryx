@@ -75,8 +75,8 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   const list = opinoesArray(sugestao.opinoes)
   const existing = (sugestao.opinoes || {})[userId]
 
-  const saveNotes = async () => {
-    await updateDoc(ref, { notes: notes.trim() })
+  const saveNotes = () => {
+    updateDoc(ref, { notes: notes.trim() }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setEditingNotes(false)
   }
 

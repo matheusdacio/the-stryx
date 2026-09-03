@@ -42,27 +42,30 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
   const canEdit = isAdmin || (linked && member.firebaseUid === currentUid)
   const aliases = member.aliases || []
 
-  const saveRole = async () => {
-    await updateDoc(doc(db, 'members', member.id), { role })
+  // Fecha/limpa na hora — sem sinal, o await deixava a caixa presa esperando a rede
+  const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+
+  const saveRole = () => {
+    updateDoc(doc(db, 'members', member.id), { role }).catch(erro)
     setEditingRole(false)
   }
 
   // Apelidos / nomes antigos do Glissandoo (pra fundir votos de quem usou outro sobrenome)
-  const addAlias = async () => {
+  const addAlias = () => {
     const a = newAlias.trim()
     if (!a || aliases.some((x) => x.toLowerCase() === a.toLowerCase())) { setNewAlias(''); return }
-    await updateDoc(doc(db, 'members', member.id), { aliases: [...aliases, a] })
+    updateDoc(doc(db, 'members', member.id), { aliases: [...aliases, a] }).catch(erro)
     setNewAlias('')
   }
-  const removeAlias = async (a) => {
-    await updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) })
+  const removeAlias = (a) => {
+    updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) }).catch(erro)
   }
 
   // Quem saiu não conta mais pra presença, semeadura de voto nem domínio,
   // mas o histórico (respostas antigas, votos gravados) fica intacto — e
   // "ativo" só preenchendo campo vazio no login sobrevive a um novo login
   const ativo = member.ativo !== false
-  const toggleAtivo = () => updateDoc(doc(db, 'members', member.id), { ativo: !ativo })
+  const toggleAtivo = () => updateDoc(doc(db, 'members', member.id), { ativo: !ativo }).catch(erro)
 
   return (
     <div className={`member-card ${linked ? 'linked' : 'unlinked'} ${ativo ? '' : 'membro-inativo'}`}>
