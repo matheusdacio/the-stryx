@@ -924,7 +924,19 @@ export default function SugestoesPage() {
       {modal && modal !== 'add' && (
         <SugestaoModal
           sugestao={modal}
-          onClose={() => setModal(null)}
+          onClose={() => {
+            // "fixados" só existe pra não sumir o card debaixo do dedo
+            // enquanto a pessoa ainda está votando — uma vez que ela fecha
+            // a tela, se o filtro não bate mais, a música já pode sumir da
+            // lista (antes só desgrudava trocando de aba)
+            setFixados((prev) => {
+              if (!prev.has(modal.id)) return prev
+              const next = new Set(prev)
+              next.delete(modal.id)
+              return next
+            })
+            setModal(null)
+          }}
           isAdmin={isAdmin}
           bandMembers={bandMembers}
           userId={user.uid}
