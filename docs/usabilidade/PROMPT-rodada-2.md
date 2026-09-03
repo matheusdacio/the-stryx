@@ -185,3 +185,107 @@ Regra que orienta o pacote: **mesmo dado, mesma roupa em toda aba** (nota ⭐, d
 
 - **P7-17 · N36 — contador do palco não parece clicável.** `PerformanceMode.jsx`, `.perf-progress`: `{idxAtual + 1} / {setlist.length}` → `{idxAtual + 1} / {setlist.length} <span aria-hidden="true">▾</span>` (abre a lista pra pular de música; hoje só o `title` avisa).
 
+---
+
+## Pacote 8 — opcional, esforço maior ou decisão do dono (v1.36.0) — **perguntar antes de cada item**
+
+- **P8-1 · N24 — o app não abre sem internet (só os dados ficam em cache).** `public/firebase-messaging-sw.js` não guarda o bundle; se o navegador descartou o cache HTTP, o Modo palco no ensaio sem sinal não abre, mesmo com o Firestore em cache. Proposta: `vite-plugin-pwa` em `vite.config.js` com `registerType: 'autoUpdate'`, `manifest: false` (o `public/manifest.webmanifest` já existe), `workbox: { importScripts: ['firebase-messaging-sw.js'], navigateFallback: '/the-stryx/index.html' }`; em `src/hooks/useNotifications.js`, `navigator.serviceWorker.register('/the-stryx/firebase-messaging-sw.js')` → registrar o SW gerado (`/the-stryx/sw.js`) e passar essa `registration` ao `getToken`. **Risco:** mexe no caminho do push — precisa de teste em Android e iPhone reais antes de merge. É a única biblioteca nova proposta neste arquivo.
+
+- **P8-2 · N10 — `togglePauta` regrava o array inteiro** (`EnsaiosPage.jsx`), mesma classe do F101: duas pessoas marcando itens da pauta ao mesmo tempo se pisam. Itens não têm id, então `arrayUnion` não serve; usar `runTransaction(db, async (tx) => { const snap = await tx.get(ref); const pauta = [...(snap.data().pauta || [])]; pauta[index] = { ...pauta[index], done: !pauta[index].done }; tx.update(ref, { pauta }) })`. Raro na prática — só vale se sobrar tempo.
+
+- **P8-3 · N12 — cabeçalho do Setlist alto no celular.** Filtros (6 chips) + dica + ordenação + tags + "Tocar as N músicas" ocupam a primeira dobra inteira antes do primeiro card. Opção barata: quando `allTags.length > 6`, a `.tag-bar` rola na horizontal (`.tag-bar.scroll { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }`). Decisão do dono: chips rolando na horizontal são menos visíveis do que quebrando linha.
+
+- **P8-4 · C38 — filtros de status das Sugestões usam o gradiente vermelho em todos** ("Todas", "Em aberto", "Rejeitadas"), enquanto no Setlist e em Rascunhos cada chip ativo usa a cor do próprio nível (F60). Coerência: `Rejeitadas` ativo em cinza (`background: rgba(107,114,128,0.2); border-color: var(--gray); color: var(--text)`), `Em aberto` ativo neutro (`background: var(--surface2); border-color: var(--border-strong); color: var(--text)`), gradiente só em "Todas". Fazer por `style` inline em `SugestoesPage.jsx`, como o Setlist faz com `d.bg/d.color`.
+
+- **P8-5 · C41 — sentido das escalas.** Os botões de domínio vão do melhor pro pior (Dominada → Crua), igual às escalas de opinião (Hino → Não curti) e dificuldade (Fácil → Difícil). A barra de filtros do Setlist vai ao contrário (`[...DOMINIOS].reverse()`: Crua → Dominada), pensada como "prioridade de ensaio". **Decisão do dono:** manter assim (documentar no comentário) ou alinhar a barra de filtros à ordem dos botões. Sem mexer até decidir.
+
+- **P8-6 · C08 — miniatura da sugestão exige dois toques pra tocar.** Na lista, a thumb abre o modal; no modal, a thumb abre o player. Opção: tocar na thumb da lista abre o modal já com o vídeo tocando (`setModal({ ...s, autoplay: true })` e `VideoInline` com `aberto` inicial). Decisão do dono: autoplay dentro de modal pode incomodar em lugar público.
+
+---
+
+## Não mexer
+
+Pontos fortes confirmados. Preserve exatamente como estão:
+
+- Voto de domínio a 1 toque no card fechado, com toggle para desfazer, nomes de quem votou só no card aberto.
+- Níveis de domínio, dificuldade, opinião e presença definidos uma vez como dados (valor, rótulo, cor) e reaproveitados — **novos rótulos entram lá, não em string solta** (é o caso do `labelSetlist` do P6-11).
+- Regra visual "voto principal da aba em caixa cheia, secundários vazados" (domínio no Setlist, opinião em Sugestões, presença em Eventos).
+- Piadas internas e tom informal nos rótulos e avisos.
+- Arrasto por alça ⠿ com `TouchSensor` de 250ms no `EnsaioModal`.
+- "↩ Voltar pras sugestões" / "➤ Enviar pro setlist" preservando opiniões, dificuldade, tom, BPM, tags e domínio pelo vínculo `sugestaoId`.
+- Ferramentas admin em dois passos (verificar → aplicar), recolhidas em "🛠 Manutenção".
+- Confirms que dizem exatamente o que vai acontecer (os novos do P6-5 seguem esse padrão).
+- Lista de Sugestões com ordem congelada + chip "Ordem mudou · reordenar"; cards "fixados" que não somem debaixo do dedo ao votar.
+- Modo palco: swipe, lista pra pular, `sessionStorage` da posição, Wake Lock, tipografia grande, "Repertório atualizado · aplicar".
+- Badges do rodapé = "o que falta pra mim", calculados pelo mesmo `usePendencias` que as páginas usam (o P7-6 só repete o número no título, com a mesma conta).
+- Todas as listas em `onSnapshot`; votos e presença gravados por dot-path com o uid.
+- `useFecharComVoltar` nos modais e no palco; padrão F08 de gravar-e-fechar.
+- Linhas de ajuda existentes: "O nível da música é o de quem está menos pronto nela." e a dica da ordenação ativa em Sugestões.
+
+## Como reportar cada pacote
+
+Ao fechar um pacote, escreva no chat, em português:
+
+1. Lista dos ids implementados (P5-1, P6-3…) e o commit de cada um.
+2. Ids pulados e por quê (já resolvido, não confirmado no código, esforço maior que o previsto).
+3. O que precisa ser testado no celular pelo dono (ex.: safe-area no iPhone instalado, A−/A+ na cifra, hover em Android).
+4. Resultado de `npm run lint` e `npm run build`.
+
+Comece pelo Pacote 5.
+
+---
+
+## Apêndice — achados novos desta rodada (detalhe dos ids `Nxx` e `Cxx`)
+
+Formato: tela · severidade · esforço · problema · evidência. A solução está no pacote que cita o id.
+
+### Bugs e atritos (N)
+
+- **N01** — Geral · alta (iPhone instalado) · pequeno. `viewport-fit=cover` + `display: standalone` sem nenhum `env(safe-area-inset-*)`: rodapé fixo sob a barra de gesto, palco sob o notch, toast escondido. Evidência: `index.html:6`, `public/manifest.webmanifest` (`standalone`), `grep -c safe-area src/index.css` = 0.
+- **N02** — Sugestões, Cifras, Rascunhos, Banda, Setlist · média · pequeno. `:hover` com `transform`/borda vermelha sem `@media (hover: hover)` gruda depois do toque; o card da sugestão fica "selecionado" depois de fechar o modal. Evidência: `src/index.css:263, 444, 667, 741, 866, 1138`.
+- **N03** — Eventos · média · pequeno. `✕ Cancelar este evento` (status) e `Cancelar` (descartar) no mesmo modal. Trocar o tipo não marca `mexeu`. Evidência: `EnsaioModal.jsx` `btn-cancelar-evento` e os dois `btn-event-type` com `onClick={() => setForm(...)}`.
+- **N04** — Sugestões, Banda · média · pequeno. `await updateDoc` antes de fechar/limpar (padrão F08 não aplicado): sem sinal, caixa presa. Evidência: `SugestoesPage.jsx` `saveNotes`; `MembrosPage.jsx` `saveRole`, `addAlias`, `removeAlias`, `toggleAtivo`.
+- **N05** — Eventos, Banda · média · pequeno. Confirm de apagar não diz o que vai junto nem aponta a alternativa segura (cancelar evento / marcar "Saiu"). Evidência: `EnsaiosPage.jsx` `remove`; `MembrosPage.jsx` `handleRemove`.
+- **N06** — Eventos, Cifras, Setlist · média · médio. Chip `📄` em toda música do evento, com ou sem cifra → busca vazia sem saída; do card do Setlist não dá pra criar a cifra que falta. Evidência: `EnsaiosPage.jsx` `href={\`#/cifras?q=${q}\`}` sem checar `acharCifra`; `SongCard.jsx` `{cifra && <button…>📄 Cifra}`; `CifrasPage.jsx` estado vazio com `search`.
+- **N07** — Geral · média · mínimo. "Sair" sem confirmação, 0.78rem, colado ao avatar. Evidência: `Navbar.jsx` `onClick={logout}`.
+- **N08** — Setlist, Palco · baixa · pequeno. Dois metrônomos simultâneos; recolher o card desmonta o botão e corta o som. Evidência: `MetronomeButton.jsx` (estado por instância), `SongCard.jsx` (`MetronomeButton` dentro de `expanded &&`).
+- **N09** — Geral · baixa · mínimo. Sucesso ao ativar avisos é `alert` bloqueante; o app já tem toast. Evidência: `App.jsx` `handleAtivarNotif`.
+- **N10** — Eventos · baixa · pequeno. `togglePauta` regrava o array (colisão entre duas pessoas). Evidência: `EnsaiosPage.jsx` `togglePauta`.
+- **N11** — Cifras · baixa · mínimo. Prévia `…slice(0, 80)}...` sempre com reticências; cifra sem conteúdo mostra só "...". Evidência: `CifrasPage.jsx` `.cifra-preview`.
+- **N12** — Setlist · baixa · pequeno. Cabeçalho ocupa a primeira dobra no celular. Evidência: `SetlistPage.jsx` (filter-bar + filter-hint + sort-bar + tag-bar + botão Tocar).
+- **N13** — Geral · baixa · mínimo. `<img src={user.photoURL}>` sem fallback. Evidência: `Navbar.jsx`.
+- **N14** — Geral · baixa · mínimo. Badge do Setlist pode mostrar 48 (quem entrou agora). Evidência: `usePendencias.js` `setlistPendentes`, `BottomNav.jsx` `nav-badge`.
+- **N15** — Eventos · baixa · mínimo. `formatData(curta)` sem ano em Realizados de outro ano. Evidência: `utils/data.js`.
+- **N16** — Geral · baixa · mínimo. `.modal { max-height: 90vh }` com teclado aberto. Evidência: `src/index.css` `.modal`.
+- **N19** — Cifras, Rascunhos, Banda · média · mínimo. Estado vazio pisca antes do primeiro snapshot (F09 só cobriu 3 páginas). Evidência: `CifrasPage.jsx`, `RascunhosPage.jsx`, `MembrosPage.jsx` sem `loaded`.
+- **N20** — Sugestões · baixa · mínimo. Modal sem data da sugestão. Evidência: `SugestoesPage.jsx` `Sugerida por`.
+- **N24** — Geral · alta (ensaio sem sinal) · grande. App shell não é cacheado por service worker; só os dados. Evidência: `public/firebase-messaging-sw.js` (só `firebase.messaging()`), `vite.config.js` sem plugin PWA.
+- **N30** — Banda · baixa · mínimo. "+ instrumento" é `<p>` com `title="Clique para editar"`. Evidência: `MembrosPage.jsx` `.member-role`.
+- **N34** — Cifras · média · mínimo. "Remover" no topo do modal, ao lado de "Editar"/"Fechar" (F49 repetido). Evidência: `CifraModal.jsx` `.modal-top`.
+- **N36** — Palco · baixa · mínimo. Contador "N / total" abre a lista mas nada indica isso. Evidência: `PerformanceMode.jsx` `.perf-progress` com `title` apenas.
+
+### Coerência entre abas e autoexplicação (C)
+
+- **C01** — Setlist × Sugestões · média · pequeno. Nota ⭐: `mini-chip` cinza `⭐ 1,05` no Setlist; `sug-score-chip` dourado `⭐ 1,05 · 3 votos` em Sugestões. Duas funções `formatarNota` idênticas. Evidência: `SongCard.jsx` (`⭐ {formatarNota`), `SugestoesPage.jsx` (`sug-score-chip`), `index.css` `.sug-score-chip`.
+- **C02** — Setlist · média · pequeno. Chip 🎯 de dificuldade só em Sugestões; o Setlist ordena por dificuldade e não mostra o nível no card fechado. Evidência: `SugestoesPage.jsx` `sug-diff-chip`; `SongCard.jsx` `.song-collapsed` sem chip.
+- **C03** — Eventos × Setlist · média · mínimo. Domínio como `status-dot` (fundo colorido) no Setlist e como `mini-chip` vazado em Eventos/EnsaioModal. Evidência: `EnsaiosPage.jsx` e `EnsaioModal.jsx` `<span className="mini-chip" style={{ color: nivel.color, borderColor: nivel.color }}>`.
+- **C04** — Setlist · alta (texto engana) · mínimo. Rótulos "· tira da fila" nos botões de opinião do card do Setlist, onde não existe fila nem veto. Evidência: `SongCard.jsx` `OPINIONS.map((o) => … {o.label})`; `utils/score.js` `OPINIONS`.
+- **C05** — Setlist × Sugestões · alta (mesmo nome, conta diferente) · pequeno. "🎯 Dificuldade" e "⚖️ Melhores e fáceis" usam **média** no Setlist (`avgDifficulty`) e **máximo** em Sugestões (`calcDifficulty(...).max`); os fatores 1/0.85/0.7 estão duplicados. Evidência: `SetlistPage.jsx` `facilidade`/`avgDifficulty`; `SugestoesPage.jsx` `EASE_BY_WEIGHT`/`calcBalancedScore`.
+- **C08** — Sugestões · baixa · pequeno. Dois toques pra ouvir (thumb → modal → thumb). Evidência: `SugestoesPage.jsx` card `onClick={() => setModal(s)}` e `VideoInline` no modal.
+- **C10** — Eventos · média · mínimo. Lista do evento mostra BPM mas não o tom, que é o que o músico confere antes de tocar (o palco já destaca o tom). Evidência: `EnsaiosPage.jsx` `event-setlist-bpm`.
+- **C15** — Sugestões · baixa · mínimo. Card abre modal sem nenhuma setinha; Setlist e Eventos têm `›`. Evidência: `SugestoesPage.jsx` `.sug-card`.
+- **C17** — Setlist, Eventos · baixa · mínimo. Só o título de Sugestões repete o badge de pendência do rodapé. Evidência: `SugestoesPage.jsx` `pending-badge`; `SetlistPage.jsx`/`EnsaiosPage.jsx` `<h2>` sem badge.
+- **C21** — Eventos · média · mínimo. Checkbox "ensaiada" sem rótulo visível (só `title`). Evidência: `EnsaiosPage.jsx` `.song-ensaiada input[title]`.
+- **C36** — Sugestões · baixa · mínimo. "Vale tocar?" e "Dificuldade pra tocar" sem os ícones ⭐/🎯 que o Setlist usa. Evidência: `SugestoesPage.jsx` `SugestaoModal` `.section-label`.
+- **C38** — Sugestões · baixa · pequeno. Filtros de status todos com gradiente vermelho quando ativos (F60 aplicado só em Setlist/Rascunhos). Evidência: `SugestoesPage.jsx` `FILTERS.map` sem `style`.
+- **C39** — Eventos × Setlist × Sugestões · média · mínimo. "⏳ Presença pendente" (aba `.btn-filter`) é o mesmo conceito de "🗳 Falta meu voto" (toggle `.btn-tag` após P5-11), com outro nome e outra cara. Evidência: `EnsaiosPage.jsx` `TABS`.
+- **C40** — Sugestões · média · mínimo. Nada explica o fluxo (sugere → banda opina → admin manda pro setlist) nem quem falta opinar quando não há veto. Evidência: `SugestoesPage.jsx` (sem `filter-hint` de fluxo; `quemFalta` só no banner de veto).
+- **C41** — Setlist · baixa · decisão. Barra de filtros de domínio na ordem inversa dos botões de voto. Evidência: `SetlistPage.jsx` `[...DOMINIOS].reverse()`.
+
+### Conferido e OK (não precisa mexer)
+
+- Badges do rodapé, contador de "Falta meu voto"/"Presença pendente" e títulos usam a mesma conta (`usePendencias` ↔ páginas): não divergem.
+- Domínio em Eventos lê `songs[s.id].dominio` ao vivo com `uidsAtivosDe(bandMembers)`, igual ao Setlist; nota ⭐ do Setlist vem de `opinioesPorMusica` fundindo sugestão + votos do card.
+- `todosVotaram`/`estaRejeitada` usam `bandMembers` com `aliases` em Setlist, Sugestões e `usePendencias`.
+- Favicon em `index.html` (`/favicon.svg`) é reescrito pelo Vite para `/the-stryx/favicon.svg` no build (conferido em `dist/index.html`).
+- Chip 🆕 (7 dias), posição `#N` só em ordenação por nota e o "voto principal em caixa cheia" já são coerentes entre Setlist e Sugestões.
