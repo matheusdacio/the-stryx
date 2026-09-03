@@ -81,6 +81,7 @@ button { font-family: inherit; }
   cursor: pointer; transition: all 0.2s;
 }
 .btn-google:hover { background: #2a2a33; border-color: var(--gray); transform: translateY(-1px); }
+.btn-google:disabled { opacity: 0.6; cursor: wait; transform: none; }
 
 /* ─── NAVBAR ─── */
 .navbar {

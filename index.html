@@ -11,7 +11,16 @@
     <title>The Stryx</title>
   </head>
   <body>
-    <div id="root"></div>
+    <!-- Some quando o React monta (createRoot().render() substitui isto).
+         Sem isso a tela fica preta durante o download do bundle — antes
+         mesmo do Firebase decidir se tem sessão, o que o React não alcança -->
+    <div id="root">
+      <div class="login-page">
+        <div class="login-box">
+          <h1 class="band-name">THE STRYX</h1>
+        </div>
+      </div>
+    </div>
     <script type="module" src="/src/main.jsx"></script>
   </body>
 </html>
