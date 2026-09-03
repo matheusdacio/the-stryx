@@ -1,6 +1,7 @@
 import { collection, getDocs, writeBatch, doc } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { namesMatch, normalizeName } from './votes'
+import { formatData } from './data'
 
 // Primeiro nome — os chips e listas mostram só ele, pra não misturar
 // "Marcio Braz" com "Marcos" na mesma linha
@@ -62,7 +63,7 @@ export async function normalizeEventMembers({ dryRun = false } = {}) {
     if (igual) return
     changes.push({
       id: docSnap.id,
-      date: docSnap.data().date?.toDate?.().toLocaleDateString('pt-BR') || 's/ data',
+      date: formatData(docSnap.data().date, { curta: true }) || 's/ data',
       before,
       after,
     })

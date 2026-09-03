@@ -5,24 +5,10 @@ import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { formatData } from '../../utils/data'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
-
-function formatDate(ts, opts = {}) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('pt-BR', {
-    weekday: 'short', day: '2-digit', month: '2-digit', year: 'numeric',
-    ...opts
-  })
-}
-
-function formatDateShort(ts) {
-  if (!ts) return ''
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  return d.toLocaleDateString('pt-BR', { weekday: 'short', day: '2-digit', month: 'short' })
-}
 
 function relativeLabel(ts) {
   if (!ts) return ''
@@ -199,7 +185,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <p className="next-ensaio-label">
                 {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
               </p>
-              <p className="next-ensaio-date">{formatDate(ensaio.date)}</p>
+              <p className="next-ensaio-date">{formatData(ensaio.date)}</p>
               {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
             </div>
             <div style={{ textAlign: 'right' }}>
@@ -211,7 +197,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
         ) : (
           <>
             <div className="ensaio-row-left">
-              <span className="ensaio-row-date">{formatDateShort(ensaio.date)}</span>
+              <span className="ensaio-row-date">{formatData(ensaio.date, { curta: true })}</span>
               <TypeBadge type={ensaio.type} />
               {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
             </div>
@@ -392,7 +378,7 @@ export default function EnsaiosPage() {
   }, [])
 
   const remove = (e) => {
-    if (confirm(`Remover evento de ${formatDate(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
+    if (confirm(`Remover evento de ${formatData(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
   }
 
   const togglePauta = async (ensaio, index) => {

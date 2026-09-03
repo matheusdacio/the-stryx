@@ -4,6 +4,7 @@ import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { acharCifra } from '../../utils/score'
+import { formatData } from '../../utils/data'
 
 export default function PerformanceMode({ event, onClose }) {
   useFecharComVoltar(onClose)
@@ -149,7 +150,8 @@ export default function PerformanceMode({ event, onClose }) {
           {idxAtual + 1} / {setlist.length}
         </button>
         <span className="perf-event-name">
-          {event.type === 'apresentacao' ? '🎤' : '🎸'} {event.location || ''}
+          {event.type === 'apresentacao' ? '🎤' : '🎸'} {formatData(event.date, { curta: true })}
+          {event.location ? ` · ${event.location}` : ''}
         </span>
         <button className="perf-close" onClick={onClose}>✕</button>
       </div>

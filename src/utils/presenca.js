@@ -1,6 +1,7 @@
 import { collection, getDocs, writeBatch, doc, deleteField } from 'firebase/firestore'
 import { db } from '../firebase/config'
 import { canonicalMemberName } from './members'
+import { formatData } from './data'
 
 // Cada pessoa indica a própria presença no evento
 export const PRESENCAS = [
@@ -74,7 +75,7 @@ export async function migrateEventPresence({ dryRun = false } = {}) {
 
     changes.push({
       id: docSnap.id,
-      date: data.date?.toDate?.().toLocaleDateString('pt-BR') || 's/ data',
+      date: formatData(data.date, { curta: true }) || 's/ data',
       passado,
       antes: nomes,
       vai: Object.values(presenca).map((v) => v.name),

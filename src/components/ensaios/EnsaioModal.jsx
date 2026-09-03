@@ -9,6 +9,7 @@ import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
 import { menosDominadas, calcDominio, dominioPorPeso } from '../../utils/dominio'
 import { matchesSearch } from '../../utils/search'
+import { formatData } from '../../utils/data'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 function toInputDate(ts) {
@@ -223,7 +224,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
         <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
         {copiando && (
           <p className="section-label" style={{ marginBottom: 10 }}>
-            Músicas e pauta vieram do evento de {toInputDate(ensaio?.date).split('-').reverse().join('/')}. Escolha a data nova — a presença começa em branco.
+            Músicas e pauta vieram do evento de {formatData(ensaio?.date)}. Escolha a data nova — a presença começa em branco.
           </p>
         )}
         <form onSubmit={handleSave}>

@@ -3,6 +3,7 @@ import { collection, addDoc, serverTimestamp, Timestamp, writeBatch, doc, getDoc
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { normalizeName } from '../../utils/votes'
+import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -478,7 +479,7 @@ export default function ImportPage() {
             />
           )}
           {selected.ensaios && (data.ensaios || []).length > 0 && (
-            <PreviewSection title="📅 Ensaios" items={(data.ensaios || []).map(e => `${e.date}${e.location ? ` · ${e.location}` : ''}`)} />
+            <PreviewSection title="📅 Ensaios" items={(data.ensaios || []).map(e => `${formatData(e.date + 'T12:00:00', { curta: true })}${e.location ? ` · ${e.location}` : ''}`)} />
           )}
 
           {/* Progresso */}
