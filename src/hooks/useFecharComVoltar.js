@@ -12,8 +12,12 @@ export function useFecharComVoltar(onClose) {
     onCloseRef.current = onClose
   })
   const nossaEntrada = useRef(false)
+  const geracaoRef = useRef(0)
 
   useEffect(() => {
+    geracaoRef.current++
+    const minhaGeracao = geracaoRef.current
+
     window.history.pushState({ ...window.history.state, modalAberto: true }, '')
     nossaEntrada.current = true
 
@@ -36,7 +40,16 @@ export function useFecharComVoltar(onClose) {
       // histórico fantasma em vez de sair da tela de verdade
       if (nossaEntrada.current) {
         nossaEntrada.current = false
-        window.history.back()
+        // No StrictMode do dev, o efeito roda montar→limpar→montar de
+        // novo tudo no mesmo instante — o back() daqui só dispara o
+        // popstate depois (é assíncrono), e esse popstate atrasado caía
+        // no listener da 2ª montagem, fechando o modal na hora que abria.
+        // Adia e cancela se alguém já remontou nesse meio tempo — o valor
+        // "ao vivo" de geracaoRef é o ponto, não um snapshot antigo
+        setTimeout(() => {
+          // eslint-disable-next-line react-hooks/exhaustive-deps
+          if (geracaoRef.current === minhaGeracao) window.history.back()
+        }, 0)
       }
     }
   }, [])
