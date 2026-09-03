@@ -1,5 +1,10 @@
 import { useState, useRef, useEffect } from 'react'
 
+// Só um metrônomo toca por vez — dois cards abertos tocando junto (ou
+// recolher um card com o som ligado, que desmonta o botão) confundia mais
+// do que ajudava
+let pararAtivo = null
+
 // Tick agendado com precisão no relógio do AudioContext
 function scheduleTick(ctx, time, accent) {
   const osc = ctx.createOscillator()
@@ -24,10 +29,13 @@ export default function MetronomeButton({ bpm }) {
     clearInterval(timerRef.current)
     timerRef.current = null
     setPlaying(false)
+    if (pararAtivo === stop) pararAtivo = null
   }
 
   const start = () => {
     if (!bpm || bpm < 20) return
+    pararAtivo?.()
+    pararAtivo = stop
     if (!ctxRef.current) {
       ctxRef.current = new (window.AudioContext || window.webkitAudioContext)()
     }
@@ -76,6 +84,7 @@ export default function MetronomeButton({ bpm }) {
       style={playing ? { animationDuration: `${60 / bpm}s` } : undefined}
       onClick={toggle}
       title={playing ? 'Parar metrônomo' : `Tocar metrônomo a ${bpm} BPM`}
+      aria-pressed={playing}
     >
       {playing ? '⏸' : '▶'} {bpm} BPM
     </button>
