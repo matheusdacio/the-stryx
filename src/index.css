@@ -377,7 +377,7 @@ button { font-family: inherit; }
   transition: border-color 0.2s; min-height: 28px; white-space: pre-wrap;
 }
 .song-notes:hover { border-color: var(--border); }
-.placeholder { font-style: italic; opacity: 0.45; }
+.placeholder { font-style: italic; opacity: 0.75; }
 .notes-edit textarea {
   width: 100%; background: var(--surface2); border: 1px solid var(--border);
   border-radius: var(--radius); color: var(--text); padding: 8px;
@@ -412,10 +412,10 @@ button { font-family: inherit; }
 .btn-meta-add {
   font-size: 0.72rem; padding: 3px 10px;
   border-radius: 20px; border: 1px dashed var(--border-strong);
-  background: transparent; color: var(--text-muted); opacity: 0.7;
+  background: transparent; color: var(--text-muted); opacity: 1;
   cursor: pointer; transition: all 0.15s; white-space: nowrap;
 }
-.btn-meta-add:hover { opacity: 1; border-color: var(--gray); }
+.btn-meta-add:hover { border-color: var(--gray); }
 .btn-meta-edit {
   font-size: 0.72rem; padding: 3px 11px;
   border-radius: 20px; border: 1px solid var(--border-strong);
@@ -695,7 +695,7 @@ button { font-family: inherit; }
 }
 .ensaio-row-actions { display: flex; gap: 8px; margin-top: 4px; flex-wrap: wrap; }
 .btn-ghost-danger {
-  background: none; border: 1px solid transparent; color: var(--gray);
+  background: none; border: 1px solid transparent; color: var(--text-muted);
   padding: 5px 12px; border-radius: var(--radius-sm); font-size: 0.8rem; cursor: pointer;
   transition: color 0.15s, border-color 0.15s;
 }
@@ -742,7 +742,7 @@ button { font-family: inherit; }
 .rascunho-header { display: flex; justify-content: space-between; align-items: flex-start; }
 .rascunho-title { font-weight: 700; font-size: 0.95rem; }
 .rascunho-preview { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap; }
-.rascunho-author { font-size: 0.72rem; color: var(--gray); }
+.rascunho-author { font-size: 0.72rem; color: var(--text-muted); }
 
 /* ─── BUTTONS ─── */
 .btn-primary {
@@ -865,7 +865,8 @@ button { font-family: inherit; }
 }
 .sug-card:hover { border-color: var(--red); transform: translateY(-2px); }
 .sug-card-aprovada { border-left: 4px solid var(--green); }
-.sug-card-rejeitada { border-left: 4px solid var(--gray); opacity: 0.6; }
+.sug-card-rejeitada { border-left: 4px solid var(--gray); }
+.sug-card-rejeitada .sug-thumb { opacity: 0.5; filter: grayscale(1); }
 .sug-card-aberta { border-left: 4px solid #3b82f6; }
 
 .sug-thumb-wrap { flex-shrink: 0; width: 110px; overflow: hidden; }
@@ -881,7 +882,7 @@ button { font-family: inherit; }
   white-space: nowrap; flex-shrink: 0;
 }
 .sug-aprovada { background: rgba(16, 185, 129, 0.15); color: var(--green); }
-.sug-rejeitada { background: rgba(107, 114, 128, 0.15); color: var(--gray); }
+.sug-rejeitada { background: rgba(107, 114, 128, 0.15); color: var(--text-muted); }
 .sug-veto-pendente { background: rgba(245, 158, 11, 0.15); color: var(--yellow); }
 
 .opinion-summary { display: flex; gap: 5px; flex-wrap: wrap; margin-top: 4px; }
