@@ -223,7 +223,7 @@ export default function PerformanceMode({ event, onClose }) {
             </p>
           </>
         ) : (
-          <p className="perf-next-label">🏁 Última música do set!</p>
+          <p className="perf-next-label">🏁 Última música do evento!</p>
         )}
       </div>
 

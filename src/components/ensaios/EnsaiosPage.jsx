@@ -320,7 +320,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             )}
             {hasSetlist && (
               <button className="btn-secondary" onClick={() => setTocando(!tocando)}>
-                {tocando ? '■ Parar' : '▶ Tocar o set'}
+                {tocando ? '■ Parar' : '▶ Tocar as músicas'}
               </button>
             )}
             <button className="btn-secondary" onClick={() => onEdit(ensaio)}>Editar</button>
