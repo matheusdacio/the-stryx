@@ -127,8 +127,17 @@ export default function RascunhosPage() {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <p>Nenhum rascunho ainda.</p>
-          {filterType === 'all' && <button className="btn-primary" onClick={() => setModal('add')}>Criar primeiro rascunho</button>}
+          {filterType !== 'all' ? (
+            <>
+              <p>Nenhum rascunho do tipo {TYPES.find((t) => t.value === filterType)?.label} ainda.</p>
+              <button className="btn-secondary" onClick={() => setFilterType('all')}>Ver todos</button>
+            </>
+          ) : (
+            <>
+              <p>Nenhum rascunho ainda.</p>
+              <button className="btn-primary" onClick={() => setModal('add')}>Criar primeiro rascunho</button>
+            </>
+          )}
         </div>
       ) : (
         <div className="card-grid">

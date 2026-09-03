@@ -322,14 +322,24 @@ export default function SetlistPage() {
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma música encontrada pra "{search.trim()}".</p>
+          ) : filter === 'falta_meu_voto' ? (
+            <p>🎉 Você já votou em todas as músicas daqui!</p>
+          ) : filter !== 'all' ? (
+            <>
+              <p>Nenhuma música {FILTERS.find((f) => f.value === filter)?.label} agora 🎉</p>
+              <button className="btn-secondary" onClick={() => mudarFiltro('all')}>Ver todas</button>
+            </>
+          ) : (tagFilterValida || eventoChip) ? (
+            <>
+              <p>Nenhuma música com esse filtro.</p>
+              <button className="btn-secondary" onClick={() => { mudarTagFilter(null); mudarEventoChip(null) }}>✕ Limpar filtros</button>
+            </>
           ) : (
             <>
               <p>Nenhuma música aqui ainda.</p>
-              {filter === 'all' && (
-                <button className="btn-primary" onClick={() => setShowModal(true)}>
-                  Adicionar primeira música
-                </button>
-              )}
+              <button className="btn-primary" onClick={() => setShowModal(true)}>
+                Adicionar primeira música
+              </button>
             </>
           )}
         </div>

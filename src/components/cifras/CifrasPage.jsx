@@ -48,7 +48,7 @@ export default function CifrasPage() {
 
       {filtered.length === 0 ? (
         <div className="empty-state">
-          <p>{search ? 'Nenhuma cifra encontrada.' : 'Nenhuma cifra ainda.'}</p>
+          <p>{search ? `Nenhuma cifra pra "${search}".` : 'Nenhuma cifra ainda.'}</p>
           {!search && <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>}
         </div>
       ) : (

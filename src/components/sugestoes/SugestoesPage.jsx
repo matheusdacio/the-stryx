@@ -842,7 +842,11 @@ export default function SugestoesPage() {
           ) : (
             <>
               <p>{filter === 'aberta' ? 'Nenhuma sugestão em aberto.' : 'Nenhuma sugestão aqui.'}</p>
-              {filter !== 'rejeitada' && <button className="btn-primary" onClick={() => setAddModal(true)}>Fazer primeira sugestão</button>}
+              {filter !== 'rejeitada' && (
+                <button className="btn-primary" onClick={() => setAddModal(true)}>
+                  {visiveis.length > 0 ? 'Sugerir uma música' : 'Fazer primeira sugestão'}
+                </button>
+              )}
             </>
           )}
         </div>
