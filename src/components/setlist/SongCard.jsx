@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
-import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { DIFFICULTIES } from '../../utils/dificuldade'
 import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
@@ -80,7 +80,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
       })
     }
   }
-  const piorDominio = dominioPorPeso(calcDominio(dominio).pior)
+  const piorDominio = dominioPorPeso(calcDominio(dominio, uidsAtivosDe(bandMembers)).pior)
   // "Crua" semeada pra todo mundo ao aprovar (ninguém ensaiou ainda) não é
   // voto de verdade — enquanto só houver semeados, nem selo nem pill devem
   // afirmar um voto que não aconteceu

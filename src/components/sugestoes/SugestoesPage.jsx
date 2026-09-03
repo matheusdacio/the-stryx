@@ -669,8 +669,10 @@ export default function SugestoesPage() {
   }, [])
 
   useEffect(() => {
+    // Quem saiu da banda (ativo:false) fica fora daqui — não conta mais
+    // pra "todo mundo votou", nem recebe voto crua semeado na aprovação
     return onSnapshot(collection(db, 'members'), (snap) =>
-      setBandMembers(snap.docs.map((d) => ({
+      setBandMembers(snap.docs.filter((d) => d.data().ativo !== false).map((d) => ({
         name: d.data().name,
         aliases: d.data().aliases || [],
         firebaseUid: d.data().firebaseUid || null,

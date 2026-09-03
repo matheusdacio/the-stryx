@@ -14,11 +14,21 @@ export const DOMINIOS = [
 const POR_VALOR = Object.fromEntries(DOMINIOS.map((d) => [d.value, d]))
 export const dominioPorPeso = (peso) => DOMINIOS.find((d) => d.weight === peso) || null
 
+// Set de uid pra passar como uidsAtivos: bandMembers já vem filtrado por
+// ativo !== false em quem carrega a lista, então aqui só falta achar quem
+// tem login (só uid logado vota domínio)
+export const uidsAtivosDe = (bandMembers) =>
+  new Set((bandMembers || []).filter((m) => m.firebaseUid).map((m) => m.firebaseUid))
+
 // pior = o menor nível votado. É ele que aparece no card e que manda na
 // ordenação: se uma pessoa está crua na música, a banda precisa ensaiar,
 // não importa que os outros cinco estejam tranquilos.
-export function calcDominio(dominio) {
-  const votos = Object.values(dominio || {})
+// uidsAtivos (opcional): Set de uid de quem ainda tá na banda — quem saiu
+// deixou o voto gravado no doc, mas não deve mais pesar no domínio de ninguém
+export function calcDominio(dominio, uidsAtivos) {
+  const entradas = Object.entries(dominio || {})
+  const validas = uidsAtivos ? entradas.filter(([uid]) => uidsAtivos.has(uid)) : entradas
+  const votos = validas.map(([, v]) => v)
   if (!votos.length) return { pior: null, media: null, total: 0 }
   const pesos = votos.map((v) => POR_VALOR[v.level]?.weight).filter(Boolean)
   if (!pesos.length) return { pior: null, media: null, total: 0 }
@@ -33,11 +43,11 @@ export function calcDominio(dominio) {
 // Quem ainda não recebeu nenhum voto fica de fora: não há indício de que
 // precise de ensaio, e entrar na frente de quem foi marcado como crua
 // atrapalharia a escolha.
-export function menosDominadas(songs, quantas, idsJaNoEvento = []) {
+export function menosDominadas(songs, quantas, idsJaNoEvento = [], uidsAtivos) {
   const fora = new Set(idsJaNoEvento)
   return (songs || [])
     .filter((s) => !fora.has(s.id))
-    .map((s) => ({ song: s, ...calcDominio(s.dominio) }))
+    .map((s) => ({ song: s, ...calcDominio(s.dominio, uidsAtivos) }))
     .filter((x) => x.pior !== null)
     .sort((a, b) =>
       a.pior - b.pior ||          // mais crua primeiro

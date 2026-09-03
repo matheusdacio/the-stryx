@@ -4,7 +4,7 @@ import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
-import { calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { formatData } from '../../utils/data'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
@@ -234,7 +234,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <p className="section-label">Músicas ({ensaio.setlist.length})</p>
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
-                  const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio).pior)
+                  const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
                   const q = encodeURIComponent(s.title)
                   const texto = (
                     <span>
@@ -370,11 +370,15 @@ export default function EnsaiosPage() {
   }, [])
 
   useEffect(() => {
+    // Quem saiu da banda (ativo:false) fica fora daqui — não fica "Sem
+    // resposta" pra sempre em todo evento novo
     const q = query(collection(db, 'members'), orderBy('name'))
-    return onSnapshot(q, (snap) => setBandMembers(snap.docs.map((d) => ({
-      name: d.data().name,
-      firebaseUid: d.data().firebaseUid || null,
-    }))))
+    return onSnapshot(q, (snap) => setBandMembers(
+      snap.docs.filter((d) => d.data().ativo !== false).map((d) => ({
+        name: d.data().name,
+        firebaseUid: d.data().firebaseUid || null,
+      }))
+    ))
   }, [])
 
   const remove = (e) => {
@@ -527,6 +531,7 @@ export default function EnsaiosPage() {
           ensaio={modal === 'add' ? null : modal.copiar || modal}
           copiando={!!modal.copiar}
           onClose={() => setModal(null)}
+          bandMembers={bandMembers}
         />
       )}
       {performing && <PerformanceMode event={performing} onClose={() => setPerforming(null)} />}

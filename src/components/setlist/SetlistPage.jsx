@@ -9,7 +9,7 @@ import AddSongModal from './AddSongModal'
 import SearchLupa from '../SearchLupa'
 import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
-import { DOMINIOS, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { calcDifficulty } from '../../utils/dificuldade'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
@@ -24,7 +24,7 @@ const FILTERS = [
 ]
 
 // Nível da música pra filtro e contagem
-const nivelDe = (song) => dominioPorPeso(calcDominio(song.dominio).pior)?.value || 'sem_voto'
+const nivelDe = (song, uidsAtivos) => dominioPorPeso(calcDominio(song.dominio, uidsAtivos).pior)?.value || 'sem_voto'
 
 const SORTS = [
   { value: 'recentes',    label: '🕐 Recentes' },
@@ -108,8 +108,10 @@ export default function SetlistPage() {
   }, [])
 
   useEffect(() => {
+    // Quem saiu da banda (ativo:false) fica fora daqui — não conta mais
+    // pra "todo mundo votou", presença nem semeadura de voto novo
     return onSnapshot(collection(db, 'members'), (snap) =>
-      setBandMembers(snap.docs.map((d) => ({
+      setBandMembers(snap.docs.filter((d) => d.data().ativo !== false).map((d) => ({
         name: d.data().name,
         aliases: d.data().aliases || [],
         firebaseUid: d.data().firebaseUid || null,
@@ -171,8 +173,10 @@ export default function SetlistPage() {
       (!todosVotaram({ opinoes }, bandMembers) && !opinoes[user.uid])
   }
 
+  const uidsAtivos = uidsAtivosDe(bandMembers)
+
   const filtered = songs.filter((s) =>
-    (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s) === filter) || fixados.has(s.id)) &&
+    (filter === 'all' || (filter === 'falta_meu_voto' ? meuVotoFalta(s) : nivelDe(s, uidsAtivos) === filter) || fixados.has(s.id)) &&
     (!tagFilterValida || (s.tags || []).includes(tagFilterValida)) &&
     (!eventoChip || (eventoChip === 'ultimo' ? idsUltimoEnsaio : idsProximoEnsaio).has(s.id)) &&
     matchesSearch(search, s.title, s.artist)
@@ -210,7 +214,7 @@ export default function SetlistPage() {
   const counts = FILTERS.reduce((acc, f) => {
     acc[f.value] = f.value === 'all'
       ? songs.length
-      : songs.filter((s) => nivelDe(s) === f.value).length
+      : songs.filter((s) => nivelDe(s, uidsAtivos) === f.value).length
     return acc
   }, {})
   const meuVotoFaltaCount = songs.filter(meuVotoFalta).length

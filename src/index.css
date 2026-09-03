@@ -1135,6 +1135,15 @@ button { font-family: inherit; }
 }
 .member-card:hover { transform: translateY(-2px); border-color: var(--border-strong); }
 .member-card.linked { border-color: rgba(16, 185, 129, 0.25); }
+.member-card.membro-inativo { opacity: 0.55; }
+
+.btn-toggle-ativo {
+  background: none; border: 1px solid var(--border); color: var(--green);
+  border-radius: var(--radius-sm); cursor: pointer; transition: all 0.15s;
+}
+.btn-toggle-ativo:hover { border-color: var(--green); background: rgba(16, 185, 129, 0.1); }
+.btn-toggle-ativo.inativo { color: var(--text-muted); }
+.btn-toggle-ativo.inativo:hover { color: var(--text); border-color: var(--border-strong); background: var(--surface2); }
 .member-avatar-wrap { position: relative; flex-shrink: 0; }
 .member-avatar {
   width: 52px; height: 52px; border-radius: 50%;

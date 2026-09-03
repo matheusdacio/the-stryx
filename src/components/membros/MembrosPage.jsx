@@ -57,8 +57,14 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
     await updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) })
   }
 
+  // Quem saiu não conta mais pra presença, semeadura de voto nem domínio,
+  // mas o histórico (respostas antigas, votos gravados) fica intacto — e
+  // "ativo" só preenchendo campo vazio no login sobrevive a um novo login
+  const ativo = member.ativo !== false
+  const toggleAtivo = () => updateDoc(doc(db, 'members', member.id), { ativo: !ativo })
+
   return (
-    <div className={`member-card ${linked ? 'linked' : 'unlinked'}`}>
+    <div className={`member-card ${linked ? 'linked' : 'unlinked'} ${ativo ? '' : 'membro-inativo'}`}>
       {/* Avatar */}
       <div className="member-avatar-wrap">
         {photo
@@ -133,13 +139,23 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
               </div>
             </div>
 
-            <button
-              className="btn-ghost-danger"
-              style={{ marginTop: 6, fontSize: '0.72rem', padding: '2px 8px' }}
-              onClick={() => onRemove(member)}
-            >
-              Remover
-            </button>
+            <div style={{ display: 'flex', gap: 6, marginTop: 6 }}>
+              <button
+                className={`btn-toggle-ativo ${ativo ? '' : 'inativo'}`}
+                style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                onClick={toggleAtivo}
+                title={ativo ? 'Marcar que saiu da banda' : 'Reativar'}
+              >
+                {ativo ? '✓ Tá na banda' : '↩ Saiu'}
+              </button>
+              <button
+                className="btn-ghost-danger"
+                style={{ fontSize: '0.72rem', padding: '2px 8px' }}
+                onClick={() => onRemove(member)}
+              >
+                Remover
+              </button>
+            </div>
           </div>
         )}
       </div>

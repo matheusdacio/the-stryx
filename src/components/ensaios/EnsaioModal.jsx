@@ -7,7 +7,7 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
-import { menosDominadas, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { menosDominadas, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { matchesSearch } from '../../utils/search'
 import { formatData } from '../../utils/data'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
@@ -52,7 +52,8 @@ function enfileirarAviso(tipo, ensaioId, data) {
 
 // `copiando` reaproveita um evento como molde: vem o repertório, a pauta (com
 // os itens desmarcados), local e tipo — mas não a data nem a presença
-export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
+export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMembers = [] }) {
+  const uidsAtivos = uidsAtivosDe(bandMembers)
   const editando = !!ensaio && !copiando
   const [allSongs, setAllSongs] = useState([])
   const [form, setForm] = useState({
@@ -115,7 +116,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   // Puxa pro ensaio o que a banda marcou como menos dominado. Já ignora o
   // que está no evento e quem ainda não recebeu nenhum voto
   const trazerCruas = () => {
-    const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, setlist.map((s) => s.id))
+    const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, setlist.map((s) => s.id), uidsAtivos)
     if (!escolhidas.length) {
       setAvisoCruas('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
       return
@@ -274,7 +275,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
             {searchResults.length > 0 && (
               <div className="song-search-results">
                 {searchResults.map((s) => {
-                  const nivel = dominioPorPeso(calcDominio(s.dominio).pior)
+                  const nivel = dominioPorPeso(calcDominio(s.dominio, uidsAtivos).pior)
                   return (
                     <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
@@ -307,7 +308,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
                 <SortableContext items={setlist.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="event-setlist">
                     {setlist.map((s, i) => {
-                      const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio).pior)
+                      const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
                       return (
                       <SortableSetlistItem key={s.id} id={s.id}>
                         <span className="event-setlist-pos">{i + 1}</span>
