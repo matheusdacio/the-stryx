@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from 'react'
-import { collection, onSnapshot } from 'firebase/firestore'
+import { collection, doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
@@ -45,7 +45,26 @@ export default function PerformanceMode({ event, onClose }) {
   }, [])
   const [mostrarCifra, setMostrarCifra] = useState(false)
 
-  const setlist = (event.setlist || []).map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
+  // O repertório fica congelado no que era quando o palco abriu (mudar a
+  // lista sob os pés trocaria a música atual no meio da execução) — mas
+  // se o líder editar o evento durante o show, um aviso oferece atualizar
+  const [setlistAtivo, setSetlistAtivo] = useState(event.setlist || [])
+  const [setlistAoVivo, setSetlistAoVivo] = useState(null)
+  useEffect(() => {
+    return onSnapshot(doc(db, 'ensaios', event.id), (snap) => {
+      if (snap.exists()) setSetlistAoVivo(snap.data().setlist || [])
+    })
+  }, [event.id])
+  const repertorioMudou = setlistAoVivo &&
+    JSON.stringify(setlistAoVivo.map((s) => s.id)) !== JSON.stringify(setlistAtivo.map((s) => s.id))
+  const aplicarAtualizacao = () => {
+    const atualIdSong = setlistAtivo[idxAtual]?.id
+    const novoIndex = setlistAoVivo.findIndex((s) => s.id === atualIdSong)
+    setSetlistAtivo(setlistAoVivo)
+    setIdx(novoIndex >= 0 ? novoIndex : Math.min(idxAtual, setlistAoVivo.length - 1))
+  }
+
+  const setlist = setlistAtivo.map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
 
   // idx restaurado do sessionStorage pode não caber mais (o repertório
   // encolheu desde a última vez) — nunca deixa current vir undefined
@@ -134,6 +153,12 @@ export default function PerformanceMode({ event, onClose }) {
         </span>
         <button className="perf-close" onClick={onClose}>✕</button>
       </div>
+
+      {repertorioMudou && (
+        <button className="perf-update-chip" onClick={aplicarAtualizacao}>
+          Repertório atualizado · aplicar
+        </button>
+      )}
 
       {mostrarLista && (
         <div className="perf-lista-overlay" onClick={() => setMostrarLista(false)}>

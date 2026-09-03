@@ -547,6 +547,12 @@ button { font-family: inherit; }
   cursor: pointer;
 }
 .perf-progress:hover { border-color: var(--border); color: var(--text); }
+.perf-update-chip {
+  position: absolute; top: 56px; left: 50%; transform: translateX(-50%);
+  z-index: 20; font-size: 0.8rem; padding: 8px 16px; border-radius: var(--radius);
+  background: rgba(99, 102, 241, 0.18); border: 1px solid var(--accent);
+  color: #a5b4fc; cursor: pointer; white-space: nowrap;
+}
 .perf-lista-overlay {
   position: fixed; inset: 0; z-index: 30;
   background: rgba(5, 5, 8, 0.92); backdrop-filter: blur(4px);
