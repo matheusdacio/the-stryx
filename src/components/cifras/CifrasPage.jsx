@@ -10,6 +10,7 @@ const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 export default function CifrasPage() {
   const [cifras, setCifras] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [modal, setModal] = useState(null) // null | 'add' | cifra object (edit/view)
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(() => searchParams.get('q') || '')
@@ -21,7 +22,10 @@ export default function CifrasPage() {
 
   useEffect(() => {
     const q = query(collection(db, 'cifras'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, (snap) => setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   // Atualiza o modal com dados frescos do Firestore — sem isso quem tá
@@ -55,7 +59,9 @@ export default function CifrasPage() {
         </div>
       </div>
 
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando...</p>
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           <p>{search ? `Nenhuma cifra pra "${search}".` : 'Nenhuma cifra ainda.'}</p>
           {!search && <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>}

@@ -127,13 +127,17 @@ function RascunhoModal({ rascunho, onClose, onRemove }) {
 
 export default function RascunhosPage() {
   const [rascunhos, setRascunhos] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [modal, setModal] = useState(null)
   const [filterType, setFilterType] = useState('all')
   const [search, setSearch] = useState('')
 
   useEffect(() => {
     const q = query(collection(db, 'rascunhos'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, (snap) => setRascunhos(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setRascunhos(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
 
   const filtered = rascunhos
@@ -173,7 +177,9 @@ export default function RascunhosPage() {
         })}
       </div>
 
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando...</p>
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
           {search.trim() ? (
             <p>{`Nenhum rascunho pra "${search}".`}</p>

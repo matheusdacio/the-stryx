@@ -613,6 +613,7 @@ export default function MembrosPage() {
   const isAdmin = user.email === ADMIN_EMAIL
 
   const [members, setMembers] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [merging, setMerging] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -620,6 +621,7 @@ export default function MembrosPage() {
     const q = query(collection(db, 'members'), orderBy('name'))
     return onSnapshot(q, snap => {
       setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
     })
   }, [])
 
@@ -700,7 +702,9 @@ export default function MembrosPage() {
       )}
 
       {/* Grid de membros */}
-      {members.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando...</p>
+      ) : members.length === 0 ? (
         <div className="empty-state">
           <p>Nenhum membro cadastrado.</p>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 6 }}>
