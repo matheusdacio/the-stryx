@@ -153,7 +153,7 @@ export default function PerformanceMode({ event, onClose }) {
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {formatData(event.date, { curta: true })}
           {event.location ? ` · ${event.location}` : ''}
         </span>
-        <button className="perf-close" onClick={onClose}>✕</button>
+        <button className="perf-close" aria-label="Sair do modo palco" title="Sair do modo palco" onClick={onClose}>✕</button>
       </div>
 
       {repertorioMudou && (

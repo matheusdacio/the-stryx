@@ -86,8 +86,8 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
               <option value="">Instrumento...</option>
               {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
-            <button className="btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={saveRole}>✓</button>
-            <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} onClick={() => setEditingRole(false)}>✕</button>
+            <button className="btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} aria-label="Confirmar instrumento" title="Confirmar instrumento" onClick={saveRole}>✓</button>
+            <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} aria-label="Cancelar edição" title="Cancelar edição" onClick={() => setEditingRole(false)}>✕</button>
           </div>
         ) : (
           <p
@@ -123,7 +123,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
                   {aliases.map((a) => (
                     <span key={a} className="song-tag editable">
                       {a}
-                      <button type="button" className="tag-remove" onClick={() => removeAlias(a)}>✕</button>
+                      <button type="button" className="tag-remove" aria-label={`Tirar apelido ${a}`} onClick={() => removeAlias(a)}>✕</button>
                     </span>
                   ))}
                 </div>
@@ -135,6 +135,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAlias())}
                   placeholder="Ex: Marcio Braz"
                   style={{ fontSize: '0.78rem' }}
+                  aria-label="Novo apelido"
                 />
                 <button type="button" className="btn-secondary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
               </div>

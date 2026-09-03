@@ -231,6 +231,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           className={`song-expand-btn ${expanded ? 'open' : ''}`}
           onClick={() => setExpanded(!expanded)}
           title={expanded ? 'Recolher' : 'Ver detalhes'}
+          aria-label={expanded ? 'Recolher' : 'Ver detalhes'}
+          aria-expanded={expanded}
         >
           ›
         </button>
@@ -427,6 +429,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 placeholder="Ex: Acústico, Show Bar do Zé..."
+                aria-label="Nova tag"
               />
               <button type="button" className="btn-secondary" onClick={addTag}>+</button>
             </div>
@@ -436,7 +439,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
               {tags.map((t) => (
                 <span key={t} className="song-tag editable">
                   {t}
-                  <button type="button" className="tag-remove" onClick={() => removeTag(t)}>✕</button>
+                  <button type="button" className="tag-remove" aria-label={`Tirar tag ${t}`} onClick={() => removeTag(t)}>✕</button>
                 </span>
               ))}
             </div>
