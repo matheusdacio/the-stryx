@@ -254,18 +254,18 @@ export default function SetlistPage() {
         </button>
         {ultimoEnsaio && idsUltimoEnsaio.size > 0 && (
           <button
-            className={`btn-filter ${eventoChip === 'ultimo' ? 'active' : ''}`}
+            className={`btn-tag ${eventoChip === 'ultimo' ? 'active' : ''}`}
             onClick={() => mudarEventoChip(eventoChip === 'ultimo' ? null : 'ultimo')}
-            title="Músicas do último ensaio — hora de atualizar o domínio"
+            title="Combina com o filtro acima — músicas do último ensaio, hora de atualizar o domínio"
           >
             🎸 Último ensaio <span className="count">{idsUltimoEnsaio.size}</span>
           </button>
         )}
         {proximoEnsaio && idsProximoEnsaio.size > 0 && (
           <button
-            className={`btn-filter ${eventoChip === 'proximo' ? 'active' : ''}`}
+            className={`btn-tag ${eventoChip === 'proximo' ? 'active' : ''}`}
             onClick={() => mudarEventoChip(eventoChip === 'proximo' ? null : 'proximo')}
-            title="Músicas já escaladas pro próximo ensaio"
+            title="Combina com o filtro acima — músicas já escaladas pro próximo ensaio"
           >
             Próximo ensaio <span className="count">{idsProximoEnsaio.size}</span>
           </button>
