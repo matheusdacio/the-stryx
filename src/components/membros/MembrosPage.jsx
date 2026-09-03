@@ -528,12 +528,100 @@ function TomTool() {
   )
 }
 
+// Junta cadastros de membro que são a mesma pessoa ("Albano" e "Albano
+// Borba") — apagava direto no clique, sem confirmar; agora segue o mesmo
+// preview → Aplicar das ferramentas vizinhas, mostrando quem fica e quem some
+function DedupMembersTool() {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [msg, setMsg] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const snap = await getDocs(collection(db, 'members'))
+      const all = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+
+      const groups = []
+      all.forEach((m) => {
+        const group = groups.find((g) => g.some((x) => namesMatch(x.name, m.name)))
+        if (group) group.push(m)
+        else groups.push([m])
+      })
+
+      const duplicadas = groups.filter((g) => g.length > 1).map((group) => {
+        // Prioriza quem tem firebaseUid, email, mergedAt — e nome mais completo
+        const ordenado = [...group].sort((a, b) => {
+          const scoreA = (a.firebaseUid ? 4 : 0) + (a.email ? 2 : 0) + (a.mergedAt ? 1 : 0)
+          const scoreB = (b.firebaseUid ? 4 : 0) + (b.email ? 2 : 0) + (b.mergedAt ? 1 : 0)
+          return scoreB - scoreA || (b.name || '').length - (a.name || '').length
+        })
+        return { mantem: ordenado[0], apaga: ordenado.slice(1) }
+      })
+
+      setPending(duplicadas)
+      if (!duplicadas.length) setMsg('✅ Nenhuma duplicata encontrada.')
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const batch = writeBatch(db)
+      let removed = 0
+      pending.forEach(({ apaga }) => {
+        apaga.forEach((dup) => { batch.delete(doc(db, 'members', dup.id)); removed++ })
+      })
+      await batch.commit()
+      setMsg(`✅ ${removed} duplicata(s) removida(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(`❌ Erro: ${e.message}`)
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🧹 Remover duplicatas'}
+      </button>
+      {msg && (
+        <span style={{ fontSize: '0.8rem', color: msg.startsWith('✅') ? 'var(--green)' : 'var(--red)' }}>
+          {msg}
+        </span>
+      )}
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} grupo(s) duplicado(s)</p>
+          {pending.map(({ mantem, apaga }) => (
+            <p key={mantem.id} className="event-normalize-item">
+              apaga {apaga.map((m) => m.name).join(', ')} · mantém {mantem.name}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Removendo...' : `Aplicar em ${pending.length} grupo(s)`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
 export default function MembrosPage() {
   const { user } = useAuth()
   const isAdmin = user.email === ADMIN_EMAIL
 
   const [members, setMembers] = useState([])
-  const [deduping, setDeduping] = useState(false)
   const [merging, setMerging] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -547,51 +635,6 @@ export default function MembrosPage() {
   const handleRemove = async (member) => {
     if (!confirm(`Remover "${member.name}" da banda?`)) return
     await deleteDoc(doc(db, 'members', member.id))
-  }
-
-  // Remove membros duplicados — agrupa por nome aproximado
-  // ("Albano" e "Albano Borba" são a mesma pessoa), mantém o que tem mais dados
-  const handleDedup = async () => {
-    setDeduping(true)
-    setMsg('')
-    try {
-      const snap = await getDocs(collection(db, 'members'))
-      const all = snap.docs.map(d => ({ id: d.id, ...d.data() }))
-
-      const groups = []
-      all.forEach(m => {
-        const group = groups.find(g => g.some(x => namesMatch(x.name, m.name)))
-        if (group) group.push(m)
-        else groups.push([m])
-      })
-
-      const batch = writeBatch(db)
-      let removed = 0
-
-      groups.forEach(group => {
-        if (group.length < 2) return
-        // Prioriza quem tem firebaseUid, email, mergedAt — e nome mais completo
-        group.sort((a, b) => {
-          const scoreA = (a.firebaseUid ? 4 : 0) + (a.email ? 2 : 0) + (a.mergedAt ? 1 : 0)
-          const scoreB = (b.firebaseUid ? 4 : 0) + (b.email ? 2 : 0) + (b.mergedAt ? 1 : 0)
-          return scoreB - scoreA || (b.name || '').length - (a.name || '').length
-        })
-        group.slice(1).forEach(dup => {
-          batch.delete(doc(db, 'members', dup.id))
-          removed++
-        })
-      })
-
-      if (removed > 0) {
-        await batch.commit()
-        setMsg(`✅ ${removed} duplicata(s) removida(s).`)
-      } else {
-        setMsg('✅ Nenhuma duplicata encontrada.')
-      }
-    } catch (e) {
-      setMsg(`❌ Erro: ${e.message}`)
-    }
-    setDeduping(false)
   }
 
   // Funde votos importados do Glissandoo com os votos reais (matching por nome aproximado)
@@ -630,10 +673,8 @@ export default function MembrosPage() {
         <details className="admin-tools">
           <summary>🛠 Manutenção</summary>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
-            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleDedup} disabled={deduping || merging}>
-              {deduping ? 'Removendo...' : '🧹 Remover duplicatas'}
-            </button>
-            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={deduping || merging}>
+            <DedupMembersTool />
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={merging}>
               {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
             </button>
             <IntegridadeTool />

@@ -55,7 +55,10 @@ export async function migrateEventPresence({ dryRun = false } = {}) {
   ensaiosSnap.forEach((docSnap) => {
     const data = docSnap.data()
     const nomes = data.members || []
-    if (!nomes.length && !data.presenca) return
+    // Só migra quem ainda tem lista antiga E ainda não tem presença própria —
+    // presenca:{} já é truthy, então evento novo nunca entra aqui, e um
+    // evento com resposta real nunca é regravado por cima
+    if (!nomes.length || data.presenca) return
 
     const passado = isPast(data.date)
     const presenca = {}
