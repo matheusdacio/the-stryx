@@ -160,7 +160,10 @@ function TypeBadge({ type }) {
 
 // `compacto` é a aba de pendências: ali a tarefa é responder presença, então
 // ela vem primeiro e o repertório fica só como prévia
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false }) {
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false, colapsavel = false }) {
+  // Realizados/Cancelados nascem recolhidos — repertório completo, presença
+  // e 4-5 botões por evento, pra TODOS de uma vez, virava rolagem sem fim
+  const [open, setOpen] = useState(!colapsavel)
   const hasPauta   = ensaio.pauta?.length > 0
   const { vao, nao } = splitPresenca(ensaio, bandMembers)
 
@@ -184,8 +187,12 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const hasSetlist = ensaio.setlist?.length > 0
 
   return (
-    <div className={`ensaio-row open ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
-      <div className={`ensaio-row-header ${destaque ? 'destaque-header' : ''}`}>
+    <div className={`ensaio-row ${open ? 'open' : ''} ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
+      <div
+        className={`ensaio-row-header ${destaque ? 'destaque-header' : ''}`}
+        onClick={colapsavel ? () => setOpen(!open) : undefined}
+        style={colapsavel ? { cursor: 'pointer' } : undefined}
+      >
         {destaque ? (
           <>
             <div>
@@ -212,11 +219,13 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
               {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
               {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
+              {colapsavel && <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>}
             </div>
           </>
         )}
       </div>
 
+      {open && (
       <div className="ensaio-row-body">
           {compacto && (
             <div>
@@ -333,6 +342,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             <button className="btn-ghost-danger" onClick={() => onRemove(ensaio)}>Remover</button>
           </div>
       </div>
+      )}
     </div>
   )
 }
@@ -516,6 +526,7 @@ export default function EnsaiosPage() {
                   user={user}
                   songs={songs}
                   compacto={tab === 'pendentes'}
+                  colapsavel={tab === 'realizados' || tab === 'cancelados'}
                 />
               ))}
             </div>
