@@ -48,7 +48,7 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
     <div className="modal-overlay" onClick={editing ? undefined : onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
         <div className="modal-top">
-          <h2>{editing ? (cifra ? 'Editar Cifra' : 'Nova Cifra') : form.title}</h2>
+          <h2>{editing ? (cifra ? 'Editar cifra' : 'Nova cifra') : form.title}</h2>
           <div style={{ display: 'flex', gap: 8 }}>
             {cifra && !editing && <button className="btn-secondary" onClick={() => setEditing(true)}>Editar</button>}
             {onRemove && <button className="btn-ghost-danger" onClick={onRemove}>Remover</button>}
@@ -77,7 +77,7 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
                 name="content"
                 value={form.content}
                 onChange={handleChange}
-                placeholder={`Ex:\n[Intro]\nE|--0--2--3--|\nB|--0--3--3--|\n\n[Verso]\nAm   G   F   E\nLorem ipsum...`}
+                placeholder={`Ex:\n[Intro]\nE|--0--2--3--|\nB|--0--3--3--|\n\n[Verso]\nAm   G   F   E\nLetra ou acordes aqui…`}
                 rows={14}
                 className="cifra-textarea"
               />

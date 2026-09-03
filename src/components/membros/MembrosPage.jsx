@@ -93,7 +93,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
           <p
             className="member-role"
             onClick={canEdit ? () => setEditingRole(true) : undefined}
-            title={canEdit ? 'Clique para editar' : undefined}
+            title={canEdit ? 'Toque pra editar' : undefined}
           >
             {member.role || (canEdit ? '+ instrumento' : '—')}
           </p>
@@ -655,7 +655,7 @@ export default function MembrosPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>A Banda</h2>
+        <h2>Banda</h2>
         <span className="section-label" style={{ marginLeft: 'auto' }}>
           {linkedCount}/{members.length} logados
         </span>

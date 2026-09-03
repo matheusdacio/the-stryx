@@ -52,7 +52,7 @@ function RascunhoModal({ rascunho, onClose, onRemove }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>{rascunho ? 'Editar Rascunho' : 'Novo Rascunho'}</h2>
+        <h2>{rascunho ? 'Editar rascunho' : 'Novo rascunho'}</h2>
         <form onSubmit={handleSave}>
           <div className="form-row">
             <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Ideia pro refrão" autoFocus required /></label>

@@ -17,7 +17,7 @@ export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
         {suportado && (
           <button
             className="btn-notif"
-            title={permissao === 'granted' ? 'Notificações ativas — clique para desativar' : 'Ativar notificações'}
+            title={permissao === 'granted' ? 'Notificações ativas — toque pra desativar' : 'Ativar notificações'}
             onClick={handleNotifClick}
             disabled={ativando}
           >

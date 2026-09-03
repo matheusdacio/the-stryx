@@ -222,7 +222,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   return (
     <div className="modal-overlay">
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
+        <h2>{editando ? 'Editar evento' : copiando ? 'Copiar evento' : 'Novo evento'}</h2>
         {copiando && (
           <p className="filter-hint" style={{ margin: '0 0 12px' }}>
             Músicas e pauta vieram do evento de {formatData(ensaio?.date)}. Escolha a data nova — a presença começa em branco.
@@ -359,7 +359,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
           </div>
 
           <label>Observações
-            <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Notas do evento..." />
+            <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Ex: levar cabo extra, ensaiar a entrada da 3ª…" />
           </label>
 
           <div className="modal-actions">

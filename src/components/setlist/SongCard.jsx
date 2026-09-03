@@ -461,7 +461,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         </div>
       ) : (
         <p className="song-notes" onClick={openNotes}>
-          {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+          {song.notes || <span className="placeholder">Toque pra anotar: quem canta, afinação, deixa do solo… (aparece no modo palco)</span>}
         </p>
       )}
 

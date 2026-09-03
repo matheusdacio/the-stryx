@@ -286,7 +286,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         ) : (
           <p className="song-notes" style={{ marginBottom: 12 }} onClick={() => { setNotes(sugestao.notes || ''); setEditingNotes(true) }}>
-            {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+            {sugestao.notes || <span className="placeholder">Toque pra anotar algo pra banda</span>}
           </p>
         )}
 
@@ -416,7 +416,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>Nova Sugestão</h2>
+        <h2>Nova sugestão</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
