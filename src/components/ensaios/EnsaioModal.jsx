@@ -234,14 +234,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             <button
               type="button"
               className={`btn-event-type ${!isApresentacao ? 'active' : ''}`}
-              onClick={() => setForm({ ...form, type: 'ensaio' })}
+              onClick={() => { setMexeu(true); setForm({ ...form, type: 'ensaio' }) }}
             >
               🎸 Ensaio
             </button>
             <button
               type="button"
               className={`btn-event-type ${isApresentacao ? 'active apresentacao' : ''}`}
-              onClick={() => setForm({ ...form, type: 'apresentacao' })}
+              onClick={() => { setMexeu(true); setForm({ ...form, type: 'apresentacao' }) }}
             >
               🎤 Apresentação
             </button>
@@ -259,7 +259,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             className={`btn-cancelar-evento ${form.status === 'cancelado' ? 'cancelado' : ''}`}
             onClick={() => { setMexeu(true); setForm({ ...form, status: form.status === 'cancelado' ? 'planejado' : 'cancelado' }) }}
           >
-            {form.status === 'cancelado' ? '↩ Reativar' : '✕ Cancelar este evento'}
+            {form.status === 'cancelado' ? '↩ Reativar evento' : '🚫 Marcar como cancelado'}
           </button>
 
           {/* Setlist do evento */}
