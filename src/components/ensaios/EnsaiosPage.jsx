@@ -373,7 +373,7 @@ export default function EnsaiosPage() {
   }, [])
 
   const remove = (e) => {
-    if (confirm(`Remover evento de ${formatData(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
+    if (confirm(`Apagar o evento de ${formatData(e.date)} de vez? Músicas, pauta e presenças vão junto. Se ele só não vai acontecer, use Editar › Marcar como cancelado.`)) deleteDoc(doc(db, 'ensaios', e.id))
   }
 
   const togglePauta = async (ensaio, index) => {

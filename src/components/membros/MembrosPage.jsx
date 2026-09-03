@@ -632,7 +632,7 @@ export default function MembrosPage() {
   }, [msg])
 
   const handleRemove = async (member) => {
-    if (!confirm(`Remover "${member.name}" da banda?`)) return
+    if (!confirm(`Apagar "${member.name}" do cadastro de vez? Se a pessoa só saiu da banda, use "Tá na banda → Saiu", que guarda o histórico.`)) return
     await deleteDoc(doc(db, 'members', member.id))
   }
 
