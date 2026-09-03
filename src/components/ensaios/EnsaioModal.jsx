@@ -7,7 +7,8 @@ import {
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
 import { db } from '../../firebase/config'
-import { menosDominadas } from '../../utils/dominio'
+import { menosDominadas, calcDominio, dominioPorPeso } from '../../utils/dominio'
+import { matchesSearch } from '../../utils/search'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 function toInputDate(ts) {
@@ -137,7 +138,6 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
       artist: song.artist || '',
       bpm: song.bpm || null,
     }])
-    setSongSearch('')
   }
 
   const removeSong = (i) => { setMexeu(true); setSetlist(setlist.filter((_, idx) => idx !== i)) }
@@ -164,8 +164,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
   const searchResults = songSearch.trim()
     ? allSongs.filter((s) =>
         !setlist.some((x) => x.id === s.id) &&
-        `${s.title} ${s.artist || ''}`.toLowerCase().includes(songSearch.toLowerCase())
-      ).slice(0, 6)
+        matchesSearch(songSearch, s.title, s.artist)
+      ).slice(0, 10)
     : []
 
   const handleSave = (e) => {
@@ -269,11 +269,19 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
             />
             {searchResults.length > 0 && (
               <div className="song-search-results">
-                {searchResults.map((s) => (
-                  <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
-                    + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
-                  </button>
-                ))}
+                {searchResults.map((s) => {
+                  const nivel = dominioPorPeso(calcDominio(s.dominio).pior)
+                  return (
+                    <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
+                      + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
+                      {nivel && (
+                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                          {nivel.label}
+                        </span>
+                      )}
+                    </button>
+                  )
+                })}
               </div>
             )}
             <div className="trazer-cruas">
@@ -294,13 +302,20 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
               <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
                 <SortableContext items={setlist.map((s) => s.id)} strategy={verticalListSortingStrategy}>
                   <div className="event-setlist">
-                    {setlist.map((s, i) => (
+                    {setlist.map((s, i) => {
+                      const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio).pior)
+                      return (
                       <SortableSetlistItem key={s.id} id={s.id}>
                         <span className="event-setlist-pos">{i + 1}</span>
                         <span className="event-setlist-title">
                           {s.title}
                           {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                           {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                          {nivel && (
+                            <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                              {nivel.label}
+                            </span>
+                          )}
                         </span>
                         <span className="event-setlist-actions">
                           <button type="button" className="btn-order" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
@@ -308,7 +323,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose }) {
                           <button type="button" className="btn-remove" onClick={() => removeSong(i)}>✕</button>
                         </span>
                       </SortableSetlistItem>
-                    ))}
+                      )
+                    })}
                   </div>
                 </SortableContext>
               </DndContext>
