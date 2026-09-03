@@ -1,12 +1,8 @@
-import { Link } from 'react-router-dom'
 import { useAuth } from '../contexts/AuthContext'
 import { APP_VERSION } from '../version'
 
-const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
-
 export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
   const { user, logout } = useAuth()
-  const isAdmin = user.email === ADMIN_EMAIL
   const { permissao, ativando, suportado } = notif
 
   const handleNotifClick = () => (permissao === 'granted' ? onDesativarNotif() : onAtivarNotif())
@@ -18,16 +14,6 @@ export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
         <span className="navbar-version">v{APP_VERSION}</span>
       </span>
       <div className="navbar-user">
-        {isAdmin && (
-          <>
-            <Link to="/membros" className="btn-import" title="Membros da banda">
-              👥 Banda
-            </Link>
-            <Link to="/import" className="btn-import" title="Importar do Glissandoo">
-              ⬆ Importar
-            </Link>
-          </>
-        )}
         {suportado && (
           <button
             className="btn-notif"

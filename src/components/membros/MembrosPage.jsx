@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react'
+import { Link } from 'react-router-dom'
 import {
   collection, onSnapshot, orderBy, query, getDocs,
   updateDoc, deleteDoc, doc, writeBatch, deleteField,
@@ -667,6 +668,9 @@ export default function MembrosPage() {
         <details className="admin-tools">
           <summary>🛠 Manutenção</summary>
           <div style={{ display: 'flex', gap: 8, marginTop: 10, marginBottom: 8, alignItems: 'center', flexWrap: 'wrap' }}>
+            <Link to="/import" className="btn-secondary" style={{ fontSize: '0.8rem' }} title="Importar do Glissandoo">
+              ⬆ Importar do Glissandoo
+            </Link>
             <DedupMembersTool setMsg={setMsg} />
             <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={handleMergeVotes} disabled={merging}>
               {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
@@ -696,8 +700,13 @@ export default function MembrosPage() {
         <div className="empty-state">
           <p>Nenhum membro cadastrado.</p>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 6 }}>
-            Importe os membros na página de Importação ou peça para cada um fazer login.
+            Peça pra cada um fazer login com o Google — o cadastro é automático.
           </p>
+          {isAdmin && (
+            <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 4 }}>
+              Ou importe do Glissandoo em "🛠 Manutenção" acima.
+            </p>
+          )}
         </div>
       ) : (
         <div className="members-grid">
