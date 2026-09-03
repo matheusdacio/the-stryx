@@ -746,6 +746,7 @@ button { font-family: inherit; }
 .rascunho-title { font-weight: 700; font-size: 0.95rem; }
 .rascunho-preview { font-size: 0.8rem; color: var(--text-muted); line-height: 1.5; white-space: pre-wrap; }
 .rascunho-author { font-size: 0.72rem; color: var(--text-muted); }
+.rascunho-content { font-family: monospace; font-size: 0.9rem; line-height: 1.6; white-space: pre-wrap; background: var(--surface2); padding: 14px; border-radius: var(--radius); }
 
 /* ─── BUTTONS ─── */
 .btn-primary {
