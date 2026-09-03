@@ -12,3 +12,14 @@ export function formatData(ts, { curta = false } = {}) {
     ...(curta ? {} : { year: 'numeric' }),
   })
 }
+
+// Já passou do dia: não faz sentido perguntar se a pessoa vai, e o resumo
+// passa a falar no passado. Compara por dia, não por hora — o evento é
+// gravado ao meio-dia, então usar a hora faria o de hoje contar como
+// passado antes da hora certa
+export function jaPassou(ts) {
+  if (!ts) return false
+  const d = ts.toDate ? ts.toDate() : new Date(ts)
+  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
+  return dia(d) < dia(new Date())
+}

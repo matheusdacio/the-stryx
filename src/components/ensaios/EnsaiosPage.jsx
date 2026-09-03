@@ -5,7 +5,7 @@ import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { formatData } from '../../utils/data'
+import { formatData, jaPassou } from '../../utils/data'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
@@ -29,15 +29,6 @@ function jaComecou(ts) {
   const d = ts.toDate ? ts.toDate() : new Date(ts)
   const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
   return dia(d) <= dia(new Date())
-}
-
-// Já passou do dia: não faz sentido perguntar se a pessoa vai, e o resumo
-// passa a falar no passado
-function jaPassou(ts) {
-  if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-  return dia(d) < dia(new Date())
 }
 
 // Primeiras músicas do evento, pra dar o tom do que vai ser ensaiado sem
