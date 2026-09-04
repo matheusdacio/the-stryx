@@ -331,7 +331,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
                 aria-pressed={minhaOpiniao === o.value}
                 onClick={() => votarOpiniao(o.value)}
               >
-                {o.label}
+                {o.labelSetlist}
               </button>
             ))}
           </div>
