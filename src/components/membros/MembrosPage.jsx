@@ -15,6 +15,7 @@ import { migrarDificuldade } from '../../utils/migrarDificuldade'
 import { migrarTom } from '../../utils/migrarTom'
 import { migrarBlocos } from '../../utils/migrarBlocos'
 import { montarProximoEnsaio } from '../../utils/montarProximoEnsaio'
+import { migrarHorario } from '../../utils/migrarHorario'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -481,6 +482,70 @@ function MontarEnsaioTool({ setMsg }) {
   )
 }
 
+// ── Ferramenta: horário padrão nos ensaios sem horário ────────────────
+function HorarioTool({ setMsg }) {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const res = await migrarHorario({ dryRun: true })
+      setPending(res)
+      if (!res.changes.length && !res.apresentacoesSemHorario.length) setMsg('✅ Todo mundo já tem horário.')
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { changes } = await migrarHorario()
+      setMsg(`✅ ${changes.length} ensaio(s) com horário 9h às 17h.`)
+      setPending(null)
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🕘 Horário 9h–17h nos ensaios sem horário'}
+      </button>
+      {pending && (pending.changes.length > 0 || pending.apresentacoesSemHorario.length > 0) && (
+        <div className="event-normalize-preview">
+          {pending.changes.length > 0 && (
+            <p className="section-label">{pending.changes.length} ensaio(s) vão ficar 9h às 17h</p>
+          )}
+          {pending.changes.map((c) => (
+            <p key={c.id} className="event-normalize-item">{c.label}</p>
+          ))}
+          {pending.apresentacoesSemHorario.length > 0 && (
+            <p className="event-normalize-item" style={{ color: 'var(--yellow)' }}>
+              {pending.apresentacoesSemHorario.length} apresentação(ões) continuam sem horário: {pending.apresentacoesSemHorario.join(', ')}
+            </p>
+          )}
+          {pending.changes.length > 0 && (
+            <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+              <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+                {busy ? 'Gravando...' : `Aplicar em ${pending.changes.length} ensaio(s)`}
+              </button>
+              <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+                Cancelar
+              </button>
+            </div>
+          )}
+        </div>
+      )}
+    </>
+  )
+}
+
 // ── Ferramenta: sugestões duplicadas ──────────────────────────────────
 function DedupSugestoesTool({ setMsg }) {
   const [busy, setBusy] = useState(false)
@@ -824,6 +889,7 @@ export default function MembrosPage() {
             <IntegridadeTool setMsg={setMsg} />
             <BlocosMigrateTool setMsg={setMsg} />
             <MontarEnsaioTool setMsg={setMsg} />
+            <HorarioTool setMsg={setMsg} />
           </div>
 
           <p className="section-label" style={{ marginTop: 4 }}>Já rodadas</p>
