@@ -21,7 +21,9 @@ function getApp() {
 }
 
 async function salvarToken(user) {
-  const sw = await navigator.serviceWorker.register('/the-stryx/firebase-messaging-sw.js')
+  // O SW gerado pelo vite-plugin-pwa (cache do app offline) importa o
+  // firebase-messaging-sw.js — um único SW cuida de cache e de push
+  const sw = await navigator.serviceWorker.register('/the-stryx/sw.js')
   const messaging = getMessaging(getApp())
   const token = await getToken(messaging, { vapidKey: VAPID_KEY, serviceWorkerRegistration: sw })
   await setDoc(doc(db, 'fcm_tokens', user.uid), {
