@@ -13,6 +13,25 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.35.0] — 2026-09-03
+- **Nota ⭐ com a mesma cara em Setlist e Sugestões**: componente único (antes eram dois visuais diferentes pra mesma coisa); em Sugestões, "3 de 6 opinaram" explica por que a sugestão ainda não fechou
+- **Chip 🎯 de dificuldade aparece também no Setlist** (card fechado) — antes só existia em Sugestões, mesmo o Setlist já ordenando por ela
+- Domínio (Dominada/Ensaiando/Crua) usa o mesmo selo cheio em Eventos e no modal de evento que já usava no Setlist — antes era um chip vazado diferente
+- Lista de músicas do evento mostra o tom, não só o BPM
+- "Músicas (N)" explica "· marque as que rolaram" quando dá pra marcar a presença nos ensaios
+- Setlist e Eventos repetem o número de pendências no título, como Sugestões já fazia
+- "Presença pendente" vira "Falta eu responder", com a cara de toggle pessoal — mesmo conceito de "Falta meu voto"
+- Perguntas de opinião em Sugestões ganham os mesmos ícones ⭐/🎯 do Setlist
+- Uma linha explica o fluxo das Sugestões (sugere → banda opina → admin manda pro setlist), e o modal mostra quem falta opinar
+- Card de Sugestão ganha a setinha › que avisa que abre, como Setlist e Eventos
+- Modal de sugestão mostra a data, não só quem sugeriu
+- Data curta (Realizados/Cancelados) volta a mostrar o ano quando o evento é de outro ano
+- **Cifra alcançável dos dois lados**: chip 📄 no evento só aparece se a música tiver cifra de verdade; música sem cifra no Setlist ganha "📄 + cifra" que abre o cadastro já preenchido; busca sem resultado em Cifras oferece o mesmo atalho
+- "+ instrumento" na Banda vira botão de verdade, não texto com título escondido
+- Badge do rodapé trava em "99+" em vez de esticar
+- Sucesso ao ativar notificações vira toast em vez de alerta bloqueante
+- Contador do Modo palco ganha uma seta indicando que abre a lista de músicas
+
 ## [1.34.1] — 2026-09-03
 - **Safe-area no iPhone instalado**: rodapé, palco, toast, modal e navbar respeitam a barra de gesto e o notch em vez de ficar por baixo
 - Efeitos de hover (levantar card, borda vermelha) não grudam mais depois de um toque no celular — o card de sugestão não fica "selecionado" depois de fechar o modal
