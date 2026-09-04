@@ -12,6 +12,7 @@ import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { fatorFacilidade } from '../../utils/dificuldade'
 import { musicasDoEvento } from '../../utils/blocos'
+import { diaDe } from '../../utils/data'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
 
@@ -34,14 +35,6 @@ const SORTS = [
   { value: 'media',       label: '⭐ Média' },
   { value: 'data',        label: '📅 Antigas' },
 ]
-
-// Compara só o dia — o evento é gravado ao meio-dia (EnsaioModal), e a
-// banda costuma votar o domínio logo depois do ensaio, então "ensaiado
-// hoje" já deve contar como passado, não só a partir de amanhã
-const diaDe = (ts) => {
-  const d = ts?.toDate ? ts.toDate() : new Date(ts)
-  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-}
 
 export default function SetlistPage() {
   const { user } = useAuth()

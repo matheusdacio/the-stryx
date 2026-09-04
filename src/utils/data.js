@@ -16,13 +16,33 @@ export function formatData(ts, { curta = false } = {}) {
   })
 }
 
+// Meia-noite do dia do timestamp, sem hora — base de toda comparação "é
+// hoje/já passou/faltam quantos dias". O evento é gravado ao meio-dia
+// (EnsaioModal), então comparar por instante faria o de hoje contar como
+// passado ou "amanhã" antes da hora certa
+export function diaDe(ts) {
+  const d = ts?.toDate ? ts.toDate() : new Date(ts)
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
+}
+
 // Já passou do dia: não faz sentido perguntar se a pessoa vai, e o resumo
-// passa a falar no passado. Compara por dia, não por hora — o evento é
-// gravado ao meio-dia, então usar a hora faria o de hoje contar como
-// passado antes da hora certa
+// passa a falar no passado.
 export function jaPassou(ts) {
   if (!ts) return false
-  const d = ts.toDate ? ts.toDate() : new Date(ts)
-  const dia = (x) => new Date(x.getFullYear(), x.getMonth(), x.getDate()).getTime()
-  return dia(d) < dia(new Date())
+  return diaDe(ts) < diaDe(new Date())
+}
+
+// "9h" / "20h30" — peça de formatHorario reaproveitada onde só uma hora
+// entra na frase (ex.: "Hoje, 9h")
+export const formatHora = (t) => {
+  const [hh, mm] = t.split(':')
+  return mm === '00' ? `${Number(hh)}h` : `${Number(hh)}h${mm}`
+}
+
+// "9h às 17h" / "a partir das 20h30" / "até 17h" / '' sem nenhum horário
+export function formatHorario(ini, fim) {
+  if (ini && fim) return `${formatHora(ini)} às ${formatHora(fim)}`
+  if (ini) return `a partir das ${formatHora(ini)}`
+  if (fim) return `até ${formatHora(fim)}`
+  return ''
 }
