@@ -809,8 +809,16 @@ export default function SugestoesPage() {
             : f.value === 'rejeitada'
               ? visiveis.filter((s) => estaRejeitada(s, bandMembers)).length
               : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
+          const active = filter === f.value
+          // Gradiente vermelho só em "Todas" — Em aberto/Rejeitadas usam cor
+          // neutra/cinza, como Setlist e Rascunhos já fazem por nível (F60)
+          const style = active && f.value === 'rejeitada'
+            ? { background: 'rgba(107,114,128,0.2)', borderColor: 'var(--gray)', color: 'var(--text)' }
+            : active && f.value === 'aberta'
+              ? { background: 'var(--surface2)', borderColor: 'var(--border-strong)', color: 'var(--text)' }
+              : {}
           return (
-            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => mudarFiltro(f.value)}>
+            <button key={f.value} className={`btn-filter ${active ? 'active' : ''}`} style={style} onClick={() => mudarFiltro(f.value)}>
               {f.label} <span className="count">{count}</span>
             </button>
           )
