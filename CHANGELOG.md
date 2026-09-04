@@ -13,6 +13,15 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.38.0] — 2026-09-04
+- **Qualquer membro pode mandar sugestão pro setlist**, não só o admin — a decisão final era um gargalo desnecessário quando a banda toda já opinou; o admin continua sendo o único que reabre sugestão fechada e exporta pra Excel
+
+## [1.37.0] — 2026-09-04
+- **Músicas do evento organizadas em blocos**: cada evento pode ter quantos blocos quiser (nome opcional, "Bloco N" por posição), com músicas entrando, saindo e reordenando dentro do bloco certo; numeração continua contínua no evento inteiro. Evento antigo (sem blocos) continua funcionando normalmente e é migrado ao ser reeditado
+- No modo palco, "Tocando agora" e "Próxima" avisam quando a música abre outro bloco, e a lista pra pular mostra o nome de cada bloco
+- Novo campo **"Quem canta"** na música (texto livre) — chip 🎤 no Setlist, na lista do evento e em destaque no Modo palco
+- Ferramentas admin novas em "🛠 Manutenção": "Blocos: migrar músicas soltas" (converte evento antigo de vez) e "Montar o próximo ensaio", que monta o repertório do próximo ensaio a partir da sequência de músicas/cantor/tom mandada pelo líder no grupo
+
 ## [1.36.0] — 2026-09-03
 - **App abre sem internet**: agora cacheia o app inteiro (HTML/CSS/JS), não só os dados — antes, sem o cache HTTP, o Modo palco podia não abrir no ensaio sem sinal (precisa de teste real em Android e iPhone antes de ir pra produção)
 - Marcar item da pauta do evento não perde mais a marcação de quem mexeu ao mesmo tempo

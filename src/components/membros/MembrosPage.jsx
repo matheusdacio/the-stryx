@@ -13,6 +13,8 @@ import { verificarIntegridade } from '../../utils/integridade'
 import { dedupSugestoes } from '../../utils/dedupSugestoes'
 import { migrarDificuldade } from '../../utils/migrarDificuldade'
 import { migrarTom } from '../../utils/migrarTom'
+import { migrarBlocos } from '../../utils/migrarBlocos'
+import { montarProximoEnsaio } from '../../utils/montarProximoEnsaio'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -340,6 +342,139 @@ function IntegridadeTool({ setMsg }) {
               </p>
             )
           })}
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Ferramenta: migrar músicas soltas dos eventos pra blocos ──────────
+// Evento antigo só tinha `setlist`; a leitura já trata isso como um bloco
+// único, mas essa migração completa de vez quem nunca foi reaberto no
+// modal depois da mudança pra blocos.
+function BlocosMigrateTool({ setMsg }) {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    try {
+      const { changes } = await migrarBlocos({ dryRun: true })
+      setPending(changes)
+      if (!changes.length) setMsg('✅ Nenhum evento com músicas fora de bloco.')
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const { changes } = await migrarBlocos()
+      setMsg(`✅ ${changes.length} evento(s) migrado(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🧩 Blocos: migrar músicas soltas'}
+      </button>
+      {pending?.length > 0 && (
+        <div className="event-normalize-preview">
+          <p className="section-label">{pending.length} evento(s) com músicas fora de bloco</p>
+          {pending.map((c) => (
+            <p key={c.id} className="event-normalize-item">
+              <strong>{c.label}</strong> — {c.n} {c.n === 1 ? 'música' : 'músicas'}
+            </p>
+          ))}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : `Aplicar em ${pending.length} evento(s)`}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
+        </div>
+      )}
+    </>
+  )
+}
+
+// ── Ferramenta: montar o próximo ensaio a partir da sequência do Marcos ─
+// Substitui o repertório inteiro do evento futuro mais próximo pelos 5
+// blocos da mensagem, e atualiza cantor/tom/bpm das músicas casadas.
+function MontarEnsaioTool({ setMsg }) {
+  const [busy, setBusy] = useState(false)
+  const [pending, setPending] = useState(null)
+  const [erro, setErro] = useState('')
+
+  const preview = async () => {
+    setBusy(true)
+    setMsg('')
+    setErro('')
+    try {
+      const res = await montarProximoEnsaio({ dryRun: true })
+      if (res.erro) setErro(res.erro)
+      else setPending(res)
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  const apply = async () => {
+    setBusy(true)
+    try {
+      const res = await montarProximoEnsaio()
+      setMsg(`✅ Ensaio montado — ${res.casadas.length} música(s), ${res.naoAchadas.length} não achada(s).`)
+      setPending(null)
+    } catch (e) {
+      setMsg(msgErro(e))
+    }
+    setBusy(false)
+  }
+
+  return (
+    <>
+      <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={preview} disabled={busy}>
+        {busy && !pending ? 'Verificando...' : '🎸 Montar o próximo ensaio (sequência do Marcos)'}
+      </button>
+      {erro && <p style={{ fontSize: '0.8rem', color: 'var(--red)', marginTop: 6 }}>{erro}</p>}
+      {pending && (
+        <div className="event-normalize-preview">
+          <p className="section-label">Ensaio de {pending.alvo}</p>
+          {pending.atuais > 0 && (
+            <p className="event-normalize-item" style={{ color: 'var(--yellow)' }}>
+              ⚠️ Vai substituir as {pending.atuais} música(s) atuais do evento.
+            </p>
+          )}
+          <p className="event-normalize-item">{pending.casadas.length} de {pending.casadas.length + pending.naoAchadas.length} músicas casadas com o setlist.</p>
+          {pending.camposMusica.filter((c) => c.tom).map((c) => (
+            <p key={c.title} className="event-normalize-item">
+              <strong>{c.title}</strong> — cantor: novo{c.tom && ` · tom: ${c.tom}`}
+            </p>
+          ))}
+          {pending.naoAchadas.length > 0 && (
+            <p className="event-normalize-item" style={{ color: 'var(--yellow)' }}>
+              Não achadas (adicione manualmente no evento depois): {pending.naoAchadas.join(', ')}
+            </p>
+          )}
+          <div style={{ display: 'flex', gap: 8, marginTop: 8 }}>
+            <button className="btn-primary" style={{ fontSize: '0.8rem' }} onClick={apply} disabled={busy}>
+              {busy ? 'Gravando...' : 'Aplicar'}
+            </button>
+            <button className="btn-secondary" style={{ fontSize: '0.8rem' }} onClick={() => setPending(null)} disabled={busy}>
+              Cancelar
+            </button>
+          </div>
         </div>
       )}
     </>
@@ -687,6 +822,8 @@ export default function MembrosPage() {
               {merging ? 'Fundindo...' : '🔗 Fundir votos duplicados'}
             </button>
             <IntegridadeTool setMsg={setMsg} />
+            <BlocosMigrateTool setMsg={setMsg} />
+            <MontarEnsaioTool setMsg={setMsg} />
           </div>
 
           <p className="section-label" style={{ marginTop: 4 }}>Já rodadas</p>

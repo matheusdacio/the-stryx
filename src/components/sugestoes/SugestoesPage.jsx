@@ -133,7 +133,16 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   }
 
   const approve = async () => {
-    if (!confirm(`Enviar "${sugestao.title}" pro setlist? Ela some daqui e entra como Crua pra todo mundo.`)) return
+    // Veto pendente ainda pode ser enviado (a decisão final agora é de
+    // qualquer membro) — mas o aviso deixa explícito que tem gente contra
+    const nomes = Object.values(sugestao.opinoes || {})
+      .filter((v) => VETOS.includes(v.opinion))
+      .map((v) => firstName(v.userName))
+      .join(', ')
+    const msg = temVeto(sugestao)
+      ? `Enviar "${sugestao.title}" pro setlist mesmo com veto de ${nomes}? Ela some daqui e entra como Crua pra todo mundo.`
+      : `Enviar "${sugestao.title}" pro setlist? Ela some daqui e entra como Crua pra todo mundo.`
+    if (!confirm(msg)) return
     setSaving(true)
 
     // Música nova entra crua pra todo mundo: ninguém ensaiou ainda. Cada um
@@ -153,6 +162,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         status: 'ensaiando',
         notes: sugestao.notes || `Veio da sugestão de ${sugestao.suggestedBy}`,
         tom: sugestao.tom || '',
+        cantor: sugestao.cantor || '',
         bpm: sugestao.bpm || null,
         tags: sugestao.tags || [],
         // Escala única desde 80191d4: não precisa converter, só copiar
@@ -275,9 +285,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           )}
         </div>
 
-        {sugestao.status === 'aberta' && !isAdmin && !temVeto(sugestao) && (
+        {sugestao.status === 'aberta' && !temVeto(sugestao) && (
           <p className="filter-hint" style={{ margin: '4px 0 0' }}>
-            {faltam.length ? `Faltam opinar: ${faltam.map(firstName).join(', ')}` : 'Todo mundo já opinou — agora é com o admin.'}
+            {faltam.length ? `Faltam opinar: ${faltam.map(firstName).join(', ')}` : 'Todo mundo já opinou — pode mandar pro setlist.'}
           </p>
         )}
 
@@ -345,9 +355,9 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         )}
 
-        {isAdmin && sugestao.status === 'aberta' && (
+        {sugestao.status === 'aberta' && (
           <div className="admin-controls">
-            <p className="section-label">Decisão final</p>
+            <p className="section-label">Mandar pro setlist</p>
             <div style={{ display: 'flex', gap: 10 }}>
               <button className="btn-approve" onClick={approve} disabled={saving}>
                 {saving ? 'Enviando...' : '➤ Enviar pro setlist'}
@@ -832,7 +842,7 @@ export default function SugestoesPage() {
         </button>
       </div>
 
-      <p className="filter-hint">Você sugere, a banda opina. Quando todo mundo opinar sem veto, o admin manda pro setlist.</p>
+      <p className="filter-hint">Você sugere, a banda opina. Quando fechar sem veto, qualquer um manda pro setlist.</p>
 
       {/* Ordenação */}
       <div className="sort-bar">

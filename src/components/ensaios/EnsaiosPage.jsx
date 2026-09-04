@@ -7,6 +7,7 @@ import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { formatData, jaPassou } from '../../utils/data'
 import { acharCifra } from '../../utils/score'
+import { blocosDe, musicasDoEvento, nomeDoBloco } from '../../utils/blocos'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
@@ -34,7 +35,7 @@ function jaComecou(ts) {
 
 // Primeiras músicas do evento, pra dar o tom do que vai ser ensaiado sem
 // precisar abrir os detalhes
-function SetlistPreview({ setlist, limite = 5 }) {
+function SetlistPreview({ setlist, blocos = 1, limite = 5 }) {
   const lista = setlist || []
   if (!lista.length) return null
   const restantes = lista.length - limite
@@ -49,7 +50,10 @@ function SetlistPreview({ setlist, limite = 5 }) {
         ))}
       </ol>
       {restantes > 0 && (
-        <p className="setlist-preview-more">+ {restantes} {restantes === 1 ? 'música' : 'músicas'}</p>
+        <p className="setlist-preview-more">
+          + {restantes} {restantes === 1 ? 'música' : 'músicas'}
+          {blocos > 1 && ` · ${blocos} blocos`}
+        </p>
       )}
     </div>
   )
@@ -162,7 +166,9 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const passado = jaPassou(ensaio.date)
 
   const hasNotes   = !!ensaio.notes
-  const hasSetlist = ensaio.setlist?.length > 0
+  const blocos = blocosDe(ensaio)
+  const musicas = musicasDoEvento(ensaio)
+  const hasSetlist = musicas.length > 0
 
   return (
     <div className={`ensaio-row ${open ? 'open' : ''} ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
@@ -183,7 +189,11 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             <div style={{ textAlign: 'right' }}>
               <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
               {vao.length > 0 && <p className="next-ensaio-members presenca-vai">✓ {vao.length} confirmados</p>}
-              {hasSetlist && <p className="next-ensaio-members">🎵 {ensaio.setlist.length} músicas</p>}
+              {hasSetlist && (
+                <p className="next-ensaio-members">
+                  🎵 {musicas.length} músicas{blocos.length > 1 && ` · ${blocos.length} blocos`}
+                </p>
+              )}
             </div>
           </>
         ) : (
@@ -194,7 +204,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
             </div>
             <div className="ensaio-row-right">
-              {hasSetlist && <span className="ensaio-row-members">🎵 {ensaio.setlist.length}</span>}
+              {hasSetlist && <span className="ensaio-row-members">🎵 {musicas.length}</span>}
               {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
               {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
               {colapsavel && <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>}
@@ -216,63 +226,76 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
           {hasSetlist && compacto && (
             <div className="pauta-block">
-              <p className="section-label">Músicas ({ensaio.setlist.length})</p>
-              <SetlistPreview setlist={ensaio.setlist} limite={3} />
+              <p className="section-label">Músicas ({musicas.length})</p>
+              <SetlistPreview setlist={musicas} blocos={blocos.length} limite={3} />
             </div>
           )}
 
           {hasSetlist && !compacto && (
             <div className="pauta-block">
               <p className="section-label">
-                Músicas ({ensaio.setlist.length})
+                Músicas ({musicas.length}){blocos.length > 1 && ` · ${blocos.length} blocos`}
                 {podeMarcar && <span className="filter-hint" style={{ margin: 0, textTransform: 'none', letterSpacing: 0 }}> · marque as que rolaram</span>}
               </p>
-              <ol className="event-songs-list">
-                {ensaio.setlist.map((s, i) => {
-                  const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
-                  const temCifra = acharCifra(cifras, s.title, s.artist)
-                  const q = encodeURIComponent(s.title)
-                  const texto = (
-                    <span>
-                      <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
-                      {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                      {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                      {songs[s.id]?.tom && <span className="event-setlist-bpm"> · ♪ {songs[s.id].tom}</span>}
-                      {temCifra && (
-                        <a
-                          href={`#/cifras?q=${q}`}
-                          className="mini-chip"
-                          style={{ marginLeft: 6 }}
-                          title="Ver cifra"
-                          onClick={(e) => e.stopPropagation()}
-                        >
-                          📄
-                        </a>
-                      )}
-                      {nivel && (
-                        <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
-                          {nivel.label}
-                        </span>
-                      )}
-                    </span>
-                  )
+              {(() => {
+                let offset = 0
+                return blocos.map((b, bi) => {
+                  const inicio = offset
+                  offset += (b.musicas || []).length
                   return (
-                    <li key={s.id || i}>
-                      {podeMarcar ? (
-                        <label className="song-ensaiada">
-                          <input
-                            type="checkbox"
-                            checked={ensaiadas.includes(s.id)}
-                            onChange={() => toggleEnsaiada(s.id)}
-                            title="Marcar como ensaiada neste evento"
-                          />
-                          {texto}
-                        </label>
-                      ) : texto}
-                    </li>
+                    <div key={b.id}>
+                      <p className="bloco-titulo">{nomeDoBloco(b, bi)} <span className="count">{(b.musicas || []).length}</span></p>
+                      <ol className="event-songs-list" start={inicio + 1}>
+                        {(b.musicas || []).map((s, i) => {
+                          const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
+                          const temCifra = acharCifra(cifras, s.title, s.artist)
+                          const q = encodeURIComponent(s.title)
+                          const texto = (
+                            <span>
+                              <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
+                              {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                              {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                              {songs[s.id]?.tom && <span className="event-setlist-bpm"> · ♪ {songs[s.id].tom}</span>}
+                              {songs[s.id]?.cantor && <span className="event-setlist-bpm"> · 🎤 {songs[s.id].cantor}</span>}
+                              {temCifra && (
+                                <a
+                                  href={`#/cifras?q=${q}`}
+                                  className="mini-chip"
+                                  style={{ marginLeft: 6 }}
+                                  title="Ver cifra"
+                                  onClick={(e) => e.stopPropagation()}
+                                >
+                                  📄
+                                </a>
+                              )}
+                              {nivel && (
+                                <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
+                                  {nivel.label}
+                                </span>
+                              )}
+                            </span>
+                          )
+                          return (
+                            <li key={s.id || i}>
+                              {podeMarcar ? (
+                                <label className="song-ensaiada">
+                                  <input
+                                    type="checkbox"
+                                    checked={ensaiadas.includes(s.id)}
+                                    onChange={() => toggleEnsaiada(s.id)}
+                                    title="Marcar como ensaiada neste evento"
+                                  />
+                                  {texto}
+                                </label>
+                              ) : texto}
+                            </li>
+                          )
+                        })}
+                      </ol>
+                    </div>
                   )
-                })}
-              </ol>
+                })
+              })()}
             </div>
           )}
 
@@ -305,7 +328,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
           )}
 
           {tocando && (
-            <SetPlayer setlist={ensaio.setlist} />
+            <SetPlayer setlist={musicas} />
           )}
 
           <div className="ensaio-row-actions">

@@ -7,7 +7,7 @@ import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 export default function AddSongModal({ onClose, totalSongs, acervo }) {
   useFecharComVoltar(onClose)
-  const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', bpm: '', videoUrl: '' })
+  const [form, setForm] = useState({ title: '', artist: '', notes: '', tom: '', cantor: '', bpm: '', videoUrl: '' })
   const [tagsText, setTagsText] = useState('')
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
@@ -35,6 +35,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
     addDoc(collection(db, 'songs'), {
       ...form,
       tom: form.tom.trim(),
+      cantor: form.cantor.trim(),
       bpm: form.bpm ? Number(form.bpm) : null,
       tags: tagsText.split(',').map((t) => t.trim()).filter(Boolean),
       dominio,
@@ -76,6 +77,9 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
               <input name="bpm" type="number" min="20" max="300" value={form.bpm} onChange={handleChange} placeholder="Ex: 120" />
             </label>
           </div>
+          <label>Quem canta <span style={{ opacity: 0.6 }}>(opcional)</span>
+            <input name="cantor" value={form.cantor} onChange={handleChange} placeholder="Ex: Marcos, Márcio/Marcos" />
+          </label>
           <label>
             Link do YouTube
             <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." />

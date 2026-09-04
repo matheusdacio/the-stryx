@@ -1,10 +1,11 @@
-import { useState, useEffect, useCallback, useRef } from 'react'
+import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
 import { collection, doc, onSnapshot } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { acharCifra } from '../../utils/score'
 import { formatData } from '../../utils/data'
+import { musicasComBloco } from '../../utils/blocos'
 
 export default function PerformanceMode({ event, onClose }) {
   useFecharComVoltar(onClose)
@@ -60,11 +61,11 @@ export default function PerformanceMode({ event, onClose }) {
   // O repertório fica congelado no que era quando o palco abriu (mudar a
   // lista sob os pés trocaria a música atual no meio da execução) — mas
   // se o líder editar o evento durante o show, um aviso oferece atualizar
-  const [setlistAtivo, setSetlistAtivo] = useState(event.setlist || [])
+  const [setlistAtivo, setSetlistAtivo] = useState(musicasComBloco(event))
   const [setlistAoVivo, setSetlistAoVivo] = useState(null)
   useEffect(() => {
     return onSnapshot(doc(db, 'ensaios', event.id), (snap) => {
-      if (snap.exists()) setSetlistAoVivo(snap.data().setlist || [])
+      if (snap.exists()) setSetlistAoVivo(musicasComBloco({ id: snap.id, ...snap.data() }))
     })
   }, [event.id])
   const repertorioMudou = setlistAoVivo &&
@@ -77,6 +78,7 @@ export default function PerformanceMode({ event, onClose }) {
   }
 
   const setlist = setlistAtivo.map((s) => ({ ...s, ...(repertorio?.[s.id] || {}) }))
+  const multiBlocos = new Set(setlist.map((s) => s.blocoId)).size > 1
 
   // idx restaurado do sessionStorage pode não caber mais (o repertório
   // encolheu desde a última vez) — nunca deixa current vir undefined
@@ -177,16 +179,21 @@ export default function PerformanceMode({ event, onClose }) {
         <div className="perf-lista-overlay" onClick={() => setMostrarLista(false)}>
           <ol className="perf-lista">
             {setlist.map((s, i) => (
-              <li key={s.id || i}>
-                <button
-                  className={`perf-lista-item ${i === idxAtual ? 'active' : ''}`}
-                  onClick={(e) => { e.stopPropagation(); setIdx(i); setMostrarLista(false) }}
-                >
-                  <span className="perf-lista-pos">{i + 1}</span>
-                  {s.title}
-                  {s.artist && <span className="perf-next-artist"> — {s.artist}</span>}
-                </button>
-              </li>
+              <Fragment key={s.id || i}>
+                {multiBlocos && (i === 0 || s.blocoId !== setlist[i - 1].blocoId) && (
+                  <li className="perf-lista-bloco">{s.blocoNome}</li>
+                )}
+                <li>
+                  <button
+                    className={`perf-lista-item ${i === idxAtual ? 'active' : ''}`}
+                    onClick={(e) => { e.stopPropagation(); setIdx(i); setMostrarLista(false) }}
+                  >
+                    <span className="perf-lista-pos">{i + 1}</span>
+                    {s.title}
+                    {s.artist && <span className="perf-next-artist"> — {s.artist}</span>}
+                  </button>
+                </li>
+              </Fragment>
             ))}
           </ol>
         </div>
@@ -194,9 +201,10 @@ export default function PerformanceMode({ event, onClose }) {
 
       {/* Música atual */}
       <div className="perf-current" onTouchStart={onTouchStart} onTouchEnd={onTouchEnd}>
-        <p className="perf-now-label">Tocando agora</p>
+        <p className="perf-now-label">Tocando agora{multiBlocos && ` · ${current.blocoNome}`}</p>
         <h1 className="perf-title">{current.title}</h1>
         {current.artist && <p className="perf-artist">{current.artist}</p>}
+        {current.cantor && <p className="perf-cantor">🎤 {current.cantor}</p>}
         <div className="perf-chips">
           {current.tom && <span className="perf-tom">♪ {current.tom}</span>}
           {current.bpm && (
@@ -229,12 +237,15 @@ export default function PerformanceMode({ event, onClose }) {
       <div className="perf-next">
         {next ? (
           <>
-            <p className="perf-next-label">Próxima</p>
+            <p className="perf-next-label">
+              {next.blocoId !== current.blocoId ? `Próxima · abre o ${next.blocoNome}` : 'Próxima'}
+            </p>
             <p className="perf-next-title">
               {next.title}
               {next.artist && <span className="perf-next-artist"> — {next.artist}</span>}
               {next.tom && <span className="perf-next-bpm"> · ♪ {next.tom}</span>}
               {next.bpm && <span className="perf-next-bpm"> · {next.bpm} BPM</span>}
+              {next.cantor && <span className="perf-next-bpm"> · 🎤 {next.cantor}</span>}
             </p>
           </>
         ) : (

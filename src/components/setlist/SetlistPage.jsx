@@ -11,6 +11,7 @@ import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { calcDifficulty, fatorFacilidade } from '../../utils/dificuldade'
+import { musicasDoEvento } from '../../utils/blocos'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
 
@@ -140,8 +141,8 @@ export default function SetlistPage() {
   const futuros = ensaiosOrdenados.filter((e) => diaDe(e.date) > hoje)
   const ultimoEnsaio = passados[passados.length - 1] || null
   const proximoEnsaio = futuros[0] || null
-  const idsUltimoEnsaio = new Set((ultimoEnsaio?.setlist || []).map((s) => s.id))
-  const idsProximoEnsaio = new Set((proximoEnsaio?.setlist || []).map((s) => s.id))
+  const idsUltimoEnsaio = new Set(musicasDoEvento(ultimoEnsaio).map((s) => s.id))
+  const idsProximoEnsaio = new Set(musicasDoEvento(proximoEnsaio).map((s) => s.id))
 
   const notaDe = notasPorMusica(sugestoes)
   const opinioesDe = opinioesPorMusica(sugestoes)

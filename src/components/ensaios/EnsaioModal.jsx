@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query } from 'firebase/firestore'
+import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query, deleteField } from 'firebase/firestore'
 import {
   DndContext, closestCenter,
   PointerSensor, TouchSensor, useSensor, useSensors,
@@ -10,6 +10,7 @@ import { db } from '../../firebase/config'
 import { menosDominadas, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { matchesSearch } from '../../utils/search'
 import { formatData } from '../../utils/data'
+import { blocosDe, novoBlocoId, nomeDoBloco } from '../../utils/blocos'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 function toInputDate(ts) {
@@ -68,13 +69,23 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
       ? (ensaio?.pauta || []).map((i) => ({ ...i, done: false }))
       : ensaio?.pauta || []
   )
-  const [setlist, setSetlist] = useState(ensaio?.setlist || [])
+  // Evento → bloco → música. Cópia ganha ids novos; evento antigo (só
+  // setlist) ganha id de verdade no lugar de 'legado'
+  const [blocos, setBlocos] = useState(() => blocosDe(ensaio).map((b) => ({
+    ...b,
+    id: copiando || b.id === 'legado' ? novoBlocoId() : b.id,
+    musicas: [...(b.musicas || [])],
+  })))
+  // Pra onde vai a próxima música adicionada — padrão: o último bloco
+  const [blocoDestino, setBlocoDestino] = useState(() => blocos.at(-1)?.id || null)
   const [newItem, setNewItem] = useState('')
   const [songSearch, setSongSearch] = useState('')
   const [quantasCruas, setQuantasCruas] = useState(5)
   const [avisoCruas, setAvisoCruas] = useState('')
   const [saving, setSaving] = useState(false)
   const [mexeu, setMexeu] = useState(false)
+
+  const todasMusicas = blocos.flatMap((b) => b.musicas)
 
   // Pointer: arrasta depois de mover 6px (clique/toque normal continua
   // funcionando). Touch: segurar 250ms antes de arrastar (rolar a página
@@ -112,60 +123,125 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
 
   const removePauta = (i) => { setMexeu(true); setPauta(pauta.filter((_, idx) => idx !== i)) }
 
-  // ── Setlist do evento ───────────────────────────────────────────────
+  // ── Blocos do evento ─────────────────────────────────────────────────
+  // Garante um bloco de destino, criando um vazio se não houver nenhum —
+  // devolve blocos/destino já atualizados pra usar na mesma chamada
+  const comDestino = () => {
+    if (blocos.length && blocoDestino && blocos.some((b) => b.id === blocoDestino)) {
+      return { bs: blocos, destino: blocoDestino }
+    }
+    if (blocos.length) return { bs: blocos, destino: blocos.at(-1).id }
+    const b = { id: novoBlocoId(), nome: '', musicas: [] }
+    return { bs: [b], destino: b.id }
+  }
+
   // Puxa pro ensaio o que a banda marcou como menos dominado. Já ignora o
   // que está no evento e quem ainda não recebeu nenhum voto
   const trazerCruas = () => {
-    const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, setlist.map((s) => s.id), uidsAtivos)
+    const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, todasMusicas.map((s) => s.id), uidsAtivos)
     if (!escolhidas.length) {
       setAvisoCruas('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
       return
     }
     setMexeu(true)
-    setSetlist([...setlist, ...escolhidas.map((song) => ({
+    const { bs, destino } = comDestino()
+    const novas = escolhidas.map((song) => ({
       id: song.id,
       title: song.title,
       artist: song.artist || '',
       bpm: song.bpm || null,
-    }))])
+    }))
+    setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, ...novas] } : b)))
+    setBlocoDestino(destino)
     setAvisoCruas(`${escolhidas.length} ${escolhidas.length === 1 ? 'música adicionada' : 'músicas adicionadas'}.`)
   }
 
   const addSong = (song) => {
-    if (setlist.some((s) => s.id === song.id)) return
+    if (todasMusicas.some((s) => s.id === song.id)) return
     setMexeu(true)
-    setSetlist([...setlist, {
-      id: song.id,
-      title: song.title,
-      artist: song.artist || '',
-      bpm: song.bpm || null,
-    }])
+    const { bs, destino } = comDestino()
+    const nova = { id: song.id, title: song.title, artist: song.artist || '', bpm: song.bpm || null }
+    setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, nova] } : b)))
+    setBlocoDestino(destino)
   }
 
-  const removeSong = (i) => { setMexeu(true); setSetlist(setlist.filter((_, idx) => idx !== i)) }
+  const removeSong = (blocoId, i) => {
+    setMexeu(true)
+    setBlocos(blocos.map((b) => (b.id === blocoId ? { ...b, musicas: b.musicas.filter((_, idx) => idx !== i) } : b)))
+  }
 
-  const moveSong = (i, dir) => {
+  // ▲▼ atravessam a fronteira do bloco: ▲ na primeira música de um bloco
+  // que não é o primeiro move ela pro fim do bloco anterior; ▼ na última
+  // música de um bloco que não é o último move pro começo do seguinte
+  const moveSong = (blocoId, i, dir) => {
+    const bi = blocos.findIndex((b) => b.id === blocoId)
+    if (bi < 0) return
+    const bloco = blocos[bi]
     const j = i + dir
-    if (j < 0 || j >= setlist.length) return
     setMexeu(true)
-    const next = [...setlist]
-    ;[next[i], next[j]] = [next[j], next[i]]
-    setSetlist(next)
+    if (j >= 0 && j < bloco.musicas.length) {
+      const musicas = [...bloco.musicas]
+      ;[musicas[i], musicas[j]] = [musicas[j], musicas[i]]
+      setBlocos(blocos.map((b, idx) => (idx === bi ? { ...b, musicas } : b)))
+      return
+    }
+    const alvoIndex = bi + dir
+    if (alvoIndex < 0 || alvoIndex >= blocos.length) return
+    const musica = bloco.musicas[i]
+    setBlocos(blocos.map((b, idx) => {
+      if (idx === bi) return { ...b, musicas: b.musicas.filter((_, k) => k !== i) }
+      if (idx === alvoIndex) return { ...b, musicas: dir === -1 ? [...b.musicas, musica] : [musica, ...b.musicas] }
+      return b
+    }))
   }
 
-  // Arrastar e soltar (toque ou mouse) — dnd-kit, ids são os da música
-  const handleDragEnd = ({ active, over }) => {
+  // Arrastar e soltar (toque ou mouse) — um contexto por bloco, só reordena
+  // dentro dele mesmo
+  const handleDragEnd = (blocoId) => ({ active, over }) => {
     if (!over || active.id === over.id) return
-    const oldIndex = setlist.findIndex((s) => s.id === active.id)
-    const newIndex = setlist.findIndex((s) => s.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
     setMexeu(true)
-    setSetlist(arrayMove(setlist, oldIndex, newIndex))
+    setBlocos(blocos.map((b) => {
+      if (b.id !== blocoId) return b
+      const oldIndex = b.musicas.findIndex((s) => s.id === active.id)
+      const newIndex = b.musicas.findIndex((s) => s.id === over.id)
+      if (oldIndex < 0 || newIndex < 0) return b
+      return { ...b, musicas: arrayMove(b.musicas, oldIndex, newIndex) }
+    }))
+  }
+
+  const moverBloco = (i, dir) => {
+    const j = i + dir
+    if (j < 0 || j >= blocos.length) return
+    setMexeu(true)
+    const next = [...blocos]
+    ;[next[i], next[j]] = [next[j], next[i]]
+    setBlocos(next)
+  }
+
+  const removerBloco = (i) => {
+    const b = blocos[i]
+    if (b.musicas.length > 0 && !confirm(`Apagar "${nomeDoBloco(b, i)}" com ${b.musicas.length} músicas? Elas saem do evento.`)) return
+    setMexeu(true)
+    const next = blocos.filter((_, idx) => idx !== i)
+    setBlocos(next)
+    if (blocoDestino === b.id) setBlocoDestino(next.at(-1)?.id || null)
+  }
+
+  const renomearBloco = (i, nome) => {
+    setMexeu(true)
+    setBlocos(blocos.map((b, idx) => (idx === i ? { ...b, nome } : b)))
+  }
+
+  const novoBloco = () => {
+    setMexeu(true)
+    const b = { id: novoBlocoId(), nome: '', musicas: [] }
+    setBlocos([...blocos, b])
+    setBlocoDestino(b.id)
   }
 
   const searchResults = songSearch.trim()
     ? allSongs.filter((s) =>
-        !setlist.some((x) => x.id === s.id) &&
+        !todasMusicas.some((x) => x.id === s.id) &&
         matchesSearch(songSearch, s.title, s.artist)
       ).slice(0, 10)
     : []
@@ -177,7 +253,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
     const data = {
       ...form,
       pauta,
-      setlist,
+      blocos: blocos.map((b) => ({ id: b.id, nome: (b.nome || '').trim(), musicas: b.musicas })),
       date: Timestamp.fromDate(new Date(form.date + 'T12:00:00')),
     }
     // Fecha na hora — sem sinal, esperar o await deixava o modal preso e,
@@ -185,7 +261,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
     const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
     if (editando) {
       // Só grava o que de fato mudou em relação ao que estava aberto — quem
-      // só trocou o local não regrava pauta/setlist por cima de uma edição
+      // só trocou o local não regrava pauta/blocos por cima de uma edição
       // simultânea de outro membro (ensaiadas/presenca nunca entram aqui,
       // já que nem fazem parte do form)
       const mudou = {}
@@ -195,7 +271,13 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
       if (form.notes !== (ensaio.notes || '')) mudou.notes = data.notes
       if (form.date !== toInputDate(ensaio.date)) mudou.date = data.date
       if (JSON.stringify(pauta) !== JSON.stringify(ensaio.pauta || [])) mudou.pauta = data.pauta
-      if (JSON.stringify(setlist) !== JSON.stringify(ensaio.setlist || [])) mudou.setlist = data.setlist
+      // resumo ignora o id do bloco (o 'legado' sempre diferiria do novo id)
+      const resumo = (bs) => JSON.stringify(bs.map((b) => [b.nome || '', (b.musicas || []).map((m) => m.id)]))
+      const blocosMudaram = resumo(blocos) !== resumo(blocosDe(ensaio))
+      // Evento antigo (só setlist): grava blocos mesmo sem mudança de
+      // conteúdo, pra completar a migração junto com o apagar do setlist
+      if (blocosMudaram || ensaio.setlist) mudou.blocos = data.blocos
+      if (ensaio.setlist) mudou.setlist = deleteField()
 
       if (Object.keys(mudou).length) {
         updateDoc(doc(db, 'ensaios', ensaio.id), mudou).catch(erro)
@@ -262,10 +344,11 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             {form.status === 'cancelado' ? '↩ Reativar evento' : '🚫 Marcar como cancelado'}
           </button>
 
-          {/* Setlist do evento */}
+          {/* Músicas do evento, organizadas em blocos */}
           <div className="form-group">
             <p className="section-label">
-              Músicas do evento {setlist.length > 0 && `(${setlist.length})`}
+              Músicas do evento {todasMusicas.length > 0 && `(${todasMusicas.length})`}
+              {blocos.length > 1 && ` · ${blocos.length} blocos`}
             </p>
             <input
               value={songSearch}
@@ -280,6 +363,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                   return (
                     <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
+                      {s.cantor && <span className="mini-chip" style={{ marginLeft: 6 }}>🎤 {s.cantor}</span>}
                       {nivel && (
                         <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
@@ -290,6 +374,16 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                 })}
               </div>
             )}
+
+            {blocos.length > 1 && (
+              <label className="bloco-destino">
+                Adicionar em
+                <select value={blocoDestino || ''} onChange={(e) => setBlocoDestino(e.target.value)}>
+                  {blocos.map((b, i) => <option key={b.id} value={b.id}>{nomeDoBloco(b, i)}</option>)}
+                </select>
+              </label>
+            )}
+
             <div className="trazer-cruas">
               <span>Trazer as</span>
               <input
@@ -305,39 +399,80 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
               {avisoCruas && <span className="trazer-cruas-aviso">{avisoCruas}</span>}
             </div>
 
-            {setlist.length > 0 && (
-              <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
-                <SortableContext items={setlist.map((s) => s.id)} strategy={verticalListSortingStrategy}>
-                  <div className="event-setlist">
-                    {setlist.map((s, i) => {
-                      const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
-                      const tom = allSongs.find((x) => x.id === s.id)?.tom
-                      return (
-                      <SortableSetlistItem key={s.id} id={s.id}>
-                        <span className="event-setlist-pos">{i + 1}</span>
-                        <span className="event-setlist-title">
-                          {s.title}
-                          {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                          {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                          {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
-                          {nivel && (
-                            <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
-                              {nivel.label}
-                            </span>
-                          )}
-                        </span>
-                        <span className="event-setlist-actions">
-                          <button type="button" className="btn-order" aria-label="Mover pra cima" title="Mover pra cima" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
-                          <button type="button" className="btn-order" aria-label="Mover pra baixo" title="Mover pra baixo" onClick={() => moveSong(i, 1)} disabled={i === setlist.length - 1}>▼</button>
-                          <button type="button" className="btn-remove" aria-label={`Tirar ${s.title} do evento`} title="Tirar do evento" onClick={() => removeSong(i)}>✕</button>
-                        </span>
-                      </SortableSetlistItem>
-                      )
-                    })}
+            {blocos.map((b, bi) => {
+              const offset = blocos.slice(0, bi).reduce((acc, x) => acc + x.musicas.length, 0)
+              return (
+                <div key={b.id} className={`bloco-edit ${b.id === blocoDestino ? 'destino' : ''}`}>
+                  <div className="bloco-edit-header" onClick={() => setBlocoDestino(b.id)}>
+                    <input
+                      value={b.nome}
+                      placeholder={`Bloco ${bi + 1}`}
+                      aria-label="Nome do bloco"
+                      onChange={(e) => renomearBloco(bi, e.target.value)}
+                    />
+                    <span className="count">{b.musicas.length}</span>
+                    <button
+                      type="button" className="btn-order" aria-label="Mover bloco pra cima" title="Mover bloco pra cima"
+                      onClick={(e) => { e.stopPropagation(); moverBloco(bi, -1) }} disabled={bi === 0}
+                    >▲</button>
+                    <button
+                      type="button" className="btn-order" aria-label="Mover bloco pra baixo" title="Mover bloco pra baixo"
+                      onClick={(e) => { e.stopPropagation(); moverBloco(bi, 1) }} disabled={bi === blocos.length - 1}
+                    >▼</button>
+                    <button
+                      type="button" className="btn-remove" aria-label="Apagar bloco" title="Apagar bloco"
+                      onClick={(e) => { e.stopPropagation(); removerBloco(bi) }}
+                    >✕</button>
                   </div>
-                </SortableContext>
-              </DndContext>
-            )}
+
+                  {b.musicas.length === 0 ? (
+                    <p className="filter-hint" style={{ margin: '6px 0 0' }}>Nenhuma música ainda — busque acima ou traga as menos dominadas.</p>
+                  ) : (
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(b.id)}>
+                      <SortableContext items={b.musicas.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                        <div className="event-setlist">
+                          {b.musicas.map((s, i) => {
+                            const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
+                            const tom = allSongs.find((x) => x.id === s.id)?.tom
+                            const cantor = allSongs.find((x) => x.id === s.id)?.cantor
+                            return (
+                              <SortableSetlistItem key={s.id} id={s.id}>
+                                <span className="event-setlist-pos">{offset + i + 1}</span>
+                                <span className="event-setlist-title">
+                                  {s.title}
+                                  {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                                  {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                                  {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
+                                  {cantor && <span className="event-setlist-bpm"> · 🎤 {cantor}</span>}
+                                  {nivel && (
+                                    <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
+                                      {nivel.label}
+                                    </span>
+                                  )}
+                                </span>
+                                <span className="event-setlist-actions">
+                                  <button
+                                    type="button" className="btn-order" aria-label="Mover pra cima" title="Mover pra cima"
+                                    onClick={() => moveSong(b.id, i, -1)} disabled={bi === 0 && i === 0}
+                                  >▲</button>
+                                  <button
+                                    type="button" className="btn-order" aria-label="Mover pra baixo" title="Mover pra baixo"
+                                    onClick={() => moveSong(b.id, i, 1)} disabled={bi === blocos.length - 1 && i === b.musicas.length - 1}
+                                  >▼</button>
+                                  <button type="button" className="btn-remove" aria-label={`Tirar ${s.title} do evento`} title="Tirar do evento" onClick={() => removeSong(b.id, i)}>✕</button>
+                                </span>
+                              </SortableSetlistItem>
+                            )
+                          })}
+                        </div>
+                      </SortableContext>
+                    </DndContext>
+                  )}
+                </div>
+              )
+            })}
+
+            <button type="button" className="btn-secondary" onClick={novoBloco}>+ Novo bloco</button>
           </div>
 
           <div className="form-group">

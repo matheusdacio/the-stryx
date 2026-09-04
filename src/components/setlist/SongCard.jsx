@@ -35,6 +35,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   const [editingMeta, setEditingMeta] = useState(false)
   const [notes, setNotes] = useState(song.notes || '')
   const [tom, setTom] = useState(song.tom || '')
+  const [cantor, setCantor] = useState(song.cantor || '')
   const [bpm, setBpm] = useState(song.bpm || '')
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
@@ -119,6 +120,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   const saveMeta = () => {
     updateDoc(ref, {
       tom: tom.trim(),
+      cantor: cantor.trim(),
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
       tags,
@@ -132,6 +134,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   // song (o snapshot mais recente) toda vez que o editor abre.
   const openMeta = () => {
     setTom(song.tom || '')
+    setCantor(song.cantor || '')
     setBpm(song.bpm || '')
     setVideoUrl(song.videoUrl || '')
     setTags(song.tags || [])
@@ -172,6 +175,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
             ...(song.notes ? { notes: song.notes } : {}),
             ...(song.videoUrl ? { videoUrl: song.videoUrl } : {}),
             ...(song.tom ? { tom: song.tom } : {}),
+            ...(song.cantor ? { cantor: song.cantor } : {}),
             ...(Object.keys(song.dominio || {}).length ? { dominio: song.dominio } : {}),
             bpm: song.bpm || null,
             tags: song.tags || [],
@@ -192,6 +196,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           description: '',
           notes: song.notes || '',
           tom: song.tom || '',
+          cantor: song.cantor || '',
           dominio: song.dominio || {},
           bpm: song.bpm || null,
           tags: song.tags || [],
@@ -267,6 +272,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           {nota && <NotaChip nota={nota} compacto />}
           {diff && <span className="diff-chip" style={{ color: diff.color, borderColor: diff.color }}>🎯 {diff.label}</span>}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
+          {song.cantor && <span className="mini-chip">🎤 {song.cantor}</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
           {ehNovo(song.createdAt) && <span className="mini-chip" title="Adicionada nos últimos 7 dias">🆕</span>}
@@ -421,6 +427,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           <div className="form-row">
             <label>Tom
               <input value={tom} onChange={(e) => setTom(e.target.value)} placeholder="Ex: Sol, Am" />
+            </label>
+            <label>Quem canta
+              <input value={cantor} onChange={(e) => setCantor(e.target.value)} placeholder="Ex: Marcos, Márcio/Marcos" />
             </label>
             <label>BPM
               <input type="number" min="20" max="300" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="Ex: 120" />

@@ -4,6 +4,7 @@ import { namesMatch } from './votes'
 import { chaveMusica } from './score'
 import { DOMINIOS } from './dominio'
 import { PRESENCAS } from './presenca'
+import { blocosDe } from './blocos'
 
 // dd/mm · local — sem isso o relatório apontava eventos pelo id cru do
 // Firestore, e o admin não tinha como saber qual abrir
@@ -145,6 +146,25 @@ export async function verificarIntegridade() {
     aprovadasForaDoSetlist.map((s) => `${s.title} — ${s.artist || ''}`),
     'Nenhuma'
   )
+
+  // ── Blocos ──
+  const eventosSemBloco = eventos.filter((e) => e.setlist?.length && !Array.isArray(e.blocos))
+  addInfo(
+    'Eventos com músicas fora de bloco',
+    eventosSemBloco.map((e) => `${formatEvento(e)} — rode "Blocos: migrar músicas soltas"`),
+    'Nenhum'
+  )
+
+  const idsMusicas = new Set(musicas.map((s) => s.id))
+  const musicasSumidas = []
+  eventos.forEach((e) => {
+    blocosDe(e).forEach((b) => {
+      (b.musicas || []).forEach((m) => {
+        if (!idsMusicas.has(m.id)) musicasSumidas.push(`${formatEvento(e)}: ${m.title}`)
+      })
+    })
+  })
+  add('Músicas de evento que ainda existem no setlist', musicasSumidas, 'Nenhuma música de evento sumiu do setlist')
 
   // ── Votos importados ainda por fundir ──
   const importPendentes = sugestoes.filter((sug) =>
