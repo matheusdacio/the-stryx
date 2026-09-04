@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
@@ -393,10 +393,17 @@ export default function EnsaiosPage() {
     if (confirm(`Apagar o evento de ${formatData(e.date)} de vez? Músicas, pauta e presenças vão junto. Se ele só não vai acontecer, use Editar › Marcar como cancelado.`)) deleteDoc(doc(db, 'ensaios', e.id))
   }
 
-  const togglePauta = async (ensaio, index) => {
-    const pauta = [...(ensaio.pauta || [])]
-    pauta[index] = { ...pauta[index], done: !pauta[index].done }
-    await updateDoc(doc(db, 'ensaios', ensaio.id), { pauta })
+  // Itens da pauta não têm id — regravar o array inteiro (updateDoc) fazia
+  // duas pessoas marcando ao mesmo tempo se pisarem. Transação lê o estado
+  // mais recente antes de escrever, então o segundo toque não perde o primeiro
+  const togglePauta = (ensaio, index) => {
+    const ref = doc(db, 'ensaios', ensaio.id)
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref)
+      const pauta = [...(snap.data().pauta || [])]
+      pauta[index] = { ...pauta[index], done: !pauta[index].done }
+      tx.update(ref, { pauta })
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
   }
 
   // Separa por categoria
