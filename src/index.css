@@ -702,6 +702,7 @@ button { font-family: inherit; }
 .ensaio-row-left { display: flex; align-items: center; gap: 8px; min-width: 0; flex-wrap: wrap; }
 .ensaio-row-date { font-weight: 700; font-size: 0.88rem; white-space: nowrap; }
 .ensaio-row-loc { font-size: 0.82rem; color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ensaio-row-hora { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }
 .ensaio-row-right { display: flex; align-items: center; gap: 10px; flex-shrink: 0; }
 .ensaio-row-members { font-size: 0.78rem; color: var(--text-muted); }
 .ensaio-row-arrow { font-size: 1.2rem; color: var(--text-muted); transition: transform 0.2s; display: inline-block; }

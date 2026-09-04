@@ -5,22 +5,22 @@ import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { formatData, jaPassou } from '../../utils/data'
+import { formatData, jaPassou, diaDe, formatHora, formatHorario } from '../../utils/data'
 import { acharCifra } from '../../utils/score'
 import { blocosDe, musicasDoEvento, nomeDoBloco } from '../../utils/blocos'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
 
-function relativeLabel(ts) {
-  if (!ts) return ''
-  const d   = ts.toDate ? ts.toDate() : new Date(ts)
-  const now  = new Date()
-  const days = Math.round((d - now) / 86400000)
-  if (days === 0) return 'Hoje!'
-  if (days === 1) return 'Amanhã'
-  if (days > 0)  return `em ${days} dias`
-  return `${Math.abs(days)} dias atrás`
+// Por dia, não por instante — às 22h da véspera a data ao meio-dia (ver
+// EnsaioModal) já daria "Hoje!" num cálculo por diferença de ms
+function relativeLabel(ensaio) {
+  if (!ensaio?.date) return ''
+  const dias = Math.round((diaDe(ensaio.date) - diaDe(new Date())) / 86400000)
+  if (dias === 0) return ensaio.horaInicio ? `Hoje, ${formatHora(ensaio.horaInicio)}` : 'Hoje!'
+  if (dias === 1) return 'Amanhã'
+  if (dias > 0)  return `em ${dias} dias`
+  return `${Math.abs(dias)} dias atrás`
 }
 
 // Marcar o que foi ensaiado só faz sentido do dia do evento em diante.
@@ -224,6 +224,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const blocos = blocosDe(ensaio)
   const musicas = musicasDoEvento(ensaio)
   const hasSetlist = musicas.length > 0
+  const horario = formatHorario(ensaio.horaInicio, ensaio.horaFim)
 
   return (
     <div className={`ensaio-row ${open ? 'open' : ''} ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
@@ -239,10 +240,11 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                 {ensaio.type === 'apresentacao' ? '🎤 Próxima apresentação' : '🎸 Próximo ensaio'}
               </p>
               <p className="next-ensaio-date">{formatData(ensaio.date)}</p>
+              {horario && <p className="next-ensaio-loc">🕘 {horario}</p>}
               {ensaio.location && <p className="next-ensaio-loc">📍 {ensaio.location}</p>}
             </div>
             <div style={{ textAlign: 'right' }}>
-              <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
+              <span className="next-ensaio-relative">{relativeLabel(ensaio)}</span>
               {(vao.length + parte.length) > 0 && (
                 <p className="next-ensaio-members presenca-vai">
                   ✓ {vao.length + parte.length} confirmados
@@ -260,6 +262,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
           <>
             <div className="ensaio-row-left">
               <span className="ensaio-row-date">{formatData(ensaio.date, { curta: true })}</span>
+              {horario && <span className="ensaio-row-hora">· {horario}</span>}
               <TypeBadge type={ensaio.type} />
               {ensaio.location && <span className="ensaio-row-loc">· {ensaio.location}</span>}
             </div>
@@ -443,7 +446,14 @@ export default function EnsaiosPage() {
   useEffect(() => {
     const q = query(collection(db, 'ensaios'), orderBy('date', 'asc'))
     return onSnapshot(q, (snap) => {
-      setEnsaios(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      // orderBy já traz por data (todas gravadas ao meio-dia) — desempata
+      // no cliente por horário de início pra dois eventos no mesmo dia
+      const lista = snap.docs.map((d) => ({ id: d.id, ...d.data() }))
+      lista.sort((a, b) =>
+        (a.date?.toMillis?.() || 0) - (b.date?.toMillis?.() || 0) ||
+        (a.horaInicio || '').localeCompare(b.horaInicio || '')
+      )
+      setEnsaios(lista)
       setLoaded(true)
     })
   }, [])

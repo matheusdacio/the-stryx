@@ -4,7 +4,7 @@ import { db } from '../../firebase/config'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { acharCifra } from '../../utils/score'
-import { formatData } from '../../utils/data'
+import { formatData, formatHorario } from '../../utils/data'
 import { musicasComBloco } from '../../utils/blocos'
 
 export default function PerformanceMode({ event, onClose }) {
@@ -155,6 +155,8 @@ export default function PerformanceMode({ event, onClose }) {
 
   if (!current) return null
 
+  const horarioEvento = formatHorario(event.horaInicio, event.horaFim)
+
   return (
     <div className="perf-overlay">
       {/* Topo: progresso e sair */}
@@ -164,6 +166,7 @@ export default function PerformanceMode({ event, onClose }) {
         </button>
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {formatData(event.date, { curta: true })}
+          {horarioEvento ? ` · ${horarioEvento}` : ''}
           {event.location ? ` · ${event.location}` : ''}
         </span>
         <button className="perf-close" aria-label="Sair do modo palco" title="Sair do modo palco" onClick={onClose}>✕</button>
