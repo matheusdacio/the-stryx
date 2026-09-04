@@ -65,16 +65,39 @@ function SetlistPreview({ setlist, blocos = 1, limite = 5 }) {
 // desfaz, igual aos votos de domínio
 function PresencaBar({ ensaio, uid, userName }) {
   const meu = (ensaio.presenca || {})[uid]?.status
+  const meuObs = (ensaio.presenca || {})[uid]?.obs || ''
+  const [editingObs, setEditingObs] = useState(false)
+  const [obsText, setObsText] = useState('')
 
+  const erroSalvar = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+
+  // Grava por caminho pontilhado (não a entrada inteira) pra não apagar a
+  // observação de quem já tinha uma ao só trocar de resposta
   const responder = (status) => {
     const ref = doc(db, 'ensaios', ensaio.id)
     if (meu === status) {
-      updateDoc(ref, { [`presenca.${uid}`]: deleteField() })
+      updateDoc(ref, { [`presenca.${uid}`]: deleteField() }).catch(erroSalvar)
+      setEditingObs(false)
     } else {
       updateDoc(ref, {
-        [`presenca.${uid}`]: { status, name: userName, at: new Date().toISOString() },
-      })
+        [`presenca.${uid}.status`]: status,
+        [`presenca.${uid}.name`]: userName,
+        [`presenca.${uid}.at`]: new Date().toISOString(),
+      }).catch(erroSalvar)
+      // "Só uma parte" sem observação ainda: abre o campo na hora, a pessoa
+      // pode ignorar e sair sem digitar
+      if (status === 'parte' && !meuObs) {
+        setObsText('')
+        setEditingObs(true)
+      }
     }
+  }
+
+  const openObs = () => { setObsText(meuObs); setEditingObs(true) }
+  const saveObs = () => {
+    const texto = obsText.trim()
+    updateDoc(doc(db, 'ensaios', ensaio.id), { [`presenca.${uid}.obs`]: texto || deleteField() }).catch(erroSalvar)
+    setEditingObs(false)
   }
 
   return (
@@ -91,12 +114,37 @@ function PresencaBar({ ensaio, uid, userName }) {
           {p.label}
         </button>
       ))}
+      {meu && (editingObs ? (
+        <div className="notes-edit">
+          <input
+            value={obsText}
+            onChange={(e) => setObsText(e.target.value)}
+            maxLength={80}
+            aria-label="Observação da presença"
+            autoFocus
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') { e.preventDefault(); saveObs() }
+              if (e.key === 'Escape') setEditingObs(false)
+            }}
+          />
+          <div className="notes-actions">
+            <button className="btn-secondary" onClick={() => setEditingObs(false)}>Cancelar</button>
+            <button className="btn-primary" onClick={saveObs}>Salvar</button>
+          </div>
+        </div>
+      ) : (
+        <p className="presenca-obs" onClick={openObs}>
+          {meuObs
+            ? `📝 ${meuObs}`
+            : <span className="placeholder">{meu === 'parte' ? 'Que parte? Ex: chego às 21h, saio antes do bloco 4' : 'Adicionar observação (ex: chego 10 min atrasado)'}</span>}
+        </p>
+      ))}
     </div>
   )
 }
 
 function PresencaResumo({ ensaio, bandMembers, passado }) {
-  const { vao, nao, pendentes, convidados } = splitPresenca(ensaio, bandMembers)
+  const { vao, parte, nao, pendentes, convidados } = splitPresenca(ensaio, bandMembers)
   if (!bandMembers.length) return null
 
   const linha = (titulo, lista, cor) => lista.length > 0 && (
@@ -104,8 +152,14 @@ function PresencaResumo({ ensaio, bandMembers, passado }) {
       <span className="presenca-linha-titulo" style={{ color: cor }}>{titulo} ({lista.length})</span>
       <div className="members-tags">
         {lista.map((m) => (
-          <span key={m.name} className="member-tag" style={{ borderColor: cor, color: cor }} title={m.name}>
+          <span
+            key={m.name}
+            className="member-tag"
+            style={{ borderColor: cor, color: cor }}
+            title={m.obs ? `${m.name}: ${m.obs}` : m.name}
+          >
             {firstName(m.name)}
+            {m.obs && <span className="member-tag-obs"> · {m.obs}</span>}
           </span>
         ))}
       </div>
@@ -115,7 +169,8 @@ function PresencaResumo({ ensaio, bandMembers, passado }) {
   return (
     <div className="presenca-resumo">
       {linha(passado ? 'Foram' : 'Vão', vao, PRESENCAS[0].color)}
-      {linha(passado ? 'Não foram' : 'Não vão', nao, PRESENCAS[1].color)}
+      {linha(passado ? 'Foram parte' : 'Só uma parte', parte, PRESENCAS[1].color)}
+      {linha(passado ? 'Não foram' : 'Não vão', nao, PRESENCAS[2].color)}
       {linha('Sem resposta', pendentes, 'var(--text-muted)')}
       {convidados.length > 0 && (
         <div className="presenca-linha">
@@ -147,7 +202,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   // e 4-5 botões por evento, pra TODOS de uma vez, virava rolagem sem fim
   const [open, setOpen] = useState(!colapsavel)
   const hasPauta   = ensaio.pauta?.length > 0
-  const { vao, nao } = splitPresenca(ensaio, bandMembers)
+  const { vao, parte, nao } = splitPresenca(ensaio, bandMembers)
 
   // Registro do que foi realmente tocado no ensaio. Quem diz se a música ficou
   // pronta é o voto de domínio de cada um, não esta marcação
@@ -188,7 +243,12 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             </div>
             <div style={{ textAlign: 'right' }}>
               <span className="next-ensaio-relative">{relativeLabel(ensaio.date)}</span>
-              {vao.length > 0 && <p className="next-ensaio-members presenca-vai">✓ {vao.length} confirmados</p>}
+              {(vao.length + parte.length) > 0 && (
+                <p className="next-ensaio-members presenca-vai">
+                  ✓ {vao.length + parte.length} confirmados
+                  {parte.length > 0 && ` (${parte.length} só uma parte)`}
+                </p>
+              )}
               {hasSetlist && (
                 <p className="next-ensaio-members">
                   🎵 {musicas.length} músicas{blocos.length > 1 && ` · ${blocos.length} blocos`}
@@ -206,6 +266,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             <div className="ensaio-row-right">
               {hasSetlist && <span className="ensaio-row-members">🎵 {musicas.length}</span>}
               {vao.length > 0 && <span className="ensaio-row-members presenca-vai">{vao.length} vão</span>}
+              {parte.length > 0 && <span className="ensaio-row-members presenca-parte">{parte.length} parte</span>}
               {nao.length > 0 && <span className="ensaio-row-members presenca-nao">{nao.length} não</span>}
               {colapsavel && <span className={`ensaio-row-arrow ${open ? 'up' : ''}`}>›</span>}
             </div>

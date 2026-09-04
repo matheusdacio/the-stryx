@@ -389,6 +389,13 @@ button { font-family: inherit; }
   outline: none; transition: border-color 0.2s;
 }
 .notes-edit textarea:focus { border-color: var(--red); }
+.notes-edit input {
+  width: 100%; background: var(--surface2); border: 1px solid var(--border);
+  border-radius: var(--radius); color: var(--text); padding: 8px;
+  font-size: 0.82rem; font-family: inherit;
+  outline: none; transition: border-color 0.2s;
+}
+.notes-edit input:focus { border-color: var(--red); }
 .notes-actions { display: flex; gap: 8px; margin-top: 6px; justify-content: flex-end; }
 
 /* BPM, metrônomo e vídeo no card de música */
@@ -1335,7 +1342,21 @@ button { font-family: inherit; }
   min-width: 96px;
 }
 .presenca-vai { color: #10b981; }
+.presenca-parte { color: #f59e0b; }
 .presenca-nao { color: #ef4444; }
+.presenca-obs {
+  flex: 1 1 100%;
+  font-size: 0.8rem; color: var(--text-muted); cursor: pointer;
+  margin-top: 4px; padding: 3px 6px; border-radius: var(--radius-sm);
+  border: 1px solid transparent;
+}
+.presenca-obs:hover { border-color: var(--border); }
+.presenca-bar .notes-edit { flex: 1 1 100%; }
+.member-tag-obs {
+  font-weight: 400; opacity: 0.85; max-width: 180px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+  display: inline-block; vertical-align: bottom;
+}
 
 /* Prévia do repertório no card do evento */
 .setlist-preview { margin-top: 12px; }
