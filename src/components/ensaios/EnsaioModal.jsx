@@ -281,7 +281,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                     <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
                       {nivel && (
-                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                        <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
                         </span>
                       )}
@@ -311,6 +311,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                   <div className="event-setlist">
                     {setlist.map((s, i) => {
                       const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
+                      const tom = allSongs.find((x) => x.id === s.id)?.tom
                       return (
                       <SortableSetlistItem key={s.id} id={s.id}>
                         <span className="event-setlist-pos">{i + 1}</span>
@@ -318,8 +319,9 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                           {s.title}
                           {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                           {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                          {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
                           {nivel && (
-                            <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                            <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                               {nivel.label}
                             </span>
                           )}

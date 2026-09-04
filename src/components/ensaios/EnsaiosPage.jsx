@@ -232,6 +232,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                       <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
                       {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                       {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                      {songs[s.id]?.tom && <span className="event-setlist-bpm"> · ♪ {songs[s.id].tom}</span>}
                       <a
                         href={`#/cifras?q=${q}`}
                         className="mini-chip"
@@ -242,7 +243,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                         📄
                       </a>
                       {nivel && (
-                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                        <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
                         </span>
                       )}

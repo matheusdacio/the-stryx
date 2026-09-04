@@ -318,6 +318,7 @@ button { font-family: inherit; }
 .status-dot.status-ensaiando { background: rgba(245,158,11,0.14); color: var(--yellow); }
 .status-dot.status-pronta    { background: rgba(16,185,129,0.14); color: var(--green); }
 .status-dot.status-extra     { background: rgba(139,92,246,0.14); color: #c4b5fd; }
+.status-dot-inline { padding: 1px 8px; margin-left: 6px; vertical-align: middle; }
 .mini-chip {
   font-size: 0.78rem; color: var(--text-muted);
   background: var(--surface2); border: 1px solid var(--border);
