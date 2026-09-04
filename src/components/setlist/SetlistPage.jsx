@@ -213,7 +213,10 @@ export default function SetlistPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Setlist</h2>
+        <h2>
+          Setlist
+          {meuVotoFaltaCount > 0 && <span className="pending-badge" title="Músicas em que falta seu voto">{meuVotoFaltaCount}</span>}
+        </h2>
         <div className="page-header-actions">
           <SearchLupa value={search} onChange={mudarSearch} placeholder="Filtrar por nome ou artista..." />
           <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>

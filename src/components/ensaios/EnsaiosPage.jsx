@@ -222,7 +222,10 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
           {hasSetlist && !compacto && (
             <div className="pauta-block">
-              <p className="section-label">Músicas ({ensaio.setlist.length})</p>
+              <p className="section-label">
+                Músicas ({ensaio.setlist.length})
+                {podeMarcar && <span className="filter-hint" style={{ margin: 0, textTransform: 'none', letterSpacing: 0 }}> · marque as que rolaram</span>}
+              </p>
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
                   const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
@@ -330,7 +333,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
 const TABS = [
   { key: 'proximos',   label: 'Próximos' },
-  { key: 'pendentes',  label: '⏳ Presença pendente' },
+  { key: 'pendentes',  label: '⏳ Falta eu responder' },
   { key: 'realizados', label: 'Realizados' },
   { key: 'cancelados', label: 'Cancelados' },
 ]
@@ -412,7 +415,10 @@ export default function EnsaiosPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Eventos</h2>
+        <h2>
+          Eventos
+          {pendentes.length > 0 && <span className="pending-badge" title="Eventos em que falta você responder">{pendentes.length}</span>}
+        </h2>
         <button className="btn-primary" onClick={() => setModal('add')}>+ Evento</button>
       </div>
 
@@ -425,7 +431,7 @@ export default function EnsaiosPage() {
         {TABS.map(t => (
           <button
             key={t.key}
-            className={`btn-filter ${tab === t.key ? 'active' : ''}`}
+            className={`${t.key === 'pendentes' ? 'btn-tag' : 'btn-filter'} ${tab === t.key ? 'active' : ''}`}
             onClick={() => setTab(t.key)}
           >
             {t.label}
