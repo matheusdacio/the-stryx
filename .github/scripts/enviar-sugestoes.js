@@ -123,7 +123,7 @@ async function main() {
       // Só quem tinha confirmado presença precisa saber que não precisa mais ir
       const ensaioSnap = await db.collection('ensaios').doc(dados.ensaioId).get()
       const presenca = ensaioSnap.exists ? (ensaioSnap.data().presenca || {}) : {}
-      const destinatarios = tokens.filter((t) => presenca[t.uid]?.status === 'vai')
+      const destinatarios = tokens.filter((t) => ['vai', 'parte'].includes(presenca[t.uid]?.status))
       for (const dest of destinatarios) {
         await enviar(dest.token, titulo, corpo, LINK_ENSAIOS)
       }

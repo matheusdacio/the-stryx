@@ -94,14 +94,17 @@ async function main() {
       corpo = `${formatarData(data)}${onde}. Você vai? Confirme sua presença.`
     } else if (dias === 1 && !marcos.d1) {
       chave = 'd1'
-      alvos = todosUids.filter((uid) => presenca[uid]?.status === 'vai')
-      const confirmados = Object.values(presenca).filter((p) => p.status === 'vai').length
+      // "Só uma parte" conta como confirmado — a pessoa vai, só que não o
+      // ensaio inteiro
+      alvos = todosUids.filter((uid) => ['vai', 'parte'].includes(presenca[uid]?.status))
+      const confirmados = Object.values(presenca).filter((p) => ['vai', 'parte'].includes(p.status)).length
+      const soParte = Object.values(presenca).filter((p) => p.status === 'parte').length
       // Evento → bloco → música (mesma leitura de src/utils/blocos.js); Node
       // puro sem import de src/, então duplica a linha de propósito
       const lista = Array.isArray(ev.blocos) ? ev.blocos.flatMap((b) => b.musicas || []) : (ev.setlist || [])
       const musicas = lista.length ? ` ${lista.length} músicas no repertório.` : ''
       titulo = `${tipo} amanhã 🎸`
-      corpo = `${formatarData(data)}${onde}. ${confirmados} confirmados.${musicas}`
+      corpo = `${formatarData(data)}${onde}. ${confirmados} confirmados${soParte > 0 ? ` (${soParte} só uma parte)` : ''}.${musicas}`
     }
 
     if (!chave) continue
