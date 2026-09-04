@@ -14,7 +14,7 @@ import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
-import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight, fatorFacilidade } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
 import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
@@ -506,17 +506,13 @@ const STATUS_LABELS_XLS = {
 }
 
 // ── Nota combinada: média das opiniões com desconto por dificuldade ───
-// Fácil não desconta nada, Ok e Difícil descontam progressivamente. A nota
-// pesa mais que a dificuldade: uma música difícil precisa ser bem melhor
-// avaliada pra passar na frente de uma fácil, mas entre notas parecidas a
-// mais fácil sobe. Ajuste esses fatores se quiser a facilidade pesando mais.
-const EASE_BY_WEIGHT = { 1: 1, 2: 0.85, 3: 0.7 }
-const EASE_SEM_VOTO = EASE_BY_WEIGHT[2] // sem voto de dificuldade conta como Ok
-
-/** Média das opiniões descontada pela dificuldade votada (a mais alta) */
+// A nota pesa mais que a dificuldade: uma música difícil precisa ser bem
+// melhor avaliada pra passar na frente de uma fácil, mas entre notas
+// parecidas a mais fácil sobe. Fatores em fatorFacilidade (utils/dificuldade),
+// compartilhados com a mesma ordenação do Setlist.
 function calcBalancedScore(opinoes, dificuldade) {
   const { media, soma, total } = calcSongScore(opinoes)
-  const ease = EASE_BY_WEIGHT[calcDifficulty(dificuldade).max] ?? EASE_SEM_VOTO
+  const ease = fatorFacilidade(dificuldade)
   return { valor: media * ease, media, soma, total, ease }
 }
 
