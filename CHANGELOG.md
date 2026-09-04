@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.41.0] — 2026-09-04
+- **Presença ganha "Só uma parte"**, pra quem vai só num pedaço do ensaio (chega depois, sai antes) — conta como confirmado pro resumo e pro lembrete D-1, e cada resposta pode levar uma observação livre (ex.: "chego 21h"), mostrada no card do evento e enviada junto no lembrete
+
 ## [1.40.0] — 2026-09-04
 - **Dificuldade volta a ser votada e vista só nas Sugestões** — o Setlist perde o voto, o chip 🎯 e a ordenação "🎯 Dificuldade" (reverte um ajuste da rodada anterior); o dado continua alimentando por baixo o "⚖️ Melhores e fáceis", agora com uma dica explicando de onde vem a nota
 
