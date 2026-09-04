@@ -48,13 +48,13 @@ export function usePendencias(user) {
   }
   const sugestoesPendentes = countSugestoesPendentes(sugestoes, user, noSetlist, bandMembers)
 
-  // Mesma regra de "Falta meu voto" do Setlist: domínio, dificuldade ou
-  // opinião (a opinião só conta enquanto a sugestão de origem não fechou)
+  // Mesma regra de "Falta meu voto" do Setlist: domínio ou opinião (a
+  // opinião só conta enquanto a sugestão de origem não fechou). Dificuldade
+  // não entra mais aqui — só se vota nas Sugestões.
   const opinioesDe = opinioesPorMusica(sugestoes)
   const setlistPendentes = user ? songs.filter((s) => {
     const opinoes = opinioesDe(s)
     return !(s.dominio || {})[user.uid] ||
-      !(s.dificuldade || {})[user.uid] ||
       (!todosVotaram({ opinoes }, bandMembers) && !opinoes[user.uid])
   }).length : 0
 

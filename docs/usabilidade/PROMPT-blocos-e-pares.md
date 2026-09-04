@@ -19,8 +19,8 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 ## Regras de trabalho
 
 1. **Branch.** Crie `feat/blocos-e-pares` a partir da ponta de `feat/usabilidade-rodada-2` (ou de `main`, se a rodada 2 já tiver sido mergeada). Não faça merge em `main` sem o dono pedir.
-2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares).** Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
-3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B e C são três minors seguidos).
+2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares) → D (dificuldade só nas Sugestões).** D é pequeno e independente: se B ou C ainda não tiverem começado quando você reler este arquivo, faça D antes deles. Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
+3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B, C e D são minors seguidos).
 4. **Não refatore por refatorar.** Nada de TypeScript, testes novos, bibliotecas novas (dnd-kit já está no projeto e é o que se usa).
 5. **Padrão de gravação:** disparar `updateDoc/addDoc`, fechar na hora, `.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))`. Nunca `await` antes de fechar.
 6. Tudo que é escala/rótulo/cor continua definido como dado em `src/utils/*` e reaproveitado — nada de string solta repetida em três telas.
@@ -37,6 +37,7 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 - **Campo novo `cantor`** em `songs` ("Quem canta", texto livre: "Marcos", "Márcio/Marcos"). É o que falta pra reproduzir a mensagem do Marcos (título — cantor — tom). Aparece como chip 🎤 no card do Setlist, na lista do evento e no Modo palco.
 - **Montar o próximo ensaio como na mensagem** é uma ferramenta admin de dois passos (preview → aplicar), com os 28 itens como constante no código (tabela no fim deste arquivo). Depois de rodada, vai pra "Já rodadas".
 - **"➤ Enviar pro setlist" aparece para todo membro logado**, não só para o admin, com as mesmas condições de hoje (sugestão `aberta`). Continuam só do admin: "Reabrir" (no banner de aprovada/rejeitada) e "📊 Exportar".
+- **Dificuldade é informada e mostrada só nas Sugestões.** No Setlist ela deixa de ser votada, de aparecer no card e de virar ordenação ou pendência; continua só alimentando, por baixo, o desconto de "⚖️ Melhores e fáceis" (o voto viaja da sugestão pra música na aprovação). Isto **reverte o P7-2 da rodada 2** (chip 🎯 no card do Setlist).
 - `ensaiadas` (ids das músicas marcadas como ensaiadas) e `presenca` **não mudam**: continuam planos, por id de música/uid.
 
 ---
@@ -187,6 +188,20 @@ Pequeno e independente dos outros dois; vai primeiro.
 
 ---
 
+---
+
+## Pacote D — dificuldade só nas Sugestões
+
+Hoje a dificuldade é votada e mostrada em dois lugares (modal da sugestão e card do Setlist). Passa a existir só na sugestão. Lista completa dos pontos fora das Sugestões: `grep -rn "dificuldade\|DIFFICULTIES\|calcDifficulty\|fatorFacilidade" src --include='*.jsx' --include='*.js' | grep -v "SugestoesPage\|utils/dificuldade\|migrarDificuldade\|utils/pendencias\|dedupSugestoes"`.
+
+- **D1 · tirar o voto e o chip do card do Setlist.** `SongCard.jsx`: apagar o bloco `🎯 Dificuldade pra tocar` (botões `DIFFICULTIES.map` + pills de quem votou), a função `voteDiff`, `myDiff` e o chip `🎯 {diff.label}` da linha do card fechado (entrou na rodada 2 como P7-2). Apagar os imports que sobrarem sem uso (`DIFFICULTIES`, `calcDifficulty`, `difficultyByWeight`). **Manter** `const dificuldade = song.dificuldade || {}` — `backToSuggestions` continua levando os votos de volta pra sugestão (`dificuldade: { ...(snap.data().dificuldade || {}), ...dificuldade }` e `dificuldade` no `addDoc`). Texto do confirm de "Remover": `Votos de domínio, dificuldade e opinião, tom, BPM…` → `Votos de domínio e opinião, tom, BPM…`.
+
+- **D2 · "Falta meu voto" do Setlist deixa de cobrar dificuldade.** `SetlistPage.jsx`, `meuVotoFalta`: apagar a linha `!(s.dificuldade || {})[user.uid] ||`; `src/hooks/usePendencias.js`, `setlistPendentes`: apagar a mesma linha (os dois precisam bater, é a regra do badge do rodapé). `title` do chip "🗳 Falta meu voto" no Setlist → `Mostrar só as músicas que faltam você indicar domínio ou opinião`. Ajustar os comentários que citam "dificuldade" nesses dois trechos. Sem isso, as 32 músicas importadas (que nunca passaram por sugestão) ficariam pendentes pra sempre, sem botão pra resolver.
+
+- **D3 · ordenações do Setlist.** `SetlistPage.jsx`: tirar `{ value: 'dificuldade', label: '🎯 Dificuldade' }` de `SORTS`, o ramo de ordenação por `calcDifficulty(...).max` no `displayed` e o `'dificuldade'` do array que decide a bolinha `#N` (`position={['balanceada', 'media', 'dificuldade'].includes(sortBy) …}`). Apagar `calcDifficulty` do import; **manter** `fatorFacilidade` e a ordenação `'balanceada'`. Como o Setlist passa a ordenar por um dado que não mostra, dar a mesma ajuda que Sugestões já dá: campo `hint` só nessa entrada de `SORTS` (`hint: 'Nota da banda, descontada pela dificuldade que a galera votou lá nas Sugestões'`) e, logo depois da `.sort-bar`, `{SORTS.find((s) => s.value === sortBy)?.hint && <p className="filter-hint">{…}</p>}` (copiar de `SugestoesPage.jsx`). `sortBy` do Setlist não persiste em localStorage, então não há valor velho `'dificuldade'` pra tratar.
+
+- **D4 · Sugestões continuam iguais — só conferir.** No modal: bloco "🎯 Dificuldade pra tocar" gravando no toque; no card da lista: chip 🎯; ordenações "🎯 Dificuldade" e "⚖️ Melhores e fáceis"; filtro "🗳 Falta meu voto" cobrando opinião **e** dificuldade (`utils/pendencias.js` `faltaVotar`, não mexer). `approve` continua copiando `dificuldade` pra música (é o que alimenta o ⚖️ do Setlist). O comentário `// desfaz, igual aos votos de dificuldade` em `EnsaiosPage.jsx` (`PresencaBar`) vira `igual aos votos de domínio`. `CHANGELOG.md`: registrar que a dificuldade passou a ser votada e vista só nas Sugestões, e que o Setlist perdeu a ordenação 🎯.
+
 ## Não mexer
 
 - `ensaiadas` e `presenca` continuam planos, por id/uid, sem relação com bloco.
@@ -194,11 +209,12 @@ Pequeno e independente dos outros dois; vai primeiro.
 - Padrão das ferramentas admin (verificar → aplicar, `msgErro`, mensagem única com `setMsg`, "Já rodadas").
 - Lembretes D-3/D-1 e a fila `notification_queue` — o script só troca a origem da contagem de músicas.
 - Modo palco: swipe, lista pra pular, `sessionStorage`, Wake Lock, "Repertório atualizado · aplicar" (que continua comparando ids achatados).
-- Vínculo `sugestaoId`, "↩ Voltar pras sugestões" e "➤ Enviar pro setlist" — só ganham o campo `cantor`.
+- Vínculo `sugestaoId`, "↩ Voltar pras sugestões" e "➤ Enviar pro setlist" — só ganham o campo `cantor`; os votos de dificuldade continuam viajando nos dois sentidos.
+- `src/utils/dificuldade.js` (escala, `calcDifficulty`, `fatorFacilidade`) e a ferramenta admin "🎯 Converter dificuldade pra escala única" (já rodada) ficam como estão.
 
 ## Como reportar cada pacote
 
-1. Ids implementados (A1…A3, B1…B7, C1…C5) e o commit de cada um.
+1. Ids implementados (A1…A3, B1…B7, C1…C5, D1…D4) e o commit de cada um.
 2. Ids pulados e por quê.
 3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas" e "Montar o próximo ensaio" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, e o palco com blocos. **Listar as músicas da sequência que a ferramenta não achou no setlist.**
 4. Resultado de `npm run lint` e `npm run build`.

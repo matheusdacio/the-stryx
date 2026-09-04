@@ -13,6 +13,12 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.40.0] — 2026-09-04
+- **Dificuldade volta a ser votada e vista só nas Sugestões** — o Setlist perde o voto, o chip 🎯 e a ordenação "🎯 Dificuldade" (reverte um ajuste da rodada anterior); o dado continua alimentando por baixo o "⚖️ Melhores e fáceis", agora com uma dica explicando de onde vem a nota
+
+## [1.39.0] — 2026-09-04
+- **Pares de músicas que sempre tocam juntas**: configura no Setlist qual música emenda direto em qual ("Toca junto com" no editar); no evento, o par vira uma unidade só — entra, sai e se move junto, sempre no mesmo bloco. Um elo ⛓ mostra onde isso vale, do Setlist ao Modo palco
+
 ## [1.38.0] — 2026-09-04
 - **Qualquer membro pode mandar sugestão pro setlist**, não só o admin — a decisão final era um gargalo desnecessário quando a banda toda já opinou; o admin continua sendo o único que reabre sugestão fechada e exporta pra Excel
 

@@ -11,6 +11,7 @@ import { menosDominadas, calcDominio, dominioPorPeso, uidsAtivosDe } from '../..
 import { matchesSearch } from '../../utils/search'
 import { formatData } from '../../utils/data'
 import { blocosDe, novoBlocoId, nomeDoBloco } from '../../utils/blocos'
+import { grupoDe, unidadesDe, juntarPares } from '../../utils/pares'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
 function toInputDate(ts) {
@@ -21,7 +22,7 @@ function toInputDate(ts) {
 
 // Wrapper sortable: liga a linha do repertório do evento ao dnd-kit, com a
 // alça ⠿ arrastável por toque (PointerSensor/TouchSensor abaixo)
-function SortableSetlistItem({ id, children }) {
+function SortableSetlistItem({ id, className = '', children }) {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } = useSortable({ id })
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -29,7 +30,7 @@ function SortableSetlistItem({ id, children }) {
     ...(isDragging ? { zIndex: 5, position: 'relative' } : {}),
   }
   return (
-    <div ref={setNodeRef} style={style} className={`event-setlist-item ${isDragging ? 'dragging' : ''}`}>
+    <div ref={setNodeRef} style={style} className={`event-setlist-item ${className} ${isDragging ? 'dragging' : ''}`}>
       <span className="drag-handle" title="Arrastar para reordenar" {...attributes} {...listeners}>⠿</span>
       {children}
     </div>
@@ -81,7 +82,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   const [newItem, setNewItem] = useState('')
   const [songSearch, setSongSearch] = useState('')
   const [quantasCruas, setQuantasCruas] = useState(5)
-  const [avisoCruas, setAvisoCruas] = useState('')
+  const [aviso, setAviso] = useState('')
   const [saving, setSaving] = useState(false)
   const [mexeu, setMexeu] = useState(false)
 
@@ -136,77 +137,124 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   }
 
   // Puxa pro ensaio o que a banda marcou como menos dominado. Já ignora o
-  // que está no evento e quem ainda não recebeu nenhum voto
+  // que está no evento e quem ainda não recebeu nenhum voto. Cada escolhida
+  // expande pro grupo inteiro (par/cadeia) — sempre tocam juntas
   const trazerCruas = () => {
     const escolhidas = menosDominadas(allSongs, Number(quantasCruas) || 0, todasMusicas.map((s) => s.id), uidsAtivos)
     if (!escolhidas.length) {
-      setAvisoCruas('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
+      setAviso('Ninguém votou ainda em nenhuma música fora deste evento — vote no Setlist primeiro.')
       return
     }
     setMexeu(true)
+    const porId = Object.fromEntries(allSongs.map((s) => [s.id, s]))
+    const jaNoEvento = new Set(todasMusicas.map((s) => s.id))
+    const vistos = new Set()
+    const idsFinal = []
+    escolhidas.forEach((song) => {
+      grupoDe(song.id, allSongs).forEach((id) => {
+        if (jaNoEvento.has(id) || vistos.has(id)) return
+        vistos.add(id)
+        idsFinal.push(id)
+      })
+    })
     const { bs, destino } = comDestino()
-    const novas = escolhidas.map((song) => ({
-      id: song.id,
-      title: song.title,
-      artist: song.artist || '',
-      bpm: song.bpm || null,
-    }))
+    const novas = idsFinal.map((id) => {
+      const s = porId[id]
+      return { id: s.id, title: s.title, artist: s.artist || '', bpm: s.bpm || null }
+    })
     setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, ...novas] } : b)))
     setBlocoDestino(destino)
-    setAvisoCruas(`${escolhidas.length} ${escolhidas.length === 1 ? 'música adicionada' : 'músicas adicionadas'}.`)
+    const extras = idsFinal.length - escolhidas.length
+    setAviso(
+      `${escolhidas.length} ${escolhidas.length === 1 ? 'música adicionada' : 'músicas adicionadas'}` +
+      (extras > 0 ? ` (${extras} vieram junto por sempre tocarem juntas)` : '') + '.'
+    )
   }
 
+  // Adicionar traz o grupo inteiro (par/cadeia) da música escolhida, não só ela
   const addSong = (song) => {
     if (todasMusicas.some((s) => s.id === song.id)) return
+    const ids = grupoDe(song.id, allSongs)
+    const jaNoEvento = new Set(todasMusicas.map((s) => s.id))
+    const novasIds = ids.filter((id) => !jaNoEvento.has(id))
     setMexeu(true)
     const { bs, destino } = comDestino()
-    const nova = { id: song.id, title: song.title, artist: song.artist || '', bpm: song.bpm || null }
-    setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, nova] } : b)))
+    const porId = Object.fromEntries(allSongs.map((s) => [s.id, s]))
+    const novasMusicas = novasIds.map((id) => {
+      const s = porId[id] || song
+      return { id: s.id, title: s.title, artist: s.artist || '', bpm: s.bpm || null }
+    })
+    setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, ...novasMusicas] } : b)))
     setBlocoDestino(destino)
+    if (novasIds.length > 1) {
+      const outras = novasMusicas.filter((m) => m.id !== song.id).map((m) => m.title)
+      setAviso(`Trouxe também ${outras.join(', ')} — sempre tocam juntas.`)
+    }
   }
 
-  const removeSong = (blocoId, i) => {
+  // Grupo (par/cadeia) é uma unidade: sai, sobe/desce e é arrastado inteiro
+  const removeUnidade = (blocoId, unidade) => {
+    const n = unidade.musicas.length
+    if (n > 1) {
+      const titulos = unidade.musicas.map((m) => m.title).join(', ')
+      if (!confirm(`Tirar ${n} músicas do evento? ${titulos} sempre tocam juntas.`)) return
+    }
     setMexeu(true)
-    setBlocos(blocos.map((b) => (b.id === blocoId ? { ...b, musicas: b.musicas.filter((_, idx) => idx !== i) } : b)))
+    const ids = new Set(unidade.musicas.map((m) => m.id))
+    setBlocos(blocos.map((b) => (b.id === blocoId ? { ...b, musicas: b.musicas.filter((m) => !ids.has(m.id)) } : b)))
   }
 
-  // ▲▼ atravessam a fronteira do bloco: ▲ na primeira música de um bloco
+  // ▲▼ atravessam a fronteira do bloco: ▲ na primeira unidade de um bloco
   // que não é o primeiro move ela pro fim do bloco anterior; ▼ na última
-  // música de um bloco que não é o último move pro começo do seguinte
-  const moveSong = (blocoId, i, dir) => {
+  // unidade de um bloco que não é o último move pro começo do seguinte
+  const moveUnidade = (blocoId, unidades, ui, dir) => {
     const bi = blocos.findIndex((b) => b.id === blocoId)
     if (bi < 0) return
-    const bloco = blocos[bi]
-    const j = i + dir
+    const j = ui + dir
     setMexeu(true)
-    if (j >= 0 && j < bloco.musicas.length) {
-      const musicas = [...bloco.musicas]
-      ;[musicas[i], musicas[j]] = [musicas[j], musicas[i]]
-      setBlocos(blocos.map((b, idx) => (idx === bi ? { ...b, musicas } : b)))
+    if (j >= 0 && j < unidades.length) {
+      const next = [...unidades]
+      ;[next[ui], next[j]] = [next[j], next[ui]]
+      setBlocos(blocos.map((b, idx) => (idx === bi ? { ...b, musicas: next.flatMap((u) => u.musicas) } : b)))
       return
     }
     const alvoIndex = bi + dir
     if (alvoIndex < 0 || alvoIndex >= blocos.length) return
-    const musica = bloco.musicas[i]
+    const unidade = unidades[ui]
+    const ids = new Set(unidade.musicas.map((m) => m.id))
     setBlocos(blocos.map((b, idx) => {
-      if (idx === bi) return { ...b, musicas: b.musicas.filter((_, k) => k !== i) }
-      if (idx === alvoIndex) return { ...b, musicas: dir === -1 ? [...b.musicas, musica] : [musica, ...b.musicas] }
+      if (idx === bi) return { ...b, musicas: b.musicas.filter((m) => !ids.has(m.id)) }
+      if (idx === alvoIndex) return { ...b, musicas: dir === -1 ? [...b.musicas, ...unidade.musicas] : [...unidade.musicas, ...b.musicas] }
       return b
     }))
   }
 
-  // Arrastar e soltar (toque ou mouse) — um contexto por bloco, só reordena
-  // dentro dele mesmo
-  const handleDragEnd = (blocoId) => ({ active, over }) => {
+  // Arrastar e soltar (toque ou mouse) — um contexto por bloco, reordena as
+  // unidades (grupo inteiro junto) e achata de volta pra b.musicas
+  const handleDragEnd = (blocoId, unidades) => ({ active, over }) => {
     if (!over || active.id === over.id) return
     setMexeu(true)
-    setBlocos(blocos.map((b) => {
-      if (b.id !== blocoId) return b
-      const oldIndex = b.musicas.findIndex((s) => s.id === active.id)
-      const newIndex = b.musicas.findIndex((s) => s.id === over.id)
-      if (oldIndex < 0 || newIndex < 0) return b
-      return { ...b, musicas: arrayMove(b.musicas, oldIndex, newIndex) }
-    }))
+    const oldIndex = unidades.findIndex((u) => u.id === active.id)
+    const newIndex = unidades.findIndex((u) => u.id === over.id)
+    if (oldIndex < 0 || newIndex < 0) return
+    const reordered = arrayMove(unidades, oldIndex, newIndex)
+    setBlocos(blocos.map((b) => (b.id === blocoId ? { ...b, musicas: reordered.flatMap((u) => u.musicas) } : b)))
+  }
+
+  // Uma vez, quando o repertório chega: junta cadeias espalhadas ou fora de
+  // ordem — sem isso um par salvo depois de o evento já existir ficava
+  // exibido separado até alguém arrumar na mão. Ajusta durante o render
+  // (não num efeito, nem numa ref — refs também não podem ser lidas no
+  // render) comparando com um estado que marca "já rodou"
+  const [jaJuntou, setJaJuntou] = useState(false)
+  if (!jaJuntou && allSongs.length > 0) {
+    setJaJuntou(true)
+    const { blocos: b2, juntou } = juntarPares(blocos, allSongs)
+    if (juntou.length) {
+      setBlocos(b2)
+      setMexeu(true)
+      setAviso(`Juntei ${juntou.join(' e ')}, que sempre tocam juntas.`)
+    }
   }
 
   const moverBloco = (i, dir) => {
@@ -360,10 +408,17 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
               <div className="song-search-results">
                 {searchResults.map((s) => {
                   const nivel = dominioPorPeso(calcDominio(s.dominio, uidsAtivos).pior)
+                  const nomesGrupo = grupoDe(s.id, allSongs)
+                    .filter((id) => id !== s.id)
+                    .map((id) => allSongs.find((x) => x.id === id)?.title)
+                    .filter(Boolean)
                   return (
                     <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
                       {s.cantor && <span className="mini-chip" style={{ marginLeft: 6 }}>🎤 {s.cantor}</span>}
+                      {nomesGrupo.length > 0 && (
+                        <span className="mini-chip" style={{ marginLeft: 6 }} title={`Vem junto com ${nomesGrupo.join(', ')}`}>⛓</span>
+                      )}
                       {nivel && (
                         <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
@@ -396,11 +451,13 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
               />
               <span>músicas menos dominadas</span>
               <button type="button" className="btn-secondary" onClick={trazerCruas}>+ Trazer</button>
-              {avisoCruas && <span className="trazer-cruas-aviso">{avisoCruas}</span>}
+              {aviso && <span className="trazer-cruas-aviso">{aviso}</span>}
             </div>
 
             {blocos.map((b, bi) => {
               const offset = blocos.slice(0, bi).reduce((acc, x) => acc + x.musicas.length, 0)
+              const unidades = unidadesDe(b.musicas, allSongs)
+              let localOffset = 0
               return (
                 <div key={b.id} className={`bloco-edit ${b.id === blocoDestino ? 'destino' : ''}`}>
                   <div className="bloco-edit-header" onClick={() => setBlocoDestino(b.id)}>
@@ -428,38 +485,64 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                   {b.musicas.length === 0 ? (
                     <p className="filter-hint" style={{ margin: '6px 0 0' }}>Nenhuma música ainda — busque acima ou traga as menos dominadas.</p>
                   ) : (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(b.id)}>
-                      <SortableContext items={b.musicas.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(b.id, unidades)}>
+                      <SortableContext items={unidades.map((u) => u.id)} strategy={verticalListSortingStrategy}>
                         <div className="event-setlist">
-                          {b.musicas.map((s, i) => {
-                            const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
-                            const tom = allSongs.find((x) => x.id === s.id)?.tom
-                            const cantor = allSongs.find((x) => x.id === s.id)?.cantor
+                          {unidades.map((u, ui) => {
+                            const startOffset = offset + localOffset
+                            localOffset += u.musicas.length
+                            const multi = u.musicas.length > 1
+                            const linha = (s, numero) => {
+                              const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
+                              const tom = allSongs.find((x) => x.id === s.id)?.tom
+                              const cantor = allSongs.find((x) => x.id === s.id)?.cantor
+                              return (
+                                <>
+                                  <span className="event-setlist-pos">{numero}</span>
+                                  <span className="event-setlist-title">
+                                    {s.title}
+                                    {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
+                                    {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                                    {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
+                                    {cantor && <span className="event-setlist-bpm"> · 🎤 {cantor}</span>}
+                                    {nivel && (
+                                      <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
+                                        {nivel.label}
+                                      </span>
+                                    )}
+                                  </span>
+                                </>
+                              )
+                            }
                             return (
-                              <SortableSetlistItem key={s.id} id={s.id}>
-                                <span className="event-setlist-pos">{offset + i + 1}</span>
-                                <span className="event-setlist-title">
-                                  {s.title}
-                                  {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
-                                  {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                                  {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
-                                  {cantor && <span className="event-setlist-bpm"> · 🎤 {cantor}</span>}
-                                  {nivel && (
-                                    <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
-                                      {nivel.label}
-                                    </span>
-                                  )}
-                                </span>
+                              <SortableSetlistItem key={u.id} id={u.id} className={multi ? 'unidade' : ''}>
+                                {multi ? (
+                                  <>
+                                    <span className="unidade-elo" title="Sempre tocam juntas, nessa ordem">⛓</span>
+                                    <div style={{ flex: 1 }}>
+                                      {u.musicas.map((s, k) => (
+                                        <div key={s.id} className="unidade-musica">
+                                          {linha(s, startOffset + k + 1)}
+                                        </div>
+                                      ))}
+                                    </div>
+                                  </>
+                                ) : linha(u.musicas[0], startOffset + 1)}
                                 <span className="event-setlist-actions">
                                   <button
                                     type="button" className="btn-order" aria-label="Mover pra cima" title="Mover pra cima"
-                                    onClick={() => moveSong(b.id, i, -1)} disabled={bi === 0 && i === 0}
+                                    onClick={() => moveUnidade(b.id, unidades, ui, -1)} disabled={bi === 0 && ui === 0}
                                   >▲</button>
                                   <button
                                     type="button" className="btn-order" aria-label="Mover pra baixo" title="Mover pra baixo"
-                                    onClick={() => moveSong(b.id, i, 1)} disabled={bi === blocos.length - 1 && i === b.musicas.length - 1}
+                                    onClick={() => moveUnidade(b.id, unidades, ui, 1)} disabled={bi === blocos.length - 1 && ui === unidades.length - 1}
                                   >▼</button>
-                                  <button type="button" className="btn-remove" aria-label={`Tirar ${s.title} do evento`} title="Tirar do evento" onClick={() => removeSong(b.id, i)}>✕</button>
+                                  <button
+                                    type="button" className="btn-remove"
+                                    aria-label={multi ? `Tirar ${u.musicas.length} músicas do evento` : `Tirar ${u.musicas[0].title} do evento`}
+                                    title="Tirar do evento"
+                                    onClick={() => removeUnidade(b.id, u)}
+                                  >✕</button>
                                 </span>
                               </SortableSetlistItem>
                             )

@@ -10,7 +10,7 @@ import SearchLupa from '../SearchLupa'
 import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { calcDifficulty, fatorFacilidade } from '../../utils/dificuldade'
+import { fatorFacilidade } from '../../utils/dificuldade'
 import { musicasDoEvento } from '../../utils/blocos'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
@@ -30,9 +30,8 @@ const nivelDe = (song, uidsAtivos) => dominioPorPeso(calcDominio(song.dominio, u
 
 const SORTS = [
   { value: 'recentes',    label: '🕐 Recentes' },
-  { value: 'balanceada',  label: '⚖️ Melhores e fáceis' },
+  { value: 'balanceada',  label: '⚖️ Melhores' },
   { value: 'media',       label: '⭐ Média' },
-  { value: 'dificuldade', label: '🎯 Dificuldade' },
   { value: 'data',        label: '📅 Antigas' },
 ]
 
@@ -155,13 +154,12 @@ export default function SetlistPage() {
   // vazia sem explicação nenhuma
   const tagFilterValida = tagFilter && allTags.includes(tagFilter) ? tagFilter : null
 
-  // Falta EU indicar algo nessa música: domínio (pronto pra tocar),
-  // dificuldade (é fácil?) ou opinião (vale tocar — só conta enquanto a
-  // seção ainda está aberta, isto é, nem toda a banda opinou ainda)
+  // Falta EU indicar algo nessa música: domínio (pronto pra tocar) ou
+  // opinião (vale tocar — só conta enquanto a seção ainda está aberta,
+  // isto é, nem toda a banda opinou ainda). Dificuldade só se vota nas Sugestões.
   const meuVotoFalta = (s) => {
     const opinoes = opinioesDe(s)
     return !(s.dominio || {})[user.uid] ||
-      !(s.dificuldade || {})[user.uid] ||
       (!todosVotaram({ opinoes }, bandMembers) && !opinoes[user.uid])
   }
 
@@ -191,14 +189,7 @@ export default function SetlistPage() {
     if (sortBy === 'media') return porNota(semDesconto)(a, b)
     if (sortBy === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
     if (sortBy === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-    // Dificuldade: mais fácil → mais difícil, pelo nível mais alto votado
-    // (o mesmo que aparece no chip do card); sem votos vai pro fim
-    const da = calcDifficulty(a.dificuldade).max
-    const db_ = calcDifficulty(b.dificuldade).max
-    if (da === null && db_ === null) return 0
-    if (da === null) return 1
-    if (db_ === null) return -1
-    return da - db_
+    return 0
   })
 
   // Toca o que está na tela: filtro, tag, busca e ordenação valem pra fila
@@ -244,7 +235,7 @@ export default function SetlistPage() {
         <button
           className={`btn-tag ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
-          title="Mostrar só as músicas que faltam você indicar domínio, dificuldade ou opinião"
+          title="Mostrar só as músicas que faltam você indicar domínio ou opinião"
         >
           🗳 Falta meu voto <span className="count">{meuVotoFaltaCount}</span>
         </button>
@@ -347,12 +338,13 @@ export default function SetlistPage() {
               opinoes={opinioesDe(song)}
               bandMembers={bandMembers}
               cifras={cifras}
+              todasMusicas={songs}
               key={song.id}
               song={song}
-              // Bolinha só faz sentido quando a ordem reflete um ranking
-              // (nota/dificuldade); em Recentes/Antigas ela mudava a cada
-              // filtro/tag/busca sem significar posição nenhuma
-              position={['balanceada', 'media', 'dificuldade'].includes(sortBy) ? i + 1 : null}
+              // Bolinha só faz sentido quando a ordem reflete um ranking de
+              // nota; em Recentes/Antigas ela mudava a cada filtro/tag/busca
+              // sem significar posição nenhuma
+              position={['balanceada', 'media'].includes(sortBy) ? i + 1 : null}
               tocandoVideo={tocandoId === song.id}
               onTocarVideo={setTocandoId}
               onVotou={(id) => setFixados((prev) => new Set(prev).add(id))}

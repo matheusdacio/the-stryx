@@ -166,6 +166,23 @@ export async function verificarIntegridade() {
   })
   add('Músicas de evento que ainda existem no setlist', musicasSumidas, 'Nenhuma música de evento sumiu do setlist')
 
+  // ── Pares de músicas ──
+  const paresRuins = []
+  musicas.forEach((s) => {
+    if (s.proxima && !idsMusicas.has(s.proxima)) paresRuins.push(`${s.title} → id inexistente`)
+  })
+  const donosPorAlvo = {}
+  musicas.forEach((s) => {
+    if (!s.proxima) return
+    donosPorAlvo[s.proxima] = [...(donosPorAlvo[s.proxima] || []), s.title]
+  })
+  Object.entries(donosPorAlvo).forEach(([alvoId, donos]) => {
+    if (donos.length < 2) return
+    const alvoTitulo = musicas.find((s) => s.id === alvoId)?.title || alvoId
+    paresRuins.push(`${alvoTitulo} vem depois de ${donos.join(' e ')}`)
+  })
+  addInfo('Pares de músicas', paresRuins, 'Nenhum problema')
+
   // ── Votos importados ainda por fundir ──
   const importPendentes = sugestoes.filter((sug) =>
     Object.keys(sug.opinoes || {}).some((k) => k.startsWith('import_'))

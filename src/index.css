@@ -515,6 +515,10 @@ button { font-family: inherit; }
   opacity: 0.95; border-color: var(--red);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.45);
 }
+/* Grupo de músicas que sempre tocam juntas (pares/cadeia) — uma unidade só */
+.event-setlist-item.unidade { flex-direction: column; align-items: stretch; }
+.unidade-musica { display: flex; align-items: center; gap: 8px; }
+.unidade-elo { color: var(--accent); font-size: 0.9rem; }
 /* Só a alça arrasta (não a linha inteira) — touch-action:none pra segurar
    e mover no celular sem rolar a página; user-select evita o menu de
    seleção de texto do iOS grudando no toque longo */

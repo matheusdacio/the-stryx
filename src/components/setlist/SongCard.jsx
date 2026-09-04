@@ -1,17 +1,17 @@
 import { useState } from 'react'
-import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, serverTimestamp } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 import { showToast } from '../../utils/toast'
 import CifraModal from '../cifras/CifraModal'
 import NotaChip from '../NotaChip'
+import { predecessoraDe, sucessoraDe, motivoInvalido } from '../../utils/pares'
 
 const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
@@ -26,7 +26,7 @@ const ehNovo = (createdAt) => {
   return Date.now() - d.getTime() < SETE_DIAS
 }
 
-export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], cifras = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
+export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], cifras = [], todasMusicas = [], position, tocandoVideo = false, onTocarVideo, onVotou }) {
   const { user } = useAuth()
   const [expanded, setExpanded] = useState(false)
   const [verCifra, setVerCifra] = useState(false)
@@ -40,28 +40,19 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
   const [newTag, setNewTag] = useState('')
+  const [predSel, setPredSel] = useState('')
+  const [proxSel, setProxSel] = useState('')
+  const pred = predecessoraDe(song.id, todasMusicas)
+  const prox = sucessoraDe(song.id, todasMusicas)
+  const outrasMusicas = todasMusicas
+    .filter((s) => s.id !== song.id)
+    .sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'))
   const [busy, setBusy] = useState(false)
   const ref = doc(db, 'songs', song.id)
 
-  // Dificuldade — voto de cada membro (mapa keyed por uid)
+  // Dificuldade não é mais votada aqui — só nas Sugestões. Mantém o valor
+  // (não vota, não mostra) porque backToSuggestions leva ele de volta
   const dificuldade = song.dificuldade || {}
-  // Chip do card fechado — mesmo nível mais alto votado que ordena "🎯 Dificuldade"
-  const diff = difficultyByWeight(calcDifficulty(dificuldade).max)
-  const myDiff = dificuldade[user.uid]?.level
-  const voteDiff = (level) => {
-    if (myDiff === level) {
-      // Clicou no mesmo nível → remove o voto
-      updateDoc(ref, { [`dificuldade.${user.uid}`]: deleteField() })
-    } else {
-      updateDoc(ref, {
-        [`dificuldade.${user.uid}`]: {
-          userName: user.displayName || user.email,
-          level,
-          at: new Date().toISOString(),
-        },
-      })
-    }
-  }
 
   // Domínio — o quanto cada um se sente pronto nesta música
   const dominio = song.dominio || {}
@@ -118,13 +109,36 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
     setEditing(false)
   }
   const saveMeta = () => {
-    updateDoc(ref, {
+    const prevProx = song.proxima || ''
+    const prevPred = pred?.id || ''
+
+    // Valida os dois vínculos antes de mexer em qualquer doc — círculo ou
+    // dono duplicado cancela a gravação inteira, não só a metade
+    if (proxSel !== prevProx) {
+      const motivo = motivoInvalido(song.id, proxSel, todasMusicas)
+      if (motivo) { alert(motivo); return }
+    }
+    if (predSel !== prevPred && predSel) {
+      const motivo = motivoInvalido(predSel, song.id, todasMusicas)
+      if (motivo) { alert(motivo); return }
+    }
+
+    const batch = writeBatch(db)
+    batch.update(ref, {
       tom: tom.trim(),
       cantor: cantor.trim(),
       bpm: bpm ? Number(bpm) : null,
       videoUrl: videoUrl.trim(),
       tags,
-    }).catch(erroSalvar)
+      ...(proxSel !== prevProx ? { proxima: proxSel || deleteField() } : {}),
+    })
+    if (predSel !== prevPred) {
+      // Tira o vínculo antigo antes de gravar o novo — senão duas músicas
+      // ficavam apontando "depois de mim" pra esta ao mesmo tempo
+      if (pred) batch.update(doc(db, 'songs', pred.id), { proxima: deleteField() })
+      if (predSel) batch.update(doc(db, 'songs', predSel), { proxima: song.id })
+    }
+    batch.commit().catch(erroSalvar)
     setEditingMeta(false)
   }
 
@@ -139,6 +153,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
     setVideoUrl(song.videoUrl || '')
     setTags(song.tags || [])
     setNewTag('')
+    setPredSel(pred?.id || '')
+    setProxSel(song.proxima || '')
     setEditingMeta(true)
   }
   const openNotes = () => {
@@ -153,7 +169,12 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   }
   const removeTag = (t) => setTags(tags.filter((x) => x !== t))
   const remove = () => {
-    if (confirm(`Apagar "${song.title}" de vez? Votos de domínio, dificuldade e opinião, tom, BPM, tags e observações vão junto. Se é só tirar do setlist, use "↩ Voltar pras sugestões".`)) deleteDoc(ref)
+    if (!confirm(`Apagar "${song.title}" de vez? Votos de domínio e opinião, tom, BPM, tags e observações vão junto. Se é só tirar do setlist, use "↩ Voltar pras sugestões".`)) return
+    const batch = writeBatch(db)
+    // Sem isso, quem emendava nesta ficava com "proxima" apontando pro nada
+    if (pred) batch.update(doc(db, 'songs', pred.id), { proxima: deleteField() })
+    batch.delete(ref)
+    batch.commit().catch(erroSalvar)
   }
 
   // Tira a música do setlist e devolve pra aba de Sugestões.
@@ -209,6 +230,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         })
       }
 
+      // Sem isso, quem emendava nesta ficava com "proxima" apontando pro nada
+      if (pred) await updateDoc(doc(db, 'songs', pred.id), { proxima: deleteField() })
       await deleteDoc(ref)
       showToast('Voltou pras sugestões')
     } catch {
@@ -270,9 +293,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
             <span className="status-dot status-sem-voto">Sem voto</span>
           )}
           {nota && <NotaChip nota={nota} compacto />}
-          {diff && <span className="diff-chip" style={{ color: diff.color, borderColor: diff.color }}>🎯 {diff.label}</span>}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {song.cantor && <span className="mini-chip">🎤 {song.cantor}</span>}
+          {pred && <span className="mini-chip mini-chip-par" title="Sempre vem depois dessa">⛓ ← {pred.title}</span>}
+          {prox && <span className="mini-chip mini-chip-par" title="Emenda direto nessa">⛓ → {prox.title}</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
           {ehNovo(song.createdAt) && <span className="mini-chip" title="Adicionada nos últimos 7 dias">🆕</span>}
@@ -357,41 +381,6 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         )}
       </div>
 
-      {/* Dificuldade pra tocar — o quanto a música é difícil, não o quanto a
-          banda já a domina (isso é o bloco de cima) */}
-      {(
-        <div className="difficulty-section-flat">
-          <p className="prompt-label">🎯 Dificuldade pra tocar</p>
-          <div className="difficulty-btns">
-            {DIFFICULTIES.map((d) => (
-              <button
-                key={d.value}
-                className={`btn-diff ${myDiff === d.value ? 'active' : ''}`}
-                style={myDiff === d.value ? { borderColor: d.color, color: d.color } : {}}
-                aria-pressed={myDiff === d.value}
-                onClick={() => voteDiff(d.value)}
-              >
-                {d.label}
-              </button>
-            ))}
-          </div>
-
-          {Object.keys(dificuldade).length > 0 && (
-            <div className="difficulty-summary">
-              {DIFFICULTIES.map((d) => {
-                const voters = Object.values(dificuldade).filter((v) => v.level === d.value)
-                if (!voters.length) return null
-                return (
-                  <span key={d.value} className="diff-pill" style={{ color: d.color, background: d.bg }}>
-                    {d.label}: {voters.map((v) => firstName(v.userName)).join(', ')}
-                  </span>
-                )
-              })}
-            </div>
-          )}
-        </div>
-      )}
-
       {/* BPM, metrônomo e vídeo */}
       <div className="song-meta-bar">
         {song.bpm ? (
@@ -461,6 +450,23 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
               ))}
             </div>
           )}
+          <div style={{ marginTop: 8 }}>
+            <p style={{ fontSize: '0.82rem', color: 'var(--text-muted)', marginBottom: 5 }}>Toca junto com</p>
+            <div className="form-row">
+              <label>Vem depois de
+                <select value={predSel} onChange={(e) => setPredSel(e.target.value)}>
+                  <option value="">— nenhuma —</option>
+                  {outrasMusicas.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                </select>
+              </label>
+              <label>Depois dela vem
+                <select value={proxSel} onChange={(e) => setProxSel(e.target.value)}>
+                  <option value="">— nenhuma —</option>
+                  {outrasMusicas.map((s) => <option key={s.id} value={s.id}>{s.title}</option>)}
+                </select>
+              </label>
+            </div>
+          </div>
           <div className="notes-actions">
             <button className="btn-secondary" onClick={() => setEditingMeta(false)}>Cancelar</button>
             <button className="btn-primary" onClick={saveMeta}>Salvar</button>

@@ -238,7 +238,9 @@ export default function PerformanceMode({ event, onClose }) {
         {next ? (
           <>
             <p className="perf-next-label">
-              {next.blocoId !== current.blocoId ? `Próxima · abre o ${next.blocoNome}` : 'Próxima'}
+              {current.proxima === next.id
+                ? 'Próxima · emenda direto ⛓'
+                : next.blocoId !== current.blocoId ? `Próxima · abre o ${next.blocoNome}` : 'Próxima'}
             </p>
             <p className="perf-next-title">
               {next.title}

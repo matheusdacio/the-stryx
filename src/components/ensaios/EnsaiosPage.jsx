@@ -62,7 +62,7 @@ function SetlistPreview({ setlist, blocos = 1, limite = 5 }) {
 // ── Presença ──────────────────────────────────────────────────────────
 
 // Cada um responde pela própria presença. Clicar de novo na mesma resposta
-// desfaz, igual aos votos de dificuldade
+// desfaz, igual aos votos de domínio
 function PresencaBar({ ensaio, uid, userName }) {
   const meu = (ensaio.presenca || {})[uid]?.status
 
@@ -267,6 +267,9 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                                 >
                                   📄
                                 </a>
+                              )}
+                              {songs[s.id]?.proxima && (
+                                <span className="mini-chip" style={{ marginLeft: 6 }} title="Emenda direto na próxima">⛓</span>
                               )}
                               {nivel && (
                                 <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
