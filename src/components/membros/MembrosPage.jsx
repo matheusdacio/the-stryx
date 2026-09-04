@@ -92,13 +92,18 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
             <button className="btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} aria-label="Confirmar instrumento" title="Confirmar instrumento" onClick={saveRole}>✓</button>
             <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} aria-label="Cancelar edição" title="Cancelar edição" onClick={() => setEditingRole(false)}>✕</button>
           </div>
+        ) : canEdit && !member.role ? (
+          <button type="button" className="btn-link-inline" style={{ marginLeft: 0 }} onClick={() => setEditingRole(true)}>
+            + instrumento
+          </button>
         ) : (
           <p
             className="member-role"
             onClick={canEdit ? () => setEditingRole(true) : undefined}
             title={canEdit ? 'Toque pra editar' : undefined}
           >
-            {member.role || (canEdit ? '+ instrumento' : '—')}
+            {member.role || '—'}
+            {canEdit && ' ✏️'}
           </p>
         )}
 

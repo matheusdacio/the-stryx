@@ -86,7 +86,7 @@ export default function BottomNav() {
             <div style={{ position: 'relative' }}>
               {item.icon}
               {count > 0 && (
-                <span className="nav-badge">{count}</span>
+                <span className="nav-badge">{count > 99 ? '99+' : count}</span>
               )}
             </div>
             <span className="nav-label">{item.label}</span>

@@ -158,7 +158,7 @@ export default function PerformanceMode({ event, onClose }) {
       {/* Topo: progresso e sair */}
       <div className="perf-top">
         <button className="perf-progress" onClick={() => setMostrarLista(!mostrarLista)} title="Pular pra outra música">
-          {idxAtual + 1} / {setlist.length}
+          {idxAtual + 1} / {setlist.length} <span aria-hidden="true">▾</span>
         </button>
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {formatData(event.date, { curta: true })}
