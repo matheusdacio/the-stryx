@@ -82,7 +82,6 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
             {cifra && !editing && (
               <button className="btn-secondary" onClick={() => { setForm(formDe(cifra)); setEditing(true) }}>Editar</button>
             )}
-            {onRemove && <button className="btn-ghost-danger" onClick={onRemove}>Remover</button>}
             {!editing && <button className="btn-secondary" onClick={onClose}>Fechar</button>}
           </div>
         </div>
@@ -126,6 +125,11 @@ export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
               {cifra.artist && <span className="badge">{cifra.artist}</span>}
             </div>
             <pre className="cifra-content">{cifra.content || 'Sem conteúdo.'}</pre>
+            {onRemove && (
+              <div className="modal-actions">
+                <button type="button" className="btn-ghost-danger" style={{ marginRight: 'auto' }} onClick={onRemove}>Remover</button>
+              </div>
+            )}
           </div>
         )}
       </div>
