@@ -19,8 +19,8 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 ## Regras de trabalho
 
 1. **Branch.** Crie `feat/blocos-e-pares` a partir da ponta de `feat/usabilidade-rodada-2` (ou de `main`, se a rodada 2 já tiver sido mergeada). Não faça merge em `main` sem o dono pedir.
-2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares) → D (dificuldade só nas Sugestões).** D é pequeno e independente: se B ou C ainda não tiverem começado quando você reler este arquivo, faça D antes deles. Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
-3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B, C e D são minors seguidos).
+2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares) → D (dificuldade só nas Sugestões) → E (presença "só uma parte" com observação).** D e E são pequenos e independentes: se B ou C ainda não tiverem começado quando você reler este arquivo, faça D e E antes deles. Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
+3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B, C, D e E são minors seguidos).
 4. **Não refatore por refatorar.** Nada de TypeScript, testes novos, bibliotecas novas (dnd-kit já está no projeto e é o que se usa).
 5. **Padrão de gravação:** disparar `updateDoc/addDoc`, fechar na hora, `.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))`. Nunca `await` antes de fechar.
 6. Tudo que é escala/rótulo/cor continua definido como dado em `src/utils/*` e reaproveitado — nada de string solta repetida em três telas.
@@ -38,7 +38,8 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 - **Montar o próximo ensaio como na mensagem** é uma ferramenta admin de dois passos (preview → aplicar), com os 28 itens como constante no código (tabela no fim deste arquivo). Depois de rodada, vai pra "Já rodadas".
 - **"➤ Enviar pro setlist" aparece para todo membro logado**, não só para o admin, com as mesmas condições de hoje (sugestão `aberta`). Continuam só do admin: "Reabrir" (no banner de aprovada/rejeitada) e "📊 Exportar".
 - **Dificuldade é informada e mostrada só nas Sugestões.** No Setlist ela deixa de ser votada, de aparecer no card e de virar ordenação ou pendência; continua só alimentando, por baixo, o desconto de "⚖️ Melhores e fáceis" (o voto viaja da sugestão pra música na aprovação). Isto **reverte o P7-2 da rodada 2** (chip 🎯 no card do Setlist).
-- `ensaiadas` (ids das músicas marcadas como ensaiadas) e `presenca` **não mudam**: continuam planos, por id de música/uid.
+- **Presença ganha a terceira resposta "Só uma parte"** (`status: 'parte'`) e uma **observação livre** por pessoa (`presenca.{uid}.obs`, ex.: "chego 21h", "saio antes do bloco 4"). Quem respondeu "só uma parte" conta como confirmado pra lembrete D-1 e pra aviso de cancelamento. Responder qualquer coisa continua tirando a pessoa de "Falta eu responder".
+- `ensaiadas` (ids das músicas marcadas como ensaiadas) e `presenca` **não mudam de formato**: continuam planos, por id de música/uid (a presença só ganha campos novos dentro da entrada de cada pessoa).
 
 ---
 
@@ -202,6 +203,31 @@ Hoje a dificuldade é votada e mostrada em dois lugares (modal da sugestão e ca
 
 - **D4 · Sugestões continuam iguais — só conferir.** No modal: bloco "🎯 Dificuldade pra tocar" gravando no toque; no card da lista: chip 🎯; ordenações "🎯 Dificuldade" e "⚖️ Melhores e fáceis"; filtro "🗳 Falta meu voto" cobrando opinião **e** dificuldade (`utils/pendencias.js` `faltaVotar`, não mexer). `approve` continua copiando `dificuldade` pra música (é o que alimenta o ⚖️ do Setlist). O comentário `// desfaz, igual aos votos de dificuldade` em `EnsaiosPage.jsx` (`PresencaBar`) vira `igual aos votos de domínio`. `CHANGELOG.md`: registrar que a dificuldade passou a ser votada e vista só nas Sugestões, e que o Setlist perdeu a ordenação 🎯.
 
+---
+
+## Pacote E — presença "só uma parte" com observação
+
+Tem gente que vai ao ensaio, mas só parte do tempo (chega depois, sai antes). Hoje só existe Vou/Não vou, e quem vai só uma parte marca "Vou" e avisa no grupo — a informação se perde. Consumidores do campo hoje: `grep -rn "presenca\b\|PRESENCAS\|splitPresenca\|status === 'vai'" src .github/scripts`.
+
+- **E1 · escala.** `src/utils/presenca.js`, `PRESENCAS`: inserir entre "Vou" e "Não vou": `{ value: 'parte', label: 'Só uma parte', short: 'Parte', color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' }`. `splitPresenca` devolve também `parte: []` (mesma lógica dos outros dois), e cada membro de `vao`, `parte` e `nao` sai com a observação anexada: `{ ...m, obs: p[m.firebaseUid]?.obs || '' }`. `faltaResponder` não muda (qualquer resposta conta). O `Set` de status válidos em `src/utils/integridade.js` já vem de `PRESENCAS` — nada a fazer lá.
+
+- **E2 · responder e anotar (`EnsaiosPage.jsx`, `PresencaBar`).**
+  - Os três botões (`Vou · Só uma parte · Não vou`) saem do `PRESENCAS.map` que já existe; nada muda no toggle (tocar de novo desfaz).
+  - Gravar por caminho pontilhado pra **não apagar a observação ao trocar de resposta**: em vez de `` [`presenca.${uid}`]: { status, name, at } ``, gravar `` { [`presenca.${uid}.status`]: status, [`presenca.${uid}.name`]: userName, [`presenca.${uid}.at`]: new Date().toISOString() } `` (o Firestore cria o mapa intermediário sozinho). Desfazer continua `deleteField()` na entrada inteira (a observação vai junto — é sobre aquela resposta).
+  - Abaixo dos botões, só quando `meu` existe: uma linha `.presenca-obs` clicável no padrão do `.song-notes` — mostra `📝 {obs}` ou, sem observação, o placeholder em `.placeholder`: `meu === 'parte' ? 'Que parte? Ex: chego às 21h, saio antes do bloco 4' : 'Adicionar observação (ex: chego 10 min atrasado)'`. Tocar abre um `<input>` inline (`notes-edit` com input em vez de textarea, `maxLength={80}`, `aria-label="Observação da presença"`) com "Salvar" e "Cancelar"; Enter salva, Esc cancela. Salvar grava `` [`presenca.${uid}.obs`]: texto.trim() `` (vazio → `deleteField()` só do `obs`), fecha na hora, `.catch` com o alerta padrão. Ao escolher "Só uma parte" **sem observação ainda**, abrir o input automaticamente (autoFocus) — a pessoa pode ignorar e sair sem digitar.
+
+- **E3 · mostrar (`EnsaiosPage.jsx`).**
+  - `PresencaResumo`: nova linha entre "Vão" e "Não vão": `linha(passado ? 'Foram parte' : 'Só uma parte', parte, PRESENCAS[1].color)` (atenção: o índice de "Não vou" em `PRESENCAS` vira `[2]`). Nas três linhas, o `member-tag` de quem tem observação vira `{firstName(m.name)} <span className="member-tag-obs">· {m.obs}</span>` com `` title={`${m.name}: ${m.obs}`} ``.
+  - Cabeçalho da linha normal: entre `{vao.length} vão` e `{nao.length} não`, `{parte.length > 0 && <span className="ensaio-row-members presenca-parte">{parte.length} parte</span>}`.
+  - Card destaque: `✓ {vao.length} confirmados` → `✓ {vao.length + parte.length} confirmados` seguido de ` ({parte.length} só uma parte)` quando `parte.length > 0`; mostrar quando a soma for > 0.
+  - CSS: `.presenca-parte { color: #f59e0b; } .presenca-obs { font-size: 0.8rem; color: var(--text-muted); cursor: pointer; margin-top: 4px; padding: 3px 6px; border-radius: var(--radius-sm); border: 1px solid transparent; } .presenca-obs:hover { border-color: var(--border); } .member-tag-obs { font-weight: 400; opacity: 0.85; max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; display: inline-block; vertical-align: bottom; }`.
+
+- **E4 · lembretes e avisos (scripts Node, sem import de `src/`).**
+  - `.github/scripts/lembrar-eventos.js`: no D-1, `alvos = todosUids.filter((uid) => ['vai', 'parte'].includes(presenca[uid]?.status))` e `confirmados = Object.values(presenca).filter((p) => ['vai', 'parte'].includes(p.status)).length`; se houver gente em `parte`, o corpo ganha ` (N só uma parte)` depois de "confirmados". D-3 (`!presenca[uid]`) não muda.
+  - `.github/scripts/enviar-sugestoes.js`, aviso `evento_cancelado`: `destinatarios = tokens.filter((t) => ['vai', 'parte'].includes(presenca[t.uid]?.status))`.
+
+- **E5 · conferir que continua igual.** `faltaResponder`/`usePendencias` (badge de Eventos e aba "⏳ Falta eu responder"): quem respondeu "só uma parte" não aparece mais como pendente. `migrateEventPresence` (já rodada) não muda. `CHANGELOG.md`: registrar a resposta nova e a observação.
+
 ## Não mexer
 
 - `ensaiadas` e `presenca` continuam planos, por id/uid, sem relação com bloco.
@@ -214,9 +240,9 @@ Hoje a dificuldade é votada e mostrada em dois lugares (modal da sugestão e ca
 
 ## Como reportar cada pacote
 
-1. Ids implementados (A1…A3, B1…B7, C1…C5, D1…D4) e o commit de cada um.
+1. Ids implementados (A1…A3, B1…B7, C1…C5, D1…D4, E1…E5) e o commit de cada um.
 2. Ids pulados e por quê.
-3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas" e "Montar o próximo ensaio" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, e o palco com blocos. **Listar as músicas da sequência que a ferramenta não achou no setlist.**
+3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas" e "Montar o próximo ensaio" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, o palco com blocos, e a observação da presença (abrir automático ao marcar "Só uma parte"). **Listar as músicas da sequência que a ferramenta não achou no setlist.**
 4. Resultado de `npm run lint` e `npm run build`.
 
 Comece pelo Pacote A.
