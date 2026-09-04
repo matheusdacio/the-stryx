@@ -20,7 +20,8 @@ import { usePersistedState } from '../../hooks/usePersistedState'
 // o que falta usa "Falta meu voto", que é pessoal
 const FILTERS = [
   { value: 'all', label: 'Todas' },
-  ...[...DOMINIOS].reverse().map((d) => ({ value: d.value, label: d.label })),
+  // DOMINIOS já vem na ordem de prioridade de ensaio (crua → dominada)
+  ...DOMINIOS.map((d) => ({ value: d.value, label: d.label })),
 ]
 
 // Nível da música pra filtro e contagem
