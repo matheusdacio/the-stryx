@@ -156,6 +156,8 @@ async function importEnsaios(ensaios) {
       status: e.status || 'realizado',
       members: e.members || [],
       pauta: e.pauta || [],
+      horaInicio: '09:00',
+      horaFim: '17:00',
       createdAt: serverTimestamp(),
     })
     added++

@@ -183,6 +183,12 @@ export async function verificarIntegridade() {
   })
   addInfo('Pares de músicas', paresRuins, 'Nenhum problema')
 
+  // ── Horários ──
+  const horariosRuins = eventos
+    .filter((e) => e.horaInicio && e.horaFim && e.horaFim <= e.horaInicio)
+    .map((e) => `${formatEvento(e)}: fim antes do início`)
+  addInfo('Horários', horariosRuins, 'Nenhum problema')
+
   // ── Votos importados ainda por fundir ──
   const importPendentes = sugestoes.filter((sug) =>
     Object.keys(sug.opinoes || {}).some((k) => k.startsWith('import_'))
