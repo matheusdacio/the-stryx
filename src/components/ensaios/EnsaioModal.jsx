@@ -47,6 +47,8 @@ function enfileirarAviso(tipo, ensaioId, data) {
     data: data.date,
     tipoEvento: data.type,
     local: data.location,
+    horaInicio: data.horaInicio,
+    horaFim: data.horaFim,
     processado: false,
     criadoEm: serverTimestamp(),
   }).catch(() => {})
@@ -58,12 +60,19 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   const uidsAtivos = uidsAtivosDe(bandMembers)
   const editando = !!ensaio && !copiando
   const [allSongs, setAllSongs] = useState([])
-  const [form, setForm] = useState({
-    date: copiando ? '' : toInputDate(ensaio?.date) || '',
-    location: ensaio?.location || '',
-    type: ensaio?.type || 'ensaio',
-    status: copiando ? 'planejado' : ensaio?.status || 'planejado',
-    notes: ensaio?.notes || '',
+  const [form, setForm] = useState(() => {
+    const tipo = ensaio?.type || 'ensaio'
+    return {
+      date: copiando ? '' : toInputDate(ensaio?.date) || '',
+      location: ensaio?.location || '',
+      type: tipo,
+      status: copiando ? 'planejado' : ensaio?.status || 'planejado',
+      notes: ensaio?.notes || '',
+      // Evento existente (editar/copiar) mantém o horário que já tinha, mesmo
+      // vazio — evento novo do tipo ensaio já nasce 9h às 17h
+      horaInicio: ensaio ? (ensaio.horaInicio || '') : (tipo === 'ensaio' ? '09:00' : ''),
+      horaFim: ensaio ? (ensaio.horaFim || '') : (tipo === 'ensaio' ? '17:00' : ''),
+    }
   })
   const [pauta, setPauta] = useState(
     copiando
@@ -297,6 +306,10 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   const handleSave = (e) => {
     e.preventDefault()
     if (!form.date) return
+    if (form.horaInicio && form.horaFim && form.horaFim <= form.horaInicio) {
+      alert('O fim precisa ser depois do início.')
+      return
+    }
     setSaving(true)
     const data = {
       ...form,
@@ -318,6 +331,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
       if (form.status !== (ensaio.status || 'planejado')) mudou.status = data.status
       if (form.notes !== (ensaio.notes || '')) mudou.notes = data.notes
       if (form.date !== toInputDate(ensaio.date)) mudou.date = data.date
+      if (form.horaInicio !== (ensaio.horaInicio || '')) mudou.horaInicio = data.horaInicio
+      if (form.horaFim !== (ensaio.horaFim || '')) mudou.horaFim = data.horaFim
       if (JSON.stringify(pauta) !== JSON.stringify(ensaio.pauta || [])) mudou.pauta = data.pauta
       // resumo ignora o id do bloco (o 'legado' sempre diferiria do novo id)
       const resumo = (bs) => JSON.stringify(bs.map((b) => [b.nome || '', (b.musicas || []).map((m) => m.id)]))
@@ -334,7 +349,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
         // (não faz sentido avisar as duas coisas na mesma edição)
         if (mudou.status === 'cancelado') {
           enfileirarAviso('evento_cancelado', ensaio.id, data)
-        } else if (mudou.date && data.status !== 'cancelado') {
+        } else if ((mudou.date || mudou.horaInicio || mudou.horaFim) && data.status !== 'cancelado') {
           enfileirarAviso('evento_remarcado', ensaio.id, data)
         }
       }
@@ -364,7 +379,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             <button
               type="button"
               className={`btn-event-type ${!isApresentacao ? 'active' : ''}`}
-              onClick={() => { setMexeu(true); setForm({ ...form, type: 'ensaio' }) }}
+              onClick={() => {
+                setMexeu(true)
+                setForm({
+                  ...form,
+                  type: 'ensaio',
+                  ...(!form.horaInicio && !form.horaFim ? { horaInicio: '09:00', horaFim: '17:00' } : {}),
+                })
+              }}
             >
               🎸 Ensaio
             </button>
@@ -380,6 +402,10 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
           <div className="form-row">
             <label>Data *<input type="date" name="date" value={form.date} onChange={handleChange} required /></label>
             <label>Local<input name="location" value={form.location} onChange={handleChange} placeholder={isApresentacao ? 'Ex: Bar do Zé' : 'Ex: Estúdio X'} /></label>
+          </div>
+          <div className="form-row">
+            <label>Início<input type="time" name="horaInicio" step="300" value={form.horaInicio} onChange={handleChange} /></label>
+            <label>Fim<input type="time" name="horaFim" step="300" value={form.horaFim} onChange={handleChange} /></label>
           </div>
           {/* "Realizado" não fazia nada — as abas Próximos/Realizados são
               calculadas pela data. Só cancelado muda algo, então o controle
