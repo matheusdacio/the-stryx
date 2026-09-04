@@ -45,6 +45,17 @@ export default function PerformanceMode({ event, onClose }) {
     )
   }, [])
   const [mostrarCifra, setMostrarCifra] = useState(false)
+  // Mesma preferência de tamanho de letra ajustada na Cifra (localStorage
+  // compartilhado) — quem já achou o tamanho ideal lendo em casa não
+  // precisa reajustar no palco
+  const [cifraFs] = useState(() => {
+    try {
+      const salvo = Number(localStorage.getItem('stryx-cifra-fs'))
+      return salvo >= 0.7 && salvo <= 1.6 ? salvo : null
+    } catch {
+      return null
+    }
+  })
 
   // O repertório fica congelado no que era quando o palco abriu (mudar a
   // lista sob os pés trocaria a música atual no meio da execução) — mas
@@ -147,13 +158,13 @@ export default function PerformanceMode({ event, onClose }) {
       {/* Topo: progresso e sair */}
       <div className="perf-top">
         <button className="perf-progress" onClick={() => setMostrarLista(!mostrarLista)} title="Pular pra outra música">
-          {idxAtual + 1} / {setlist.length}
+          {idxAtual + 1} / {setlist.length} <span aria-hidden="true">▾</span>
         </button>
         <span className="perf-event-name">
           {event.type === 'apresentacao' ? '🎤' : '🎸'} {formatData(event.date, { curta: true })}
           {event.location ? ` · ${event.location}` : ''}
         </span>
-        <button className="perf-close" onClick={onClose}>✕</button>
+        <button className="perf-close" aria-label="Sair do modo palco" title="Sair do modo palco" onClick={onClose}>✕</button>
       </div>
 
       {repertorioMudou && (
@@ -204,7 +215,11 @@ export default function PerformanceMode({ event, onClose }) {
         </div>
         {current.notes && <p className="perf-notes">{current.notes}</p>}
         {mostrarCifra && cifraAtual && (
-          <pre className="perf-cifra-content" onClick={(e) => e.stopPropagation()}>
+          <pre
+            className="perf-cifra-content"
+            onClick={(e) => e.stopPropagation()}
+            style={cifraFs ? { '--cifra-fs': `${cifraFs}rem` } : undefined}
+          >
             {cifraAtual.content || 'Sem conteúdo.'}
           </pre>
         )}

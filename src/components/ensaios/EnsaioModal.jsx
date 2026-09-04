@@ -222,9 +222,9 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   return (
     <div className="modal-overlay">
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>{editando ? 'Editar Evento' : copiando ? 'Copiar Evento' : 'Agendar Evento'}</h2>
+        <h2>{editando ? 'Editar evento' : copiando ? 'Copiar evento' : 'Novo evento'}</h2>
         {copiando && (
-          <p className="section-label" style={{ marginBottom: 10 }}>
+          <p className="filter-hint" style={{ margin: '0 0 12px' }}>
             Músicas e pauta vieram do evento de {formatData(ensaio?.date)}. Escolha a data nova — a presença começa em branco.
           </p>
         )}
@@ -234,14 +234,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             <button
               type="button"
               className={`btn-event-type ${!isApresentacao ? 'active' : ''}`}
-              onClick={() => setForm({ ...form, type: 'ensaio' })}
+              onClick={() => { setMexeu(true); setForm({ ...form, type: 'ensaio' }) }}
             >
               🎸 Ensaio
             </button>
             <button
               type="button"
               className={`btn-event-type ${isApresentacao ? 'active apresentacao' : ''}`}
-              onClick={() => setForm({ ...form, type: 'apresentacao' })}
+              onClick={() => { setMexeu(true); setForm({ ...form, type: 'apresentacao' }) }}
             >
               🎤 Apresentação
             </button>
@@ -259,7 +259,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             className={`btn-cancelar-evento ${form.status === 'cancelado' ? 'cancelado' : ''}`}
             onClick={() => { setMexeu(true); setForm({ ...form, status: form.status === 'cancelado' ? 'planejado' : 'cancelado' }) }}
           >
-            {form.status === 'cancelado' ? '↩ Reativar' : '✕ Cancelar este evento'}
+            {form.status === 'cancelado' ? '↩ Reativar evento' : '🚫 Marcar como cancelado'}
           </button>
 
           {/* Setlist do evento */}
@@ -271,6 +271,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
               value={songSearch}
               onChange={(e) => setSongSearch(e.target.value)}
               placeholder="Buscar música do setlist..."
+              aria-label="Buscar música do setlist"
             />
             {searchResults.length > 0 && (
               <div className="song-search-results">
@@ -280,7 +281,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                     <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
                       {nivel && (
-                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                        <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
                         </span>
                       )}
@@ -297,6 +298,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                 max="30"
                 value={quantasCruas}
                 onChange={(e) => setQuantasCruas(e.target.value)}
+                aria-label="Quantas músicas trazer"
               />
               <span>músicas menos dominadas</span>
               <button type="button" className="btn-secondary" onClick={trazerCruas}>+ Trazer</button>
@@ -309,6 +311,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                   <div className="event-setlist">
                     {setlist.map((s, i) => {
                       const nivel = dominioPorPeso(calcDominio(allSongs.find((x) => x.id === s.id)?.dominio, uidsAtivos).pior)
+                      const tom = allSongs.find((x) => x.id === s.id)?.tom
                       return (
                       <SortableSetlistItem key={s.id} id={s.id}>
                         <span className="event-setlist-pos">{i + 1}</span>
@@ -316,16 +319,17 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                           {s.title}
                           {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                           {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
+                          {tom && <span className="event-setlist-bpm"> · ♪ {tom}</span>}
                           {nivel && (
-                            <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                            <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                               {nivel.label}
                             </span>
                           )}
                         </span>
                         <span className="event-setlist-actions">
-                          <button type="button" className="btn-order" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
-                          <button type="button" className="btn-order" onClick={() => moveSong(i, 1)} disabled={i === setlist.length - 1}>▼</button>
-                          <button type="button" className="btn-remove" onClick={() => removeSong(i)}>✕</button>
+                          <button type="button" className="btn-order" aria-label="Mover pra cima" title="Mover pra cima" onClick={() => moveSong(i, -1)} disabled={i === 0}>▲</button>
+                          <button type="button" className="btn-order" aria-label="Mover pra baixo" title="Mover pra baixo" onClick={() => moveSong(i, 1)} disabled={i === setlist.length - 1}>▼</button>
+                          <button type="button" className="btn-remove" aria-label={`Tirar ${s.title} do evento`} title="Tirar do evento" onClick={() => removeSong(i)}>✕</button>
                         </span>
                       </SortableSetlistItem>
                       )
@@ -344,19 +348,20 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                 onChange={(e) => setNewItem(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addPauta())}
                 placeholder="Adicionar item à pauta..."
+                aria-label="Novo item da pauta"
               />
-              <button type="button" className="btn-primary" onClick={addPauta}>+</button>
+              <button type="button" className="btn-secondary" onClick={addPauta}>+</button>
             </div>
             {pauta.map((item, i) => (
               <div key={i} className="pauta-item-edit">
                 <span>{item.text}</span>
-                <button type="button" className="btn-remove" onClick={() => removePauta(i)}>✕</button>
+                <button type="button" className="btn-remove" aria-label="Remover item da pauta" title="Remover item da pauta" onClick={() => removePauta(i)}>✕</button>
               </div>
             ))}
           </div>
 
           <label>Observações
-            <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Notas do evento..." />
+            <textarea name="notes" value={form.notes} onChange={handleChange} rows={3} placeholder="Ex: levar cabo extra, ensaiar a entrada da 3ª…" />
           </label>
 
           <div className="modal-actions">

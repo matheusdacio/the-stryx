@@ -17,16 +17,20 @@ export default function Navbar({ notif, onAtivarNotif, onDesativarNotif }) {
         {suportado && (
           <button
             className="btn-notif"
-            title={permissao === 'granted' ? 'Notificações ativas — clique para desativar' : 'Ativar notificações'}
+            title={permissao === 'granted' ? 'Notificações ativas — toque pra desativar' : 'Ativar notificações'}
             onClick={handleNotifClick}
             disabled={ativando}
           >
             {ativando ? '⏳' : permissao === 'granted' ? '🔔' : '🔕'}
           </button>
         )}
-        <img src={user.photoURL} alt={user.displayName} className="avatar" />
+        {user.photoURL ? (
+          <img src={user.photoURL} alt={user.displayName} className="avatar" />
+        ) : (
+          <div className="avatar avatar-placeholder">{(user.displayName || '?')[0].toUpperCase()}</div>
+        )}
         <span className="navbar-username">{user.displayName.split(' ')[0]}</span>
-        <button className="btn-logout" onClick={logout}>Sair</button>
+        <button className="btn-logout" onClick={() => confirm('Sair da conta?') && logout()}>Sair</button>
       </div>
     </nav>
   )

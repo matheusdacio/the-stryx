@@ -42,27 +42,30 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
   const canEdit = isAdmin || (linked && member.firebaseUid === currentUid)
   const aliases = member.aliases || []
 
-  const saveRole = async () => {
-    await updateDoc(doc(db, 'members', member.id), { role })
+  // Fecha/limpa na hora — sem sinal, o await deixava a caixa presa esperando a rede
+  const erro = () => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.')
+
+  const saveRole = () => {
+    updateDoc(doc(db, 'members', member.id), { role }).catch(erro)
     setEditingRole(false)
   }
 
   // Apelidos / nomes antigos do Glissandoo (pra fundir votos de quem usou outro sobrenome)
-  const addAlias = async () => {
+  const addAlias = () => {
     const a = newAlias.trim()
     if (!a || aliases.some((x) => x.toLowerCase() === a.toLowerCase())) { setNewAlias(''); return }
-    await updateDoc(doc(db, 'members', member.id), { aliases: [...aliases, a] })
+    updateDoc(doc(db, 'members', member.id), { aliases: [...aliases, a] }).catch(erro)
     setNewAlias('')
   }
-  const removeAlias = async (a) => {
-    await updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) })
+  const removeAlias = (a) => {
+    updateDoc(doc(db, 'members', member.id), { aliases: aliases.filter((x) => x !== a) }).catch(erro)
   }
 
   // Quem saiu não conta mais pra presença, semeadura de voto nem domínio,
   // mas o histórico (respostas antigas, votos gravados) fica intacto — e
   // "ativo" só preenchendo campo vazio no login sobrevive a um novo login
   const ativo = member.ativo !== false
-  const toggleAtivo = () => updateDoc(doc(db, 'members', member.id), { ativo: !ativo })
+  const toggleAtivo = () => updateDoc(doc(db, 'members', member.id), { ativo: !ativo }).catch(erro)
 
   return (
     <div className={`member-card ${linked ? 'linked' : 'unlinked'} ${ativo ? '' : 'membro-inativo'}`}>
@@ -86,16 +89,21 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
               <option value="">Instrumento...</option>
               {INSTRUMENTS.map(i => <option key={i} value={i}>{i}</option>)}
             </select>
-            <button className="btn-primary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} onClick={saveRole}>✓</button>
-            <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} onClick={() => setEditingRole(false)}>✕</button>
+            <button className="btn-secondary" style={{ padding: '2px 8px', fontSize: '0.75rem' }} aria-label="Confirmar instrumento" title="Confirmar instrumento" onClick={saveRole}>✓</button>
+            <button className="btn-secondary" style={{ padding: '2px 6px', fontSize: '0.75rem' }} aria-label="Cancelar edição" title="Cancelar edição" onClick={() => setEditingRole(false)}>✕</button>
           </div>
+        ) : canEdit && !member.role ? (
+          <button type="button" className="btn-link-inline" style={{ marginLeft: 0 }} onClick={() => setEditingRole(true)}>
+            + instrumento
+          </button>
         ) : (
           <p
             className="member-role"
             onClick={canEdit ? () => setEditingRole(true) : undefined}
-            title={canEdit ? 'Clique para editar' : undefined}
+            title={canEdit ? 'Toque pra editar' : undefined}
           >
-            {member.role || (canEdit ? '+ instrumento' : '—')}
+            {member.role || '—'}
+            {canEdit && ' ✏️'}
           </p>
         )}
 
@@ -123,7 +131,7 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
                   {aliases.map((a) => (
                     <span key={a} className="song-tag editable">
                       {a}
-                      <button type="button" className="tag-remove" onClick={() => removeAlias(a)}>✕</button>
+                      <button type="button" className="tag-remove" aria-label={`Tirar apelido ${a}`} onClick={() => removeAlias(a)}>✕</button>
                     </span>
                   ))}
                 </div>
@@ -135,8 +143,9 @@ function MemberCard({ member, isAdmin, currentUid, onRemove }) {
                   onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addAlias())}
                   placeholder="Ex: Marcio Braz"
                   style={{ fontSize: '0.78rem' }}
+                  aria-label="Novo apelido"
                 />
-                <button type="button" className="btn-primary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
+                <button type="button" className="btn-secondary" style={{ padding: '2px 9px', fontSize: '0.75rem' }} onClick={addAlias}>+</button>
               </div>
             </div>
 
@@ -609,6 +618,7 @@ export default function MembrosPage() {
   const isAdmin = user.email === ADMIN_EMAIL
 
   const [members, setMembers] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [merging, setMerging] = useState(false)
   const [msg, setMsg] = useState('')
 
@@ -616,6 +626,7 @@ export default function MembrosPage() {
     const q = query(collection(db, 'members'), orderBy('name'))
     return onSnapshot(q, snap => {
       setMembers(snap.docs.map(d => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
     })
   }, [])
 
@@ -628,7 +639,7 @@ export default function MembrosPage() {
   }, [msg])
 
   const handleRemove = async (member) => {
-    if (!confirm(`Remover "${member.name}" da banda?`)) return
+    if (!confirm(`Apagar "${member.name}" do cadastro de vez? Se a pessoa só saiu da banda, use "Tá na banda → Saiu", que guarda o histórico.`)) return
     await deleteDoc(doc(db, 'members', member.id))
   }
 
@@ -654,7 +665,7 @@ export default function MembrosPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>A Banda</h2>
+        <h2>Banda</h2>
         <span className="section-label" style={{ marginLeft: 'auto' }}>
           {linkedCount}/{members.length} logados
         </span>
@@ -696,7 +707,9 @@ export default function MembrosPage() {
       )}
 
       {/* Grid de membros */}
-      {members.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando...</p>
+      ) : members.length === 0 ? (
         <div className="empty-state">
           <p>Nenhum membro cadastrado.</p>
           <p style={{ fontSize: '0.85rem', color: 'var(--text-muted)', marginTop: 6 }}>

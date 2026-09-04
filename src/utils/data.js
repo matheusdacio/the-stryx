@@ -5,11 +5,14 @@
 export function formatData(ts, { curta = false } = {}) {
   if (!ts) return ''
   const d = ts.toDate ? ts.toDate() : new Date(ts)
+  // Curta some com o ano — mas um evento Realizado/Cancelado de ano
+  // anterior sem ano fica ambíguo ("qua., 02/09" de que ano?)
+  const foraDoAno = curta && d.getFullYear() !== new Date().getFullYear()
   return d.toLocaleDateString('pt-BR', {
     weekday: curta ? 'short' : 'long',
     day: '2-digit',
     month: '2-digit',
-    ...(curta ? {} : { year: 'numeric' }),
+    ...(curta && !foraDoAno ? {} : { year: curta ? '2-digit' : 'numeric' }),
   })
 }
 

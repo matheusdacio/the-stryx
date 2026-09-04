@@ -13,22 +13,20 @@ import VideoInline from '../VideoInline'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
+import NotaChip from '../NotaChip'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
-import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight, fatorFacilidade } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
 import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { getYouTubeId } from '../../utils/youtube'
+import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-
-// Sugestão nova sem voto nenhum ia pro fim de "Melhores e fáceis", empatada
-// em 0 com as reprovadas — o chip explica por que ela aparece lá em cima
-const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 const ehNovo = (createdAt) => {
@@ -74,9 +72,10 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
   const list = opinoesArray(sugestao.opinoes)
   const existing = (sugestao.opinoes || {})[userId]
+  const faltam = quemFalta(sugestao, bandMembers)
 
-  const saveNotes = async () => {
-    await updateDoc(ref, { notes: notes.trim() })
+  const saveNotes = () => {
+    updateDoc(ref, { notes: notes.trim() }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setEditingNotes(false)
   }
 
@@ -194,6 +193,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
           Sugerida por <strong>{sugestao.suggestedBy}</strong>
+          {sugestao.createdAt && <> · {formatData(sugestao.createdAt, { curta: true })}</>}
         </p>
 
         {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
@@ -230,8 +230,8 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             grava no toque (igual à dificuldade), sem precisar rolar até o
             fim nem tocar num botão "Enviar" à parte */}
         <div className="opinion-form">
-          <p className="section-label">
-            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? 'A banda toda já opinou' : 'Vale tocar?'}
+          <p className="prompt-label">
+            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
           </p>
           {!(sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers)) && (
             <div className="opinion-btns">
@@ -275,6 +275,12 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           )}
         </div>
 
+        {sugestao.status === 'aberta' && !isAdmin && !temVeto(sugestao) && (
+          <p className="filter-hint" style={{ margin: '4px 0 0' }}>
+            {faltam.length ? `Faltam opinar: ${faltam.map(firstName).join(', ')}` : 'Todo mundo já opinou — agora é com o admin.'}
+          </p>
+        )}
+
         {/* Observações da banda — editável por qualquer membro */}
         {editingNotes ? (
           <div className="notes-edit" style={{ marginBottom: 12 }}>
@@ -286,13 +292,13 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           </div>
         ) : (
           <p className="song-notes" style={{ marginBottom: 12 }} onClick={() => { setNotes(sugestao.notes || ''); setEditingNotes(true) }}>
-            {sugestao.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+            {sugestao.notes || <span className="placeholder">Toque pra anotar algo pra banda</span>}
           </p>
         )}
 
         {/* Dificuldade pra tocar */}
         <div className="difficulty-section-flat" style={{ marginBottom: 12 }}>
-          <p className="section-label">Dificuldade pra tocar</p>
+          <p className="prompt-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
@@ -416,7 +422,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <h2>Nova Sugestão</h2>
+        <h2>Nova sugestão</h2>
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
@@ -506,17 +512,13 @@ const STATUS_LABELS_XLS = {
 }
 
 // ── Nota combinada: média das opiniões com desconto por dificuldade ───
-// Fácil não desconta nada, Ok e Difícil descontam progressivamente. A nota
-// pesa mais que a dificuldade: uma música difícil precisa ser bem melhor
-// avaliada pra passar na frente de uma fácil, mas entre notas parecidas a
-// mais fácil sobe. Ajuste esses fatores se quiser a facilidade pesando mais.
-const EASE_BY_WEIGHT = { 1: 1, 2: 0.85, 3: 0.7 }
-const EASE_SEM_VOTO = EASE_BY_WEIGHT[2] // sem voto de dificuldade conta como Ok
-
-/** Média das opiniões descontada pela dificuldade votada (a mais alta) */
+// A nota pesa mais que a dificuldade: uma música difícil precisa ser bem
+// melhor avaliada pra passar na frente de uma fácil, mas entre notas
+// parecidas a mais fácil sobe. Fatores em fatorFacilidade (utils/dificuldade),
+// compartilhados com a mesma ordenação do Setlist.
 function calcBalancedScore(opinoes, dificuldade) {
   const { media, soma, total } = calcSongScore(opinoes)
-  const ease = EASE_BY_WEIGHT[calcDifficulty(dificuldade).max] ?? EASE_SEM_VOTO
+  const ease = fatorFacilidade(dificuldade)
   return { valor: media * ease, media, soma, total, ease }
 }
 
@@ -807,20 +809,30 @@ export default function SugestoesPage() {
             : f.value === 'rejeitada'
               ? visiveis.filter((s) => estaRejeitada(s, bandMembers)).length
               : visiveis.filter((s) => s.status === 'aberta' && !estaRejeitada(s, bandMembers)).length
+          const active = filter === f.value
+          // Gradiente vermelho só em "Todas" — Em aberto/Rejeitadas usam cor
+          // neutra/cinza, como Setlist e Rascunhos já fazem por nível (F60)
+          const style = active && f.value === 'rejeitada'
+            ? { background: 'rgba(107,114,128,0.2)', borderColor: 'var(--gray)', color: 'var(--text)' }
+            : active && f.value === 'aberta'
+              ? { background: 'var(--surface2)', borderColor: 'var(--border-strong)', color: 'var(--text)' }
+              : {}
           return (
-            <button key={f.value} className={`btn-filter ${filter === f.value ? 'active' : ''}`} onClick={() => mudarFiltro(f.value)}>
+            <button key={f.value} className={`btn-filter ${active ? 'active' : ''}`} style={style} onClick={() => mudarFiltro(f.value)}>
               {f.label} <span className="count">{count}</span>
             </button>
           )
         })}
         <button
-          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          className={`btn-tag ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'aberta' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam meu voto de opinião ou dificuldade"
         >
           🗳 Falta meu voto <span className="count">{pendingCount}</span>
         </button>
       </div>
+
+      <p className="filter-hint">Você sugere, a banda opina. Quando todo mundo opinar sem veto, o admin manda pro setlist.</p>
 
       {/* Ordenação */}
       <div className="sort-bar">
@@ -842,7 +854,11 @@ export default function SugestoesPage() {
           ) : (
             <>
               <p>{filter === 'aberta' ? 'Nenhuma sugestão em aberto.' : 'Nenhuma sugestão aqui.'}</p>
-              {filter !== 'rejeitada' && <button className="btn-primary" onClick={() => setAddModal(true)}>Fazer primeira sugestão</button>}
+              {filter !== 'rejeitada' && (
+                <button className="btn-primary" onClick={() => setAddModal(true)}>
+                  {visiveis.length > 0 ? 'Sugerir uma música' : 'Fazer primeira sugestão'}
+                </button>
+              )}
             </>
           )}
         </div>
@@ -883,13 +899,9 @@ export default function SugestoesPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-                      {showScore && (
-                        <span className="sug-score-chip" title={`Média ${formatarNota(media)} · Soma ${soma.toLocaleString('pt-BR')} · ${total} voto(s)`}>
-                          ⭐ {formatarNota(media)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
-                        </span>
-                      )}
+                      {showScore && <NotaChip nota={{ media, soma, total }} deQuantos={bandMembers.length} />}
                       {diffLabel && (
-                        <span className="sug-diff-chip" style={{ color: diffLabel.color, borderColor: diffLabel.color }}>
+                        <span className="diff-chip" style={{ color: diffLabel.color, borderColor: diffLabel.color }}>
                           🎯 {diffLabel.label}
                         </span>
                       )}
@@ -903,6 +915,7 @@ export default function SugestoesPage() {
                         </span>
                       )}
                     </div>
+                    <span className="sug-card-arrow" aria-hidden="true">›</span>
                   </div>
                   <p className="sug-card-by">por {s.suggestedBy}</p>
                   <OpinionSummary opinoes={s.opinoes} />

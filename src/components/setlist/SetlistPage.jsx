@@ -10,7 +10,7 @@ import SearchLupa from '../SearchLupa'
 import SetPlayer from '../SetPlayer'
 import { matchesSearch } from '../../utils/search'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { calcDifficulty } from '../../utils/dificuldade'
+import { calcDifficulty, fatorFacilidade } from '../../utils/dificuldade'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
 
@@ -20,7 +20,8 @@ import { usePersistedState } from '../../hooks/usePersistedState'
 // o que falta usa "Falta meu voto", que é pessoal
 const FILTERS = [
   { value: 'all', label: 'Todas' },
-  ...[...DOMINIOS].reverse().map((d) => ({ value: d.value, label: d.label })),
+  // DOMINIOS já vem na ordem de prioridade de ensaio (crua → dominada)
+  ...DOMINIOS.map((d) => ({ value: d.value, label: d.label })),
 ]
 
 // Nível da música pra filtro e contagem
@@ -40,16 +41,6 @@ const SORTS = [
 const diaDe = (ts) => {
   const d = ts?.toDate ? ts.toDate() : new Date(ts)
   return new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime()
-}
-
-const avgDifficulty = (song) => calcDifficulty(song.dificuldade).avg
-
-// Desconto pela dificuldade, no mesmo espírito da ordenação das sugestões:
-// a nota manda e a dificuldade só penaliza. Fácil não desconta, Difícil
-// desconta 30%. Sem voto conta como o meio da escala.
-function facilidade(song) {
-  const peso = avgDifficulty(song) ?? 2
-  return 1 - (peso - 1) * 0.15
 }
 
 export default function SetlistPage() {
@@ -190,18 +181,19 @@ export default function SetlistPage() {
     if (!na && !nb) return 0
     if (!na) return 1
     if (!nb) return -1
-    return nb.media * fator(b) - na.media * fator(a)
+    return nb.media * fator(b) - na.media * fator(a) || nb.total - na.total || nb.soma - na.soma
   }
   const semDesconto = () => 1
 
   const displayed = [...filtered].sort((a, b) => {
-    if (sortBy === 'balanceada') return porNota(facilidade)(a, b)
+    if (sortBy === 'balanceada') return porNota((song) => fatorFacilidade(song.dificuldade))(a, b)
     if (sortBy === 'media') return porNota(semDesconto)(a, b)
     if (sortBy === 'data') return (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0)
     if (sortBy === 'recentes') return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-    // Dificuldade: mais fácil → mais difícil; sem votos vai pro fim
-    const da = avgDifficulty(a)
-    const db_ = avgDifficulty(b)
+    // Dificuldade: mais fácil → mais difícil, pelo nível mais alto votado
+    // (o mesmo que aparece no chip do card); sem votos vai pro fim
+    const da = calcDifficulty(a.dificuldade).max
+    const db_ = calcDifficulty(b.dificuldade).max
     if (da === null && db_ === null) return 0
     if (da === null) return 1
     if (db_ === null) return -1
@@ -222,7 +214,10 @@ export default function SetlistPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Setlist</h2>
+        <h2>
+          Setlist
+          {meuVotoFaltaCount > 0 && <span className="pending-badge" title="Músicas em que falta seu voto">{meuVotoFaltaCount}</span>}
+        </h2>
         <div className="page-header-actions">
           <SearchLupa value={search} onChange={mudarSearch} placeholder="Filtrar por nome ou artista..." />
           <button className="btn-primary" onClick={() => setShowModal(true)}>+ Música</button>
@@ -246,7 +241,7 @@ export default function SetlistPage() {
           )
         })}
         <button
-          className={`btn-filter ${filter === 'falta_meu_voto' ? 'active' : ''}`}
+          className={`btn-tag ${filter === 'falta_meu_voto' ? 'active' : ''}`}
           onClick={() => mudarFiltro(filter === 'falta_meu_voto' ? 'all' : 'falta_meu_voto')}
           title="Mostrar só as músicas que faltam você indicar domínio, dificuldade ou opinião"
         >
@@ -322,14 +317,24 @@ export default function SetlistPage() {
         <div className="empty-state">
           {search.trim() ? (
             <p>Nenhuma música encontrada pra "{search.trim()}".</p>
+          ) : filter === 'falta_meu_voto' ? (
+            <p>🎉 Você já votou em todas as músicas daqui!</p>
+          ) : filter !== 'all' ? (
+            <>
+              <p>Nenhuma música {FILTERS.find((f) => f.value === filter)?.label} agora 🎉</p>
+              <button className="btn-secondary" onClick={() => mudarFiltro('all')}>Ver todas</button>
+            </>
+          ) : (tagFilterValida || eventoChip) ? (
+            <>
+              <p>Nenhuma música com esse filtro.</p>
+              <button className="btn-secondary" onClick={() => { mudarTagFilter(null); mudarEventoChip(null) }}>✕ Limpar filtros</button>
+            </>
           ) : (
             <>
               <p>Nenhuma música aqui ainda.</p>
-              {filter === 'all' && (
-                <button className="btn-primary" onClick={() => setShowModal(true)}>
-                  Adicionar primeira música
-                </button>
-              )}
+              <button className="btn-primary" onClick={() => setShowModal(true)}>
+                Adicionar primeira música
+              </button>
             </>
           )}
         </div>

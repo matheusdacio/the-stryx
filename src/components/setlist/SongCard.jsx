@@ -6,16 +6,16 @@ import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { DIFFICULTIES } from '../../utils/dificuldade'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 import { showToast } from '../../utils/toast'
 import CifraModal from '../cifras/CifraModal'
+import NotaChip from '../NotaChip'
 
 const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Explica por que uma música sem votação nenhuma aparece lá no topo de
 // "Recentes" — sem o chip parece só ordem aleatória
@@ -44,6 +44,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
 
   // Dificuldade — voto de cada membro (mapa keyed por uid)
   const dificuldade = song.dificuldade || {}
+  // Chip do card fechado — mesmo nível mais alto votado que ordena "🎯 Dificuldade"
+  const diff = difficultyByWeight(calcDifficulty(dificuldade).max)
   const myDiff = dificuldade[user.uid]?.level
   const voteDiff = (level) => {
     if (myDiff === level) {
@@ -231,6 +233,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           className={`song-expand-btn ${expanded ? 'open' : ''}`}
           onClick={() => setExpanded(!expanded)}
           title={expanded ? 'Recolher' : 'Ver detalhes'}
+          aria-label={expanded ? 'Recolher' : 'Ver detalhes'}
+          aria-expanded={expanded}
         >
           ›
         </button>
@@ -260,11 +264,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           ) : (
             <span className="status-dot status-sem-voto">Sem voto</span>
           )}
-          {nota && (
-            <span className="mini-chip" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
-              ⭐ {formatarNota(nota.media)}
-            </span>
-          )}
+          {nota && <NotaChip nota={nota} compacto />}
+          {diff && <span className="diff-chip" style={{ color: diff.color, borderColor: diff.color }}>🎯 {diff.label}</span>}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
@@ -275,7 +276,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
       {/* Domínio — sempre visível, mesmo com o card fechado: é o voto
           que alimenta a escolha do que ensaiar */}
       <div className="difficulty-section">
-        <p className="section-label">✅ Você se sente pronto nessa?</p>
+        <p className="prompt-label">✅ Você se sente pronto nessa?</p>
         <div className="difficulty-btns">
           {DOMINIOS.map((d) => (
             <button
@@ -316,7 +317,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
 
       {/* Opinião da banda — fecha quando todos já opinaram */}
       <div className="difficulty-section-flat">
-        <p className="section-label">
+        <p className="prompt-label">
           {bandaJaOpinou ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
         </p>
         {!bandaJaOpinou && (
@@ -329,7 +330,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
                 aria-pressed={minhaOpiniao === o.value}
                 onClick={() => votarOpiniao(o.value)}
               >
-                {o.label}
+                {o.labelSetlist}
               </button>
             ))}
           </div>
@@ -354,7 +355,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           banda já a domina (isso é o bloco de cima) */}
       {(
         <div className="difficulty-section-flat">
-          <p className="section-label">🎯 Dificuldade pra tocar</p>
+          <p className="prompt-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
@@ -395,8 +396,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         {!videoId && (
           <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
         )}
-        {cifra && (
+        {cifra ? (
           <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 Cifra</button>
+        ) : (
+          <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 + cifra</button>
         )}
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
@@ -404,7 +407,14 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
       </div>
 
-      {verCifra && <CifraModal cifra={cifra} onClose={() => setVerCifra(false)} KEYS={CIFRA_KEYS} />}
+      {verCifra && (
+        <CifraModal
+          cifra={cifra}
+          inicial={!cifra ? { title: song.title, artist: song.artist } : undefined}
+          onClose={() => setVerCifra(false)}
+          KEYS={CIFRA_KEYS}
+        />
+      )}
 
       {editingMeta && (
         <div className="song-meta-edit">
@@ -427,8 +437,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
                 onChange={(e) => setNewTag(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), addTag())}
                 placeholder="Ex: Acústico, Show Bar do Zé..."
+                aria-label="Nova tag"
               />
-              <button type="button" className="btn-primary" onClick={addTag}>+</button>
+              <button type="button" className="btn-secondary" onClick={addTag}>+</button>
             </div>
           </label>
           {tags.length > 0 && (
@@ -436,7 +447,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
               {tags.map((t) => (
                 <span key={t} className="song-tag editable">
                   {t}
-                  <button type="button" className="tag-remove" onClick={() => removeTag(t)}>✕</button>
+                  <button type="button" className="tag-remove" aria-label={`Tirar tag ${t}`} onClick={() => removeTag(t)}>✕</button>
                 </span>
               ))}
             </div>
@@ -458,7 +469,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         </div>
       ) : (
         <p className="song-notes" onClick={openNotes}>
-          {song.notes || <span className="placeholder">Clique para adicionar observações...</span>}
+          {song.notes || <span className="placeholder">Toque pra anotar: quem canta, afinação, deixa do solo… (aparece no modo palco)</span>}
         </p>
       )}
 

@@ -3,12 +3,14 @@ import { useSearchParams } from 'react-router-dom'
 import { collection, onSnapshot, orderBy, query, deleteDoc, doc } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { matchesSearch } from '../../utils/search'
+import SearchLupa from '../SearchLupa'
 import CifraModal from './CifraModal'
 
 const KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 export default function CifrasPage() {
   const [cifras, setCifras] = useState([])
+  const [loaded, setLoaded] = useState(false)
   const [modal, setModal] = useState(null) // null | 'add' | cifra object (edit/view)
   const [searchParams, setSearchParams] = useSearchParams()
   const [search, setSearch] = useState(() => searchParams.get('q') || '')
@@ -20,8 +22,24 @@ export default function CifrasPage() {
 
   useEffect(() => {
     const q = query(collection(db, 'cifras'), orderBy('createdAt', 'desc'))
-    return onSnapshot(q, (snap) => setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() }))))
+    return onSnapshot(q, (snap) => {
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+      setLoaded(true)
+    })
   }, [])
+
+  // Atualiza o modal com dados frescos do Firestore — sem isso quem tá
+  // lendo a cifra continua vendo a versão antiga até fechar e reabrir
+  // depois de outra pessoa corrigir um acorde. "|| null" fecha o modal se
+  // a cifra foi apagada por outro membro enquanto estava aberta.
+  // Ajusta durante o render (não num efeito) comparando com a última
+  // lista vista — mesmo padrão usado em outras telas do app
+  const [cifrasVistas, setCifrasVistas] = useState(cifras)
+  if (cifras !== cifrasVistas) {
+    setCifrasVistas(cifras)
+    // "nova" (prefill sem cifra salva ainda) não tem id pra procurar — não mexe
+    if (modal && modal !== 'add' && !modal.nova) setModal(cifras.find((c) => c.id === modal.id) || null)
+  }
 
   // matchesSearch ignora acento — antes era um includes() puro, então
   // "sao" não achava "São Paulo" e um ?q= vindo com acento podia não casar
@@ -36,20 +54,24 @@ export default function CifrasPage() {
     <div className="page">
       <div className="page-header">
         <h2>Cifras</h2>
-        <button className="btn-primary" onClick={() => setModal('add')}>+ Cifra</button>
+        <div className="page-header-actions">
+          <SearchLupa value={search} onChange={setSearch} placeholder="Buscar cifra..." />
+          <button className="btn-primary" onClick={() => setModal('add')}>+ Cifra</button>
+        </div>
       </div>
 
-      <input
-        className="search-input"
-        placeholder="Buscar por título ou artista..."
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-      />
-
-      {filtered.length === 0 ? (
+      {!loaded ? (
+        <p className="empty-state">Carregando...</p>
+      ) : filtered.length === 0 ? (
         <div className="empty-state">
-          <p>{search ? 'Nenhuma cifra encontrada.' : 'Nenhuma cifra ainda.'}</p>
-          {!search && <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>}
+          <p>{search ? `Nenhuma cifra pra "${search}".` : 'Nenhuma cifra ainda.'}</p>
+          {search ? (
+            <button className="btn-primary" onClick={() => setModal({ nova: true, title: search })}>
+              + Cadastrar cifra de "{search}"
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>
+          )}
         </div>
       ) : (
         <div className="card-grid">
@@ -62,10 +84,14 @@ export default function CifrasPage() {
                 </div>
               </div>
               <div className="cifra-meta">
-                {cifra.key && <span className="badge badge-key">Tom: {cifra.key}</span>}
+                {cifra.key && <span className="mini-chip">♪ {cifra.key}</span>}
                 {cifra.bpm && <span className="badge badge-bpm">{cifra.bpm} BPM</span>}
               </div>
-              <p className="cifra-preview">{cifra.content?.slice(0, 80)}...</p>
+              <p className="cifra-preview">
+                {cifra.content
+                  ? cifra.content.slice(0, 80) + (cifra.content.length > 80 ? '…' : '')
+                  : <span className="placeholder">Sem conteúdo</span>}
+              </p>
             </div>
           ))}
         </div>
@@ -73,9 +99,10 @@ export default function CifrasPage() {
 
       {modal && (
         <CifraModal
-          cifra={modal === 'add' ? null : modal}
+          cifra={modal === 'add' || modal.nova ? null : modal}
+          inicial={modal.nova ? { title: modal.title, artist: modal.artist } : undefined}
           onClose={() => setModal(null)}
-          onRemove={modal !== 'add' ? () => { remove(modal); setModal(null) } : undefined}
+          onRemove={modal !== 'add' && !modal.nova ? () => { remove(modal); setModal(null) } : undefined}
           KEYS={KEYS}
         />
       )}

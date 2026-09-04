@@ -21,3 +21,12 @@ export function calcDifficulty(dificuldade) {
 
 export const difficultyByWeight = (weight) =>
   DIFFICULTIES.find((d) => d.weight === weight) || null
+
+// Desconto pela dificuldade, usado tanto no Setlist quanto em Sugestões —
+// Fácil não desconta, Ok desconta 15%, Difícil desconta 30%; sem voto
+// conta como Ok (meio da escala)
+export const EASE_BY_WEIGHT = { 1: 1, 2: 0.85, 3: 0.7 }
+export function fatorFacilidade(dificuldade) {
+  const { max } = calcDifficulty(dificuldade)
+  return EASE_BY_WEIGHT[max] ?? EASE_BY_WEIGHT[2]
+}

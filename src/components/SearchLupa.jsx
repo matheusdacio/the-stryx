@@ -10,6 +10,7 @@ export default function SearchLupa({ value, onChange, placeholder = 'Filtrar por
         onChange={(e) => onChange(e.target.value)}
         onKeyDown={(e) => e.key === 'Escape' && onChange('')}
         placeholder={placeholder}
+        aria-label={placeholder}
       />
       {value && (
         <button className="search-clear" onClick={() => onChange('')} title="Limpar filtro">✕</button>

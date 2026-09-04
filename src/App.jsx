@@ -9,6 +9,7 @@ import NotifBanner from './components/NotifBanner'
 import WelcomeBanner from './components/WelcomeBanner'
 import Toast from './components/Toast'
 import { isIOS } from './utils/device'
+import { showToast } from './utils/toast'
 import SetlistPage from './components/setlist/SetlistPage'
 import CifrasPage from './components/cifras/CifrasPage'
 import EnsaiosPage from './components/ensaios/EnsaiosPage'
@@ -35,7 +36,7 @@ export default function App() {
     const r = await notif.ativar()
     if (r === 'denied') alert('O navegador bloqueou as notificações. Desbloqueia nas configurações do site e tenta de novo.')
     else if (r === 'error') alert('Não consegui ativar agora. Tenta de novo com internet.')
-    else if (r === 'ok') { alert('Pronto! Você recebe aviso de sugestão nova e lembrete de ensaio.'); dispensarBanner() }
+    else if (r === 'ok') { showToast('Pronto! Vai chegar aviso de sugestão nova e lembrete de ensaio.'); dispensarBanner() }
   }
 
   const handleDesativarNotif = async () => {

@@ -366,14 +366,14 @@ export default function ImportPage() {
     if (!data) return
 
     const steps = [
-      { key: 'membros',   label: 'Membros',   fn: () => importMembros(data.membros || []) },
-      { key: 'musicas',   label: 'Músicas',    fn: () => importMusicas(data.musicas || [], members) },
-      { key: 'sugestoes', label: 'Sugestões',  fn: () => importSugestoes(data.sugestoes || []) },
-      { key: 'ensaios',   label: 'Ensaios',    fn: () => importEnsaios(data.ensaios || []) },
+      { key: 'membros',   label: 'Banda',   resumoLabel: 'membros da banda', fn: () => importMembros(data.membros || []) },
+      { key: 'musicas',   label: 'Músicas',    resumoLabel: 'músicas', fn: () => importMusicas(data.musicas || [], members) },
+      { key: 'sugestoes', label: 'Sugestões',  resumoLabel: 'sugestões', fn: () => importSugestoes(data.sugestoes || []) },
+      { key: 'ensaios',   label: 'Eventos',    resumoLabel: 'eventos', fn: () => importEnsaios(data.ensaios || []) },
     ]
     const ativos = steps.filter((s) => selected[s.key] && (data[s.key] || []).length > 0)
 
-    const partes = ativos.map((s) => `${(data[s.key] || []).length} ${s.label.toLowerCase()}`)
+    const partes = ativos.map((s) => `${(data[s.key] || []).length} ${s.resumoLabel}`)
     const resumo = partes.length > 1
       ? `${partes.slice(0, -1).join(', ')} e ${partes[partes.length - 1]}`
       : partes[0]
@@ -502,15 +502,15 @@ export default function ImportPage() {
           </div>
 
           <div className="resumo-grid">
-            <ResumoCard icon="👤" label="Membros"   count={(data.membros   || []).length} selected={selected.membros}   onToggle={() => toggle('membros')} />
+            <ResumoCard icon="👤" label="Banda"   count={(data.membros   || []).length} selected={selected.membros}   onToggle={() => toggle('membros')} />
             <ResumoCard icon="🎵" label="Músicas"   count={(data.musicas   || []).length} selected={selected.musicas}   onToggle={() => toggle('musicas')} />
             <ResumoCard icon="🗳️" label="Sugestões" count={(data.sugestoes || []).length} selected={selected.sugestoes} onToggle={() => toggle('sugestoes')} />
-            <ResumoCard icon="📅" label="Ensaios"   count={(data.ensaios   || []).length} selected={selected.ensaios}   onToggle={() => toggle('ensaios')} />
+            <ResumoCard icon="📅" label="Eventos"   count={(data.ensaios   || []).length} selected={selected.ensaios}   onToggle={() => toggle('ensaios')} />
           </div>
 
           {/* Preview de cada tipo */}
           {selected.membros && (data.membros || []).length > 0 && (
-            <PreviewSection title="👤 Membros" items={(data.membros || []).map(m => m.name)} />
+            <PreviewSection title="👤 Banda" items={(data.membros || []).map(m => m.name)} />
           )}
           {selected.musicas && (data.musicas || []).length > 0 && (
             <PreviewSection title="🎵 Músicas" items={(data.musicas || []).map(m => `${m.title}${m.artist ? ` — ${m.artist}` : ''}`)} />
@@ -525,7 +525,7 @@ export default function ImportPage() {
             />
           )}
           {selected.ensaios && (data.ensaios || []).length > 0 && (
-            <PreviewSection title="📅 Ensaios" items={(data.ensaios || []).map(e => `${formatData(e.date + 'T12:00:00', { curta: true })}${e.location ? ` · ${e.location}` : ''}`)} />
+            <PreviewSection title="📅 Eventos" items={(data.ensaios || []).map(e => `${formatData(e.date + 'T12:00:00', { curta: true })}${e.location ? ` · ${e.location}` : ''}`)} />
           )}
 
           {/* Progresso */}

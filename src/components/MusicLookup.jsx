@@ -76,7 +76,7 @@ export default function MusicLookup({ titulo, onPick }) {
 
   return (
     <div className="lookup-box">
-      <p className="section-label">É alguma destas?</p>
+      <p className="prompt-label">É alguma destas?</p>
       <div className="lookup-opcoes">
         {opcoes.map((op) => (
           <button

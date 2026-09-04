@@ -58,7 +58,7 @@ export function usePendencias(user) {
       (!todosVotaram({ opinoes }, bandMembers) && !opinoes[user.uid])
   }).length : 0
 
-  // Mesma regra da aba "⏳ Presença pendente": só eventos futuros, não
+  // Mesma regra da aba "⏳ Falta eu responder": só eventos futuros, não
   // cancelados, em que a pessoa ainda não respondeu Vou/Não vou
   const eventosPendentes = user ? ensaios.filter((e) =>
     !jaPassou(e.date) && e.status !== 'cancelado' && faltaResponder(e, user.uid)

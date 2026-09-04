@@ -1,11 +1,12 @@
 import { useState, useEffect } from 'react'
-import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove } from 'firebase/firestore'
+import { collection, onSnapshot, orderBy, query, deleteDoc, doc, updateDoc, deleteField, arrayUnion, arrayRemove, runTransaction } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { formatData, jaPassou } from '../../utils/data'
+import { acharCifra } from '../../utils/score'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
@@ -74,7 +75,7 @@ function PresencaBar({ ensaio, uid, userName }) {
 
   return (
     <div className="presenca-bar" onClick={(e) => e.stopPropagation()}>
-      <span className="section-label">Você vai?</span>
+      <span className="prompt-label">Você vai?</span>
       {PRESENCAS.map((p) => (
         <button
           key={p.value}
@@ -137,7 +138,7 @@ function TypeBadge({ type }) {
 
 // `compacto` é a aba de pendências: ali a tarefa é responder presença, então
 // ela vem primeiro e o repertório fica só como prévia
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false, colapsavel = false }) {
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, cifras, compacto = false, destaque = false, colapsavel = false }) {
   // Realizados/Cancelados nascem recolhidos — repertório completo, presença
   // e 4-5 botões por evento, pra TODOS de uma vez, virava rolagem sem fim
   const [open, setOpen] = useState(!colapsavel)
@@ -222,27 +223,34 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
           {hasSetlist && !compacto && (
             <div className="pauta-block">
-              <p className="section-label">Músicas ({ensaio.setlist.length})</p>
+              <p className="section-label">
+                Músicas ({ensaio.setlist.length})
+                {podeMarcar && <span className="filter-hint" style={{ margin: 0, textTransform: 'none', letterSpacing: 0 }}> · marque as que rolaram</span>}
+              </p>
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
                   const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
+                  const temCifra = acharCifra(cifras, s.title, s.artist)
                   const q = encodeURIComponent(s.title)
                   const texto = (
                     <span>
                       <a href={`#/?q=${q}`} className="event-song-link" onClick={(e) => e.stopPropagation()}>{s.title}</a>
                       {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                       {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
-                      <a
-                        href={`#/cifras?q=${q}`}
-                        className="mini-chip"
-                        style={{ marginLeft: 6 }}
-                        title="Ver cifra"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        📄
-                      </a>
+                      {songs[s.id]?.tom && <span className="event-setlist-bpm"> · ♪ {songs[s.id].tom}</span>}
+                      {temCifra && (
+                        <a
+                          href={`#/cifras?q=${q}`}
+                          className="mini-chip"
+                          style={{ marginLeft: 6 }}
+                          title="Ver cifra"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📄
+                        </a>
+                      )}
                       {nivel && (
-                        <span className="mini-chip" style={{ marginLeft: 6, color: nivel.color, borderColor: nivel.color }}>
+                        <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
                         </span>
                       )}
@@ -329,7 +337,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
 const TABS = [
   { key: 'proximos',   label: 'Próximos' },
-  { key: 'pendentes',  label: '⏳ Presença pendente' },
+  { key: 'pendentes',  label: '⏳ Falta eu responder' },
   { key: 'realizados', label: 'Realizados' },
   { key: 'cancelados', label: 'Cancelados' },
 ]
@@ -340,6 +348,7 @@ export default function EnsaiosPage() {
   const [loaded, setLoaded] = useState(false)
   const [bandMembers, setBandMembers] = useState([])
   const [songs, setSongs] = useState({})
+  const [cifras, setCifras] = useState([])
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
   const [performing, setPerforming] = useState(null)
@@ -360,6 +369,14 @@ export default function EnsaiosPage() {
     })
   }, [])
 
+  // Pro chip 📄 só aparecer quando existe cifra pra música (N06) — antes
+  // levava pra uma busca vazia mesmo sem cifra cadastrada
+  useEffect(() => {
+    return onSnapshot(collection(db, 'cifras'), (snap) =>
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    )
+  }, [])
+
   useEffect(() => {
     // Quem saiu da banda (ativo:false) fica fora daqui — não fica "Sem
     // resposta" pra sempre em todo evento novo
@@ -373,13 +390,20 @@ export default function EnsaiosPage() {
   }, [])
 
   const remove = (e) => {
-    if (confirm(`Remover evento de ${formatData(e.date)}?`)) deleteDoc(doc(db, 'ensaios', e.id))
+    if (confirm(`Apagar o evento de ${formatData(e.date)} de vez? Músicas, pauta e presenças vão junto. Se ele só não vai acontecer, use Editar › Marcar como cancelado.`)) deleteDoc(doc(db, 'ensaios', e.id))
   }
 
-  const togglePauta = async (ensaio, index) => {
-    const pauta = [...(ensaio.pauta || [])]
-    pauta[index] = { ...pauta[index], done: !pauta[index].done }
-    await updateDoc(doc(db, 'ensaios', ensaio.id), { pauta })
+  // Itens da pauta não têm id — regravar o array inteiro (updateDoc) fazia
+  // duas pessoas marcando ao mesmo tempo se pisarem. Transação lê o estado
+  // mais recente antes de escrever, então o segundo toque não perde o primeiro
+  const togglePauta = (ensaio, index) => {
+    const ref = doc(db, 'ensaios', ensaio.id)
+    runTransaction(db, async (tx) => {
+      const snap = await tx.get(ref)
+      const pauta = [...(snap.data().pauta || [])]
+      pauta[index] = { ...pauta[index], done: !pauta[index].done }
+      tx.update(ref, { pauta })
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
   }
 
   // Separa por categoria
@@ -411,7 +435,10 @@ export default function EnsaiosPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <h2>Eventos</h2>
+        <h2>
+          Eventos
+          {pendentes.length > 0 && <span className="pending-badge" title="Eventos em que falta você responder">{pendentes.length}</span>}
+        </h2>
         <button className="btn-primary" onClick={() => setModal('add')}>+ Evento</button>
       </div>
 
@@ -424,7 +451,7 @@ export default function EnsaiosPage() {
         {TABS.map(t => (
           <button
             key={t.key}
-            className={`btn-filter ${tab === t.key ? 'active' : ''}`}
+            className={`${t.key === 'pendentes' ? 'btn-tag' : 'btn-filter'} ${tab === t.key ? 'active' : ''}`}
             onClick={() => setTab(t.key)}
           >
             {t.label}
@@ -447,6 +474,7 @@ export default function EnsaiosPage() {
                 bandMembers={bandMembers}
                 user={user}
                 songs={songs}
+                cifras={cifras}
                 destaque
               />
             : (
@@ -473,6 +501,7 @@ export default function EnsaiosPage() {
                     bandMembers={bandMembers}
                     user={user}
                     songs={songs}
+                    cifras={cifras}
                   />
                 ))}
               </div>
@@ -506,6 +535,7 @@ export default function EnsaiosPage() {
                   bandMembers={bandMembers}
                   user={user}
                   songs={songs}
+                  cifras={cifras}
                   compacto={tab === 'pendentes'}
                   colapsavel={tab === 'realizados' || tab === 'cancelados'}
                 />

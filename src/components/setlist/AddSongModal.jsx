@@ -47,7 +47,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal" onClick={(e) => e.stopPropagation()}>
-        <h2>Adicionar Música</h2>
+        <h2>Nova música</h2>
         <p className="filter-hint" style={{ margin: '-4px 0 12px' }}>
           Pra música que a banda já toca. Quer propor uma nova?{' '}
           <a href="#/sugestoes" className="btn-link-inline" onClick={onClose}>Manda em Sugerir 🡒</a>
@@ -90,7 +90,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
             Tags <span style={{ opacity: 0.6 }}>(separadas por vírgula)</span>
             <input value={tagsText} onChange={(e) => setTagsText(e.target.value)} placeholder="Ex: Acústico, Anos 80" />
           </label>
-          <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Notas..." rows={3} /></label>
+          <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Quem canta, afinação, deixa do solo… aparece no modo palco" rows={3} /></label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
             <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Salvando...' : 'Adicionar'}</button>

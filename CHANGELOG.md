@@ -13,6 +13,58 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.36.0] — 2026-09-03
+- **App abre sem internet**: agora cacheia o app inteiro (HTML/CSS/JS), não só os dados — antes, sem o cache HTTP, o Modo palco podia não abrir no ensaio sem sinal (precisa de teste real em Android e iPhone antes de ir pra produção)
+- Marcar item da pauta do evento não perde mais a marcação de quem mexeu ao mesmo tempo
+- Filtros de status em Sugestões (Em aberto/Rejeitadas) param de usar o vermelho de "urgente" — só "Todas" mantém o gradiente
+- Botões de voto de domínio (Dominada/Ensaiando/Crua) passam a seguir a mesma ordem da barra de filtros do Setlist
+
+## [1.35.0] — 2026-09-03
+- **Nota ⭐ com a mesma cara em Setlist e Sugestões**: componente único (antes eram dois visuais diferentes pra mesma coisa); em Sugestões, "3 de 6 opinaram" explica por que a sugestão ainda não fechou
+- **Chip 🎯 de dificuldade aparece também no Setlist** (card fechado) — antes só existia em Sugestões, mesmo o Setlist já ordenando por ela
+- Domínio (Dominada/Ensaiando/Crua) usa o mesmo selo cheio em Eventos e no modal de evento que já usava no Setlist — antes era um chip vazado diferente
+- Lista de músicas do evento mostra o tom, não só o BPM
+- "Músicas (N)" explica "· marque as que rolaram" quando dá pra marcar a presença nos ensaios
+- Setlist e Eventos repetem o número de pendências no título, como Sugestões já fazia
+- "Presença pendente" vira "Falta eu responder", com a cara de toggle pessoal — mesmo conceito de "Falta meu voto"
+- Perguntas de opinião em Sugestões ganham os mesmos ícones ⭐/🎯 do Setlist
+- Uma linha explica o fluxo das Sugestões (sugere → banda opina → admin manda pro setlist), e o modal mostra quem falta opinar
+- Card de Sugestão ganha a setinha › que avisa que abre, como Setlist e Eventos
+- Modal de sugestão mostra a data, não só quem sugeriu
+- Data curta (Realizados/Cancelados) volta a mostrar o ano quando o evento é de outro ano
+- **Cifra alcançável dos dois lados**: chip 📄 no evento só aparece se a música tiver cifra de verdade; música sem cifra no Setlist ganha "📄 + cifra" que abre o cadastro já preenchido; busca sem resultado em Cifras oferece o mesmo atalho
+- "+ instrumento" na Banda vira botão de verdade, não texto com título escondido
+- Badge do rodapé trava em "99+" em vez de esticar
+- Sucesso ao ativar notificações vira toast em vez de alerta bloqueante
+- Contador do Modo palco ganha uma seta indicando que abre a lista de músicas
+
+## [1.34.1] — 2026-09-03
+- **Safe-area no iPhone instalado**: rodapé, palco, toast, modal e navbar respeitam a barra de gesto e o notch em vez de ficar por baixo
+- Efeitos de hover (levantar card, borda vermelha) não grudam mais depois de um toque no celular — o card de sugestão não fica "selecionado" depois de fechar o modal
+- Modal de evento: "Cancelar este evento" (status) vira "Marcar como cancelado"/"Reativar evento", sem confundir com o "Cancelar" de descartar edição; trocar o tipo do evento agora avisa antes de sair sem salvar
+- Notas da sugestão e ferramentas da Banda (instrumento, apelido, "Tá na banda") gravam e fecham na hora, sem travar esperando a rede
+- Confirmação de apagar evento ou membro explica o que se perde e aponta a saída segura (cancelar evento, marcar "Saiu")
+- "Sair" da conta pede confirmação — evita perder a sessão com um toque sem querer
+- Cifras, Rascunhos e Banda não piscam mais "vazio" antes do primeiro carregamento
+- Prévia da cifra sem conteúdo mostra "Sem conteúdo" em vez de só "..."
+- Só um metrônomo toca por vez — abrir outro para o anterior automaticamente
+- "Remover" da cifra sai do topo (colado em Editar/Fechar) e vai pro rodapé, como no resto do app
+- Botão de opinião no Setlist não fala mais em "tira da fila" — esse conceito só existe em Sugestões
+- "Dificuldade" e "Melhores e fáceis" passam a usar a mesma conta no Setlist e nas Sugestões (o nível mais alto votado, não a média)
+- Avatar sem foto do Google mostra a inicial do nome em vez do ícone de imagem quebrada
+
+## [1.34.0] — 2026-09-03
+- Textos pequenos (chips, contadores, rótulos) ganham letra maior — estavam abaixo do confortável pra ler em pé no palco
+- Contraste maior em placeholders, botões "+" apagados e textos acinzentados (rejeitada, autor, "remover") que ficavam quase invisíveis
+- Apresentação muda de vermelho pra magenta/fuchsia em toda a tela — cor exclusiva, sem colidir com o vermelho de "urgente"/erro
+- Botões "+" (tag, pauta, apelido) deixam de parecer ação principal — viram secundários, do tamanho de "adicionar item pequeno"
+- Botões e campos sem rótulo visível (busca, ▲▼ reordenar, tirar tag, sair do palco) ganham nome pra leitor de tela
+- Vocabulário revisado: modais de criar/editar com o mesmo título em vez de "Adicionar X"/"Editar X", tom mais direto ("Toque pra..." em vez de "Clique para..."), "Membros"→"Banda" e "Ensaios"→"Eventos" nos textos visíveis do Importar
+- Mensagens de lista vazia explicam o motivo (filtro sem resultado, busca sem match) em vez de repetir sempre "nada aqui ainda", com atalho pra limpar o filtro
+- **Rascunhos abre em modo leitura** (era direto pro formulário, atropelava quem só queria ler) — "Editar" alterna pra edição, com busca por título/conteúdo
+- **Cifra ganha ajuste de tamanho de letra** (A−/A+ no modo leitura, preferência compartilhada com o Modo palco), Tom vira campo de texto livre com sugestões, e some o scroll duplo que travava o dedo
+- "Falta meu voto" (Setlist e Sugestões) combina com os outros filtros em vez de zerá-los — o visual de botão exclusivo enganava, mas sempre combinou na prática
+
 ## [1.33.0] — 2026-09-02
 - **Arrastar pra reordenar chega no modal de Evento**: mesma alça por toque do Setlist (arrasta só pelo ⠿, rolar a lista continua funcionando), com botões ▲▼ maiores como alternativa
 - **Músicas do evento viram link**: título abre a música filtrada no Setlist, e um botão "📄 Cifra" abre a cifra correspondente — no card do evento e dentro do Modo palco, sem sair da apresentação
