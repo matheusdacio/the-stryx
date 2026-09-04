@@ -19,8 +19,8 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 ## Regras de trabalho
 
 1. **Branch.** Crie `feat/blocos-e-pares` a partir da ponta de `feat/usabilidade-rodada-2` (ou de `main`, se a rodada 2 já tiver sido mergeada). Não faça merge em `main` sem o dono pedir.
-2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares) → D (dificuldade só nas Sugestões) → E (presença "só uma parte" com observação).** D e E são pequenos e independentes: se B ou C ainda não tiverem começado quando você reler este arquivo, faça D e E antes deles. Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
-3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B, C, D e E são minors seguidos).
+2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares) → D (dificuldade só nas Sugestões) → E (presença "só uma parte" com observação) → F (horário do evento).** D, E e F são pequenos e independentes: se B ou C ainda não tiverem começado quando você reler este arquivo, faça-os antes. Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
+3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B, C, D, E e F são minors seguidos).
 4. **Não refatore por refatorar.** Nada de TypeScript, testes novos, bibliotecas novas (dnd-kit já está no projeto e é o que se usa).
 5. **Padrão de gravação:** disparar `updateDoc/addDoc`, fechar na hora, `.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))`. Nunca `await` antes de fechar.
 6. Tudo que é escala/rótulo/cor continua definido como dado em `src/utils/*` e reaproveitado — nada de string solta repetida em três telas.
@@ -39,6 +39,7 @@ Você vai implementar um ajuste de permissão e duas features novas, já decidid
 - **"➤ Enviar pro setlist" aparece para todo membro logado**, não só para o admin, com as mesmas condições de hoje (sugestão `aberta`). Continuam só do admin: "Reabrir" (no banner de aprovada/rejeitada) e "📊 Exportar".
 - **Dificuldade é informada e mostrada só nas Sugestões.** No Setlist ela deixa de ser votada, de aparecer no card e de virar ordenação ou pendência; continua só alimentando, por baixo, o desconto de "⚖️ Melhores e fáceis" (o voto viaja da sugestão pra música na aprovação). Isto **reverte o P7-2 da rodada 2** (chip 🎯 no card do Setlist).
 - **Presença ganha a terceira resposta "Só uma parte"** (`status: 'parte'`) e uma **observação livre** por pessoa (`presenca.{uid}.obs`, ex.: "chego 21h", "saio antes do bloco 4"). Quem respondeu "só uma parte" conta como confirmado pra lembrete D-1 e pra aviso de cancelamento. Responder qualquer coisa continua tirando a pessoa de "Falta eu responder".
+- **Evento ganha horário de início e fim** em dois campos texto `horaInicio`/`horaFim` ("HH:mm"). O campo `date` **continua gravado ao meio-dia**: é a âncora de toda comparação por dia (`jaPassou`, `jaComecou`, `diaDe`, lembretes D-3/D-1) e não pode mudar. Ensaios que já existem e não têm horário recebem **09:00–17:00** por migração admin; apresentação sem horário fica em branco pro dono preencher. Evento novo do tipo ensaio já nasce 09:00–17:00.
 - `ensaiadas` (ids das músicas marcadas como ensaiadas) e `presenca` **não mudam de formato**: continuam planos, por id de música/uid (a presença só ganha campos novos dentro da entrada de cada pessoa).
 
 ---
@@ -228,9 +229,40 @@ Tem gente que vai ao ensaio, mas só parte do tempo (chega depois, sai antes). H
 
 - **E5 · conferir que continua igual.** `faltaResponder`/`usePendencias` (badge de Eventos e aba "⏳ Falta eu responder"): quem respondeu "só uma parte" não aparece mais como pendente. `migrateEventPresence` (já rodada) não muda. `CHANGELOG.md`: registrar a resposta nova e a observação.
 
+---
+
+## Pacote F — horário do evento
+
+Hoje o evento só tem dia. A banda precisa saber que hora começa e termina (ensaio é 9h às 17h; show tem horário próprio), e o lembrete de véspera deveria dizer a hora. Consumidores da data hoje: `grep -rn "\.date\b\|T12:00:00\|formatData\|relativeLabel" src .github/scripts`.
+
+- **F1 · helper.** `src/utils/data.js`: `export function formatHorario(ini, fim)` — `const h = (t) => { const [hh, mm] = t.split(':'); return mm === '00' ? `${Number(hh)}h` : `${Number(hh)}h${mm}` }`; devolve `${h(ini)} às ${h(fim)}` quando tem os dois, `a partir das ${h(ini)}` só com início, `até ${h(fim)}` só com fim, `''` sem nenhum. Exemplos: `09:00`/`17:00` → `9h às 17h`; `20:30`/`` → `a partir das 20h30`. Duplicar a função (sem import de `src/`) em `.github/scripts/lembrar-eventos.js` e `.github/scripts/enviar-sugestoes.js`, como já se faz com `formatarData`.
+
+- **F2 · `EnsaioModal.jsx`.**
+  - `form` ganha `horaInicio` e `horaFim`: ao editar/copiar, vêm do evento (`ensaio?.horaInicio || ''`); ao criar, `type === 'ensaio' ? '09:00' : ''` e `'17:00' : ''`. Ao trocar o tipo pra **Ensaio** com os dois campos vazios, preencher 09:00/17:00; ao trocar pra Apresentação, não mexer no que a pessoa digitou.
+  - Nova `form-row` logo abaixo de Data/Local: `<label>Início<input type="time" name="horaInicio" step="300" value={form.horaInicio} onChange={handleChange} /></label>` e `<label>Fim<input type="time" name="horaFim" step="300" … /></label>`. Não é obrigatório.
+  - Validação no `handleSave`: se os dois estão preenchidos e `form.horaFim <= form.horaInicio` (comparação de string "HH:mm" funciona), `alert('O fim precisa ser depois do início.')` e não salvar.
+  - `data.horaInicio = form.horaInicio || ''`, `data.horaFim = form.horaFim || ''`. No modo edição, entram em `mudou` quando diferem do evento; **mudança de horário também conta como remarcação**: `else if ((mudou.date || mudou.horaInicio || mudou.horaFim) && data.status !== 'cancelado') enfileirarAviso('evento_remarcado', …)`. `enfileirarAviso` passa a gravar também `horaInicio: data.horaInicio, horaFim: data.horaFim` no item da fila.
+  - `date` continua `Timestamp.fromDate(new Date(form.date + 'T12:00:00'))` — **não trocar pelo horário de início** (ver decisões).
+
+- **F3 · mostrar (`EnsaiosPage.jsx`, `PerformanceMode.jsx`).**
+  - `const horario = formatHorario(ensaio.horaInicio, ensaio.horaFim)`. Linha normal: depois de `formatData(ensaio.date, { curta: true })`, `{horario && <span className="ensaio-row-hora">· {horario}</span>}`. Card destaque: abaixo de `next-ensaio-date`, `{horario && <p className="next-ensaio-loc">🕘 {horario}</p>}` (antes do 📍 local). Aba compacta ("Falta eu responder") usa a linha normal — já cobre.
+  - `relativeLabel(ts)` hoje faz `Math.round((d - now) / 86400000)` com a data ao meio-dia — às 22h da véspera dá `Hoje!`. Reescrever por dia: `const dias = Math.round((diaDe(d) - diaDe(new Date())) / 86400000)` (copiar `diaDe` de `SetlistPage.jsx` pra `utils/data.js` e exportar), e receber o evento inteiro: `0` → `Hoje${ensaio.horaInicio ? `, ${h(horaInicio)}` : '!'}`, `1` → `Amanhã`, `>1` → `em N dias`, `<0` → `N dias atrás`.
+  - Ordem: o `onSnapshot` de `ensaios` já vem por `date`; desempatar no cliente por `horaInicio` (`(a.horaInicio || '').localeCompare(b.horaInicio || '')`) pra dois eventos no mesmo dia.
+  - `PerformanceMode.jsx`, `.perf-event-name`: depois da data curta, ` · {horario}` quando houver. Opcional.
+  - CSS: `.ensaio-row-hora { font-size: 0.82rem; color: var(--text-muted); white-space: nowrap; }`.
+
+- **F4 · lembretes e avisos.**
+  - `.github/scripts/lembrar-eventos.js`: `const horario = formatarHorario(ev.horaInicio, ev.horaFim)` e, nos dois corpos (D-3 e D-1), `${formatarData(data)}${horario ? `, ${horario}` : ''}${onde}` — ex.: `sáb., 06/09, 9h às 17h em Estúdio X. Você vai? Confirme sua presença.`
+  - `.github/scripts/enviar-sugestoes.js`, tipos `novo_evento`/`evento_remarcado`/`evento_cancelado`: `const horario = formatarHorario(dados.horaInicio, dados.horaFim)` e o mesmo encaixe depois de `formatarData(data)`. Item antigo da fila sem os campos cai no `''` e o texto fica como hoje.
+
+- **F5 · migração admin "🕘 Horário 9h–17h nos ensaios sem horário".** `src/utils/migrarHorario.js`: `export async function migrarHorario({ dryRun })` — `getDocs(ensaios)`; alvo = docs com `(type || 'ensaio') === 'ensaio'` e sem `horaInicio`; `changes.push({ id, label: `${formatData(date, { curta: true })} · ${location || 'sem local'}` })`; `!dryRun` → `writeBatch` com `update(ref, { horaInicio: '09:00', horaFim: '17:00' })`. Devolve também `apresentacoesSemHorario: [labels]` (só informa; não mexe — o dono preenche pelo Editar). Ferramenta `HorarioTool` em `MembrosPage.jsx` no mesmo padrão dos outros (Verificar → preview "N ensaio(s) vão ficar 9h às 17h" + "M apresentação(ões) continuam sem horário: …" → Aplicar). Depois de rodada, vai pra "Já rodadas".
+
+- **F6 · importação e integridade.** `ImportPage.jsx` `importEnsaios`: gravar `horaInicio: '09:00', horaFim: '17:00'` nos eventos importados (são ensaios). `src/utils/integridade.js`: check informativo "Horários": eventos com os dois campos e `horaFim <= horaInicio` → `dd/mm · local: fim antes do início`. `CHANGELOG.md`: registrar o horário e a migração.
+
 ## Não mexer
 
 - `ensaiadas` e `presenca` continuam planos, por id/uid, sem relação com bloco.
+- `date` do evento gravado ao meio-dia (`T12:00:00`) e todas as comparações por dia (`jaPassou`, `jaComecou`, `diaDe`, `diasAte` dos scripts) — o horário vive em `horaInicio`/`horaFim`, nunca dentro de `date`.
 - Arrasto por alça ⠿ com `TouchSensor` de 250ms e `PointerSensor` com `distance: 6` — só muda o que é arrastado (unidade) e o escopo (um contexto por bloco).
 - Padrão das ferramentas admin (verificar → aplicar, `msgErro`, mensagem única com `setMsg`, "Já rodadas").
 - Lembretes D-3/D-1 e a fila `notification_queue` — o script só troca a origem da contagem de músicas.
@@ -240,9 +272,9 @@ Tem gente que vai ao ensaio, mas só parte do tempo (chega depois, sai antes). H
 
 ## Como reportar cada pacote
 
-1. Ids implementados (A1…A3, B1…B7, C1…C5, D1…D4, E1…E5) e o commit de cada um.
+1. Ids implementados (A1…A3, B1…B7, C1…C5, D1…D4, E1…E5, F1…F6) e o commit de cada um.
 2. Ids pulados e por quê.
-3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas" e "Montar o próximo ensaio" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, o palco com blocos, e a observação da presença (abrir automático ao marcar "Só uma parte"). **Listar as músicas da sequência que a ferramenta não achou no setlist.**
+3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas", "Montar o próximo ensaio" e "Horário 9h–17h nos ensaios" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, o palco com blocos, e a observação da presença (abrir automático ao marcar "Só uma parte"). **Listar as músicas da sequência que a ferramenta não achou no setlist.**
 4. Resultado de `npm run lint` e `npm run build`.
 
 Comece pelo Pacote A.
