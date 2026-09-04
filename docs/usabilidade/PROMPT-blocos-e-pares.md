@@ -6,7 +6,7 @@ Cole este arquivo inteiro como primeira mensagem em uma nova sessão do Claude C
 
 ---
 
-Você vai implementar duas features novas, já decididas pelo dono do app, mais um dado de apoio que elas precisam. Não é para propor alternativas: é para executar, por pacotes, com commits pequenos, e reportar ao final de cada pacote.
+Você vai implementar um ajuste de permissão e duas features novas, já decididos pelo dono do app, mais um dado de apoio que as features precisam. Não é para propor alternativas: é para executar, por pacotes, com commits pequenos, e reportar ao final de cada pacote.
 
 ## Contexto do projeto
 
@@ -19,8 +19,8 @@ Você vai implementar duas features novas, já decididas pelo dono do app, mais 
 ## Regras de trabalho
 
 1. **Branch.** Crie `feat/blocos-e-pares` a partir da ponta de `feat/usabilidade-rodada-2` (ou de `main`, se a rodada 2 já tiver sido mergeada). Não faça merge em `main` sem o dono pedir.
-2. **Um pacote por vez, na ordem: B (blocos) → C (pares).** Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
-3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; se a rodada 2 parou em 1.35.0, blocos = 1.36.0 e pares = 1.37.0).
+2. **Um pacote por vez, na ordem: A (Enviar pro setlist pra todos) → B (blocos) → C (pares).** Ao terminar um pacote: `npm run lint`, `npm run build`, commit(s), relatório curto (modelo no fim). O dono pode interromper entre pacotes.
+3. **Commits pequenos, em português, no estilo do histórico** (`feat:`/`fix:`, frase minúscula descrevendo o efeito). Atualize `CHANGELOG.md` (topo) e `src/version.js` + `package.json` ao fechar cada pacote: cada pacote é um **minor** (use o próximo minor livre — confira `src/version.js` antes; A, B e C são três minors seguidos).
 4. **Não refatore por refatorar.** Nada de TypeScript, testes novos, bibliotecas novas (dnd-kit já está no projeto e é o que se usa).
 5. **Padrão de gravação:** disparar `updateDoc/addDoc`, fechar na hora, `.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))`. Nunca `await` antes de fechar.
 6. Tudo que é escala/rótulo/cor continua definido como dado em `src/utils/*` e reaproveitado — nada de string solta repetida em três telas.
@@ -36,7 +36,20 @@ Você vai implementar duas features novas, já decididas pelo dono do app, mais 
 - **No evento o grupo é uma unidade:** entra junto, sai junto, move junto (setas e arrasto), sempre no mesmo bloco e contíguo, na ordem da cadeia.
 - **Campo novo `cantor`** em `songs` ("Quem canta", texto livre: "Marcos", "Márcio/Marcos"). É o que falta pra reproduzir a mensagem do Marcos (título — cantor — tom). Aparece como chip 🎤 no card do Setlist, na lista do evento e no Modo palco.
 - **Montar o próximo ensaio como na mensagem** é uma ferramenta admin de dois passos (preview → aplicar), com os 28 itens como constante no código (tabela no fim deste arquivo). Depois de rodada, vai pra "Já rodadas".
+- **"➤ Enviar pro setlist" aparece para todo membro logado**, não só para o admin, com as mesmas condições de hoje (sugestão `aberta`). Continuam só do admin: "Reabrir" (no banner de aprovada/rejeitada) e "📊 Exportar".
 - `ensaiadas` (ids das músicas marcadas como ensaiadas) e `presenca` **não mudam**: continuam planos, por id de música/uid.
+
+---
+
+## Pacote A — "➤ Enviar pro setlist" para todo membro
+
+Pequeno e independente dos outros dois; vai primeiro.
+
+- **A1 · liberar o botão.** `SugestoesPage.jsx`, `SugestaoModal`: o bloco `{isAdmin && sugestao.status === 'aberta' && (<div className="admin-controls"> … Decisão final … ➤ Enviar pro setlist …)}` perde o `isAdmin &&` — aparece para qualquer membro enquanto a sugestão estiver `aberta`. O `section-label` "Decisão final" vira "Mandar pro setlist" (a classe `.admin-controls` pode ficar). Manter o `confirm` de hoje e acrescentar o aviso de veto: quando `temVeto(sugestao)`, o texto vira `Enviar "${sugestao.title}" pro setlist mesmo com veto de ${nomes}? Ela some daqui e entra como Crua pra todo mundo.`, com `nomes = Object.values(sugestao.opinoes || {}).filter((v) => VETOS.includes(v.opinion)).map((v) => firstName(v.userName)).join(', ')`. A função `approve` (grava a música, marca `status: 'aprovada'`, toast) não muda.
+
+- **A2 · textos que citam o admin.** Na página: `Você sugere, a banda opina. Quando todo mundo opinar sem veto, o admin manda pro setlist.` → `Você sugere, a banda opina. Quando fechar sem veto, qualquer um manda pro setlist.` No modal: o hint `{sugestao.status === 'aberta' && !isAdmin && !temVeto(sugestao) && (…)}` perde o `!isAdmin` (vale pra todos) e `'Todo mundo já opinou — agora é com o admin.'` → `'Todo mundo já opinou — pode mandar pro setlist.'`. Rodar `grep -rn "admin" src/components src/App.jsx` e ajustar qualquer outro texto visível que ainda diga que só o admin envia (não mexer em comentários de código nem em `ADMIN_EMAIL`).
+
+- **A3 · o que continua só do admin.** "Reabrir" (`{isAdmin && <button className="btn-reopen" …>}`) e "📊 Exportar" ficam como estão; `isAdmin` continua sendo passado ao modal por causa do Reabrir. Registrar no `CHANGELOG.md` que qualquer membro pode mandar pro setlist.
 
 ---
 
@@ -185,12 +198,12 @@ Você vai implementar duas features novas, já decididas pelo dono do app, mais 
 
 ## Como reportar cada pacote
 
-1. Ids implementados (B1…B7, C1…C5) e o commit de cada um.
+1. Ids implementados (A1…A3, B1…B7, C1…C5) e o commit de cada um.
 2. Ids pulados e por quê.
 3. O que o dono precisa fazer/testar: rodar "Blocos: migrar músicas soltas" e "Montar o próximo ensaio" na aba Banda; conferir no celular arrasto dentro do bloco, ▲▼ atravessando bloco, e o palco com blocos. **Listar as músicas da sequência que a ferramenta não achou no setlist.**
 4. Resultado de `npm run lint` e `npm run build`.
 
-Comece pelo Pacote B.
+Comece pelo Pacote A.
 
 ---
 
