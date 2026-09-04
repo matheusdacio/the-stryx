@@ -37,7 +37,8 @@ export default function CifrasPage() {
   const [cifrasVistas, setCifrasVistas] = useState(cifras)
   if (cifras !== cifrasVistas) {
     setCifrasVistas(cifras)
-    if (modal && modal !== 'add') setModal(cifras.find((c) => c.id === modal.id) || null)
+    // "nova" (prefill sem cifra salva ainda) não tem id pra procurar — não mexe
+    if (modal && modal !== 'add' && !modal.nova) setModal(cifras.find((c) => c.id === modal.id) || null)
   }
 
   // matchesSearch ignora acento — antes era um includes() puro, então
@@ -64,7 +65,13 @@ export default function CifrasPage() {
       ) : filtered.length === 0 ? (
         <div className="empty-state">
           <p>{search ? `Nenhuma cifra pra "${search}".` : 'Nenhuma cifra ainda.'}</p>
-          {!search && <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>}
+          {search ? (
+            <button className="btn-primary" onClick={() => setModal({ nova: true, title: search })}>
+              + Cadastrar cifra de "{search}"
+            </button>
+          ) : (
+            <button className="btn-primary" onClick={() => setModal('add')}>Adicionar primeira cifra</button>
+          )}
         </div>
       ) : (
         <div className="card-grid">
@@ -92,9 +99,10 @@ export default function CifrasPage() {
 
       {modal && (
         <CifraModal
-          cifra={modal === 'add' ? null : modal}
+          cifra={modal === 'add' || modal.nova ? null : modal}
+          inicial={modal.nova ? { title: modal.title, artist: modal.artist } : undefined}
           onClose={() => setModal(null)}
-          onRemove={modal !== 'add' ? () => { remove(modal); setModal(null) } : undefined}
+          onRemove={modal !== 'add' && !modal.nova ? () => { remove(modal); setModal(null) } : undefined}
           KEYS={KEYS}
         />
       )}

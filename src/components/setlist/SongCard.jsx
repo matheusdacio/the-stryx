@@ -396,8 +396,10 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         {!videoId && (
           <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
         )}
-        {cifra && (
+        {cifra ? (
           <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 Cifra</button>
+        ) : (
+          <button className="btn-meta-add" onClick={() => setVerCifra(true)}>📄 + cifra</button>
         )}
         {(song.tags || []).map((t) => (
           <span key={t} className="song-tag">🏷 {t}</span>
@@ -405,7 +407,14 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
       </div>
 
-      {verCifra && <CifraModal cifra={cifra} onClose={() => setVerCifra(false)} KEYS={CIFRA_KEYS} />}
+      {verCifra && (
+        <CifraModal
+          cifra={cifra}
+          inicial={!cifra ? { title: song.title, artist: song.artist } : undefined}
+          onClose={() => setVerCifra(false)}
+          KEYS={CIFRA_KEYS}
+        />
+      )}
 
       {editingMeta && (
         <div className="song-meta-edit">

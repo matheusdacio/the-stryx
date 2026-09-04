@@ -6,6 +6,7 @@ import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { formatData, jaPassou } from '../../utils/data'
+import { acharCifra } from '../../utils/score'
 import EnsaioModal from './EnsaioModal'
 import PerformanceMode from './PerformanceMode'
 import SetPlayer from '../SetPlayer'
@@ -137,7 +138,7 @@ function TypeBadge({ type }) {
 
 // `compacto` é a aba de pendências: ali a tarefa é responder presença, então
 // ela vem primeiro e o repertório fica só como prévia
-function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, compacto = false, destaque = false, colapsavel = false }) {
+function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform, bandMembers, user, songs, cifras, compacto = false, destaque = false, colapsavel = false }) {
   // Realizados/Cancelados nascem recolhidos — repertório completo, presença
   // e 4-5 botões por evento, pra TODOS de uma vez, virava rolagem sem fim
   const [open, setOpen] = useState(!colapsavel)
@@ -229,6 +230,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               <ol className="event-songs-list">
                 {ensaio.setlist.map((s, i) => {
                   const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)
+                  const temCifra = acharCifra(cifras, s.title, s.artist)
                   const q = encodeURIComponent(s.title)
                   const texto = (
                     <span>
@@ -236,15 +238,17 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                       {s.artist && <span className="song-search-artist"> — {s.artist}</span>}
                       {s.bpm && <span className="event-setlist-bpm"> · {s.bpm} BPM</span>}
                       {songs[s.id]?.tom && <span className="event-setlist-bpm"> · ♪ {songs[s.id].tom}</span>}
-                      <a
-                        href={`#/cifras?q=${q}`}
-                        className="mini-chip"
-                        style={{ marginLeft: 6 }}
-                        title="Ver cifra"
-                        onClick={(e) => e.stopPropagation()}
-                      >
-                        📄
-                      </a>
+                      {temCifra && (
+                        <a
+                          href={`#/cifras?q=${q}`}
+                          className="mini-chip"
+                          style={{ marginLeft: 6 }}
+                          title="Ver cifra"
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          📄
+                        </a>
+                      )}
                       {nivel && (
                         <span className="status-dot status-dot-inline" style={{ color: nivel.color, background: nivel.bg }}>
                           {nivel.label}
@@ -344,6 +348,7 @@ export default function EnsaiosPage() {
   const [loaded, setLoaded] = useState(false)
   const [bandMembers, setBandMembers] = useState([])
   const [songs, setSongs] = useState({})
+  const [cifras, setCifras] = useState([])
   const [modal, setModal]     = useState(null)
   const [tab, setTab]         = useState('proximos')
   const [performing, setPerforming] = useState(null)
@@ -362,6 +367,14 @@ export default function EnsaiosPage() {
       snap.docs.forEach((d) => { map[d.id] = d.data() })
       setSongs(map)
     })
+  }, [])
+
+  // Pro chip 📄 só aparecer quando existe cifra pra música (N06) — antes
+  // levava pra uma busca vazia mesmo sem cifra cadastrada
+  useEffect(() => {
+    return onSnapshot(collection(db, 'cifras'), (snap) =>
+      setCifras(snap.docs.map((d) => ({ id: d.id, ...d.data() })))
+    )
   }, [])
 
   useEffect(() => {
@@ -454,6 +467,7 @@ export default function EnsaiosPage() {
                 bandMembers={bandMembers}
                 user={user}
                 songs={songs}
+                cifras={cifras}
                 destaque
               />
             : (
@@ -480,6 +494,7 @@ export default function EnsaiosPage() {
                     bandMembers={bandMembers}
                     user={user}
                     songs={songs}
+                    cifras={cifras}
                   />
                 ))}
               </div>
@@ -513,6 +528,7 @@ export default function EnsaiosPage() {
                   bandMembers={bandMembers}
                   user={user}
                   songs={songs}
+                  cifras={cifras}
                   compacto={tab === 'pendentes'}
                   colapsavel={tab === 'realizados' || tab === 'cancelados'}
                 />

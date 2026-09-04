@@ -16,17 +16,19 @@ function lerFs() {
   }
 }
 
-const formDe = (cifra) => ({
-  title: cifra?.title || '',
-  artist: cifra?.artist || '',
+// inicial (title/artist) pré-preenche uma cifra nova vinda de fora — do
+// botão "+ cifra" de uma música do Setlist, ou da busca sem resultado
+const formDe = (cifra, inicial) => ({
+  title: cifra?.title || inicial?.title || '',
+  artist: cifra?.artist || inicial?.artist || '',
   key: cifra?.key || '',
   bpm: cifra?.bpm || '',
   content: cifra?.content || '',
 })
 
-export default function CifraModal({ cifra, onClose, onRemove, KEYS }) {
+export default function CifraModal({ cifra, inicial, onClose, onRemove, KEYS }) {
   const [editing, setEditing] = useState(!cifra)
-  const [form, setForm] = useState(() => formDe(cifra))
+  const [form, setForm] = useState(() => formDe(cifra, inicial))
   const [saving, setSaving] = useState(false)
   const [mexeu, setMexeu] = useState(false)
   // Tamanho da letra é preferência de quem lê, não da cifra — compartilhado
