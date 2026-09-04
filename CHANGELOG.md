@@ -13,6 +13,12 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.36.0] — 2026-09-03
+- **App abre sem internet**: agora cacheia o app inteiro (HTML/CSS/JS), não só os dados — antes, sem o cache HTTP, o Modo palco podia não abrir no ensaio sem sinal (precisa de teste real em Android e iPhone antes de ir pra produção)
+- Marcar item da pauta do evento não perde mais a marcação de quem mexeu ao mesmo tempo
+- Filtros de status em Sugestões (Em aberto/Rejeitadas) param de usar o vermelho de "urgente" — só "Todas" mantém o gradiente
+- Botões de voto de domínio (Dominada/Ensaiando/Crua) passam a seguir a mesma ordem da barra de filtros do Setlist
+
 ## [1.35.0] — 2026-09-03
 - **Nota ⭐ com a mesma cara em Setlist e Sugestões**: componente único (antes eram dois visuais diferentes pra mesma coisa); em Sugestões, "3 de 6 opinaram" explica por que a sugestão ainda não fechou
 - **Chip 🎯 de dificuldade aparece também no Setlist** (card fechado) — antes só existia em Sugestões, mesmo o Setlist já ordenando por ela
