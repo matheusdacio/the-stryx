@@ -13,6 +13,21 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.34.1] — 2026-09-03
+- **Safe-area no iPhone instalado**: rodapé, palco, toast, modal e navbar respeitam a barra de gesto e o notch em vez de ficar por baixo
+- Efeitos de hover (levantar card, borda vermelha) não grudam mais depois de um toque no celular — o card de sugestão não fica "selecionado" depois de fechar o modal
+- Modal de evento: "Cancelar este evento" (status) vira "Marcar como cancelado"/"Reativar evento", sem confundir com o "Cancelar" de descartar edição; trocar o tipo do evento agora avisa antes de sair sem salvar
+- Notas da sugestão e ferramentas da Banda (instrumento, apelido, "Tá na banda") gravam e fecham na hora, sem travar esperando a rede
+- Confirmação de apagar evento ou membro explica o que se perde e aponta a saída segura (cancelar evento, marcar "Saiu")
+- "Sair" da conta pede confirmação — evita perder a sessão com um toque sem querer
+- Cifras, Rascunhos e Banda não piscam mais "vazio" antes do primeiro carregamento
+- Prévia da cifra sem conteúdo mostra "Sem conteúdo" em vez de só "..."
+- Só um metrônomo toca por vez — abrir outro para o anterior automaticamente
+- "Remover" da cifra sai do topo (colado em Editar/Fechar) e vai pro rodapé, como no resto do app
+- Botão de opinião no Setlist não fala mais em "tira da fila" — esse conceito só existe em Sugestões
+- "Dificuldade" e "Melhores e fáceis" passam a usar a mesma conta no Setlist e nas Sugestões (o nível mais alto votado, não a média)
+- Avatar sem foto do Google mostra a inicial do nome em vez do ícone de imagem quebrada
+
 ## [1.34.0] — 2026-09-03
 - Textos pequenos (chips, contadores, rótulos) ganham letra maior — estavam abaixo do confortável pra ler em pé no palco
 - Contraste maior em placeholders, botões "+" apagados e textos acinzentados (rejeitada, autor, "remover") que ficavam quase invisíveis
