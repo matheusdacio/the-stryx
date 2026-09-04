@@ -71,6 +71,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
   const list = opinoesArray(sugestao.opinoes)
   const existing = (sugestao.opinoes || {})[userId]
+  const faltam = quemFalta(sugestao, bandMembers)
 
   const saveNotes = () => {
     updateDoc(ref, { notes: notes.trim() }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
@@ -228,7 +229,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             fim nem tocar num botão "Enviar" à parte */}
         <div className="opinion-form">
           <p className="prompt-label">
-            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? 'A banda toda já opinou' : 'Vale tocar?'}
+            {sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers) ? '⭐ A banda toda já opinou' : '⭐ Vale tocar?'}
           </p>
           {!(sugestao.status === 'aberta' && todosVotaram(sugestao, bandMembers)) && (
             <div className="opinion-btns">
@@ -272,6 +273,12 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
           )}
         </div>
 
+        {sugestao.status === 'aberta' && !isAdmin && !temVeto(sugestao) && (
+          <p className="filter-hint" style={{ margin: '4px 0 0' }}>
+            {faltam.length ? `Faltam opinar: ${faltam.map(firstName).join(', ')}` : 'Todo mundo já opinou — agora é com o admin.'}
+          </p>
+        )}
+
         {/* Observações da banda — editável por qualquer membro */}
         {editingNotes ? (
           <div className="notes-edit" style={{ marginBottom: 12 }}>
@@ -289,7 +296,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
         {/* Dificuldade pra tocar */}
         <div className="difficulty-section-flat" style={{ marginBottom: 12 }}>
-          <p className="prompt-label">Dificuldade pra tocar</p>
+          <p className="prompt-label">🎯 Dificuldade pra tocar</p>
           <div className="difficulty-btns">
             {DIFFICULTIES.map((d) => (
               <button
@@ -814,6 +821,8 @@ export default function SugestoesPage() {
           🗳 Falta meu voto <span className="count">{pendingCount}</span>
         </button>
       </div>
+
+      <p className="filter-hint">Você sugere, a banda opina. Quando todo mundo opinar sem veto, o admin manda pro setlist.</p>
 
       {/* Ordenação */}
       <div className="sort-bar">
