@@ -37,9 +37,10 @@ export const SEQUENCIA = [
   { bloco: 5, title: 'Smells Like Teen Spirit', cantor: 'Márcio/Marcos', tom: 'Fm' },
 ]
 
-// normalizeName já ignora acento/caixa; aqui também tira pontuação solta
-// das pontas ("Have You Ever Seen The Rain?" ~= "Have You Ever Seen The Rain")
-const limpar = (s) => normalizeName(s).replace(/^[?!.,']+|[?!.,']+$/g, '').trim()
+// normalizeName já ignora acento/caixa; aqui também tira pontuação solta,
+// de qualquer posição ("Have You Ever Seen The Rain?" ~= "...Rain",
+// "SOS" ~= "S.O.S.")
+const limpar = (s) => normalizeName(s).replace(/[?!.,']/g, '').replace(/\s+/g, ' ').trim()
 
 function acharMusica(title, songs) {
   const alvo = limpar(title)
