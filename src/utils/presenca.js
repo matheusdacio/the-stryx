@@ -5,8 +5,9 @@ import { formatData } from './data'
 
 // Cada pessoa indica a própria presença no evento
 export const PRESENCAS = [
-  { value: 'vai', label: 'Vou',     short: 'Vai',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
-  { value: 'nao', label: 'Não vou', short: 'Não vai', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
+  { value: 'vai',   label: 'Vou',           short: 'Vai',     color: '#10b981', bg: 'rgba(16,185,129,0.12)' },
+  { value: 'parte', label: 'Só uma parte',  short: 'Parte',   color: '#f59e0b', bg: 'rgba(245,158,11,0.12)' },
+  { value: 'nao',   label: 'Não vou',       short: 'Não vai', color: '#ef4444', bg: 'rgba(239,68,68,0.12)' },
 ]
 
 const isPast = (ts) => {
@@ -15,20 +16,24 @@ const isPast = (ts) => {
   return d < new Date()
 }
 
-// Separa a banda entre quem confirmou, quem recusou e quem não respondeu.
-// A ordem segue o cadastro, e quem não é membro (convidado) fica à parte.
+// Separa a banda entre quem confirmou, quem só vai numa parte, quem recusou
+// e quem não respondeu. A ordem segue o cadastro, e quem não é membro
+// (convidado) fica à parte. Quem respondeu leva a própria observação junto.
 export function splitPresenca(ensaio, bandMembers) {
   const p = ensaio.presenca || {}
   const vao = []
+  const parte = []
   const nao = []
   const pendentes = []
   bandMembers.forEach((m) => {
     const status = m.firebaseUid ? p[m.firebaseUid]?.status : null
-    if (status === 'vai') vao.push(m)
-    else if (status === 'nao') nao.push(m)
+    const comObs = { ...m, obs: (m.firebaseUid && p[m.firebaseUid]?.obs) || '' }
+    if (status === 'vai') vao.push(comObs)
+    else if (status === 'parte') parte.push(comObs)
+    else if (status === 'nao') nao.push(comObs)
     else pendentes.push(m)
   })
-  return { vao, nao, pendentes, convidados: ensaio.convidados || [] }
+  return { vao, parte, nao, pendentes, convidados: ensaio.convidados || [] }
 }
 
 // Ainda falta esta pessoa responder neste evento?
