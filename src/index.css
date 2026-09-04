@@ -883,6 +883,7 @@ button { font-family: inherit; }
 
 .sug-card-body { padding: 12px; flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
 .sug-card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; }
+.sug-card-arrow { color: var(--text-muted); font-size: 1.2rem; line-height: 1; align-self: center; margin-left: 4px; }
 .sug-card-title { font-weight: 700; font-size: 0.92rem; }
 .sug-card-artist { font-size: 0.82rem; color: var(--text-muted); }
 .sug-card-by { font-size: 0.73rem; color: var(--text-muted); }

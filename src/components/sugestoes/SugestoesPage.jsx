@@ -21,6 +21,7 @@ import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { getYouTubeId } from '../../utils/youtube'
+import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
@@ -192,6 +193,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
         <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
           Sugerida por <strong>{sugestao.suggestedBy}</strong>
+          {sugestao.createdAt && <> · {formatData(sugestao.createdAt, { curta: true })}</>}
         </p>
 
         {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
@@ -905,6 +907,7 @@ export default function SugestoesPage() {
                         </span>
                       )}
                     </div>
+                    <span className="sug-card-arrow" aria-hidden="true">›</span>
                   </div>
                   <p className="sug-card-by">por {s.suggestedBy}</p>
                   <OpinionSummary opinoes={s.opinoes} />
