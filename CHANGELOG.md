@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.42.0] — 2026-09-04
+- **Evento ganha horário de início e fim** — aparece no card, na lista e no modo palco, e entra no lembrete de véspera e nos avisos de evento marcado/remarcado/cancelado; ensaio novo já nasce 9h às 17h. Ferramenta admin preenche esse horário nos ensaios antigos que ainda não têm
+
 ## [1.41.0] — 2026-09-04
 - **Presença ganha "Só uma parte"**, pra quem vai só num pedaço do ensaio (chega depois, sai antes) — conta como confirmado pro resumo e pro lembrete D-1, e cada resposta pode levar uma observação livre (ex.: "chego 21h"), mostrada no card do evento e enviada junto no lembrete
 
