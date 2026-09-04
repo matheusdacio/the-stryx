@@ -48,6 +48,19 @@ function diasAte(data) {
 const formatarData = (d) =>
   d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
 
+// Mesma lógica de src/utils/data.js (formatHorario) — Node puro, sem
+// import de src/, então duplica de propósito
+const formatarHora = (t) => {
+  const [hh, mm] = t.split(':')
+  return mm === '00' ? `${Number(hh)}h` : `${Number(hh)}h${mm}`
+}
+const formatarHorario = (ini, fim) => {
+  if (ini && fim) return `${formatarHora(ini)} às ${formatarHora(fim)}`
+  if (ini) return `a partir das ${formatarHora(ini)}`
+  if (fim) return `até ${formatarHora(fim)}`
+  return ''
+}
+
 async function main() {
   const [eventosSnap, tokensSnap] = await Promise.all([
     db.collection('ensaios').get(),
@@ -77,6 +90,7 @@ async function main() {
     const presenca = ev.presenca || {}
     const tipo = ev.type === 'apresentacao' ? 'Apresentação' : 'Ensaio'
     const onde = ev.location ? ` em ${ev.location}` : ''
+    const horario = formatarHorario(ev.horaInicio, ev.horaFim)
 
     let chave = null
     let alvos = []
@@ -91,7 +105,7 @@ async function main() {
       chave = 'd3'
       alvos = todosUids.filter((uid) => !presenca[uid])
       titulo = `${tipo} em ${dias} dia${dias === 1 ? '' : 's'} 🗓`
-      corpo = `${formatarData(data)}${onde}. Você vai? Confirme sua presença.`
+      corpo = `${formatarData(data)}${horario ? `, ${horario}` : ''}${onde}. Você vai? Confirme sua presença.`
     } else if (dias === 1 && !marcos.d1) {
       chave = 'd1'
       // "Só uma parte" conta como confirmado — a pessoa vai, só que não o
@@ -104,7 +118,7 @@ async function main() {
       const lista = Array.isArray(ev.blocos) ? ev.blocos.flatMap((b) => b.musicas || []) : (ev.setlist || [])
       const musicas = lista.length ? ` ${lista.length} músicas no repertório.` : ''
       titulo = `${tipo} amanhã 🎸`
-      corpo = `${formatarData(data)}${onde}. ${confirmados} confirmados${soParte > 0 ? ` (${soParte} só uma parte)` : ''}.${musicas}`
+      corpo = `${formatarData(data)}${horario ? `, ${horario}` : ''}${onde}. ${confirmados} confirmados${soParte > 0 ? ` (${soParte} só uma parte)` : ''}.${musicas}`
     }
 
     if (!chave) continue

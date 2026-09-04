@@ -14,6 +14,19 @@ const LINK_ENSAIOS = 'https://matheusdacio.github.io/the-stryx/#/ensaios'
 const formatarData = (d) =>
   d.toLocaleDateString('pt-BR', { weekday: 'long', day: '2-digit', month: '2-digit' })
 
+// Mesma lógica de src/utils/data.js (formatHorario) — Node puro, sem
+// import de src/, então duplica de propósito
+const formatarHora = (t) => {
+  const [hh, mm] = t.split(':')
+  return mm === '00' ? `${Number(hh)}h` : `${Number(hh)}h${mm}`
+}
+const formatarHorario = (ini, fim) => {
+  if (ini && fim) return `${formatarHora(ini)} às ${formatarHora(fim)}`
+  if (ini) return `a partir das ${formatarHora(ini)}`
+  if (fim) return `até ${formatarHora(fim)}`
+  return ''
+}
+
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT_STRYX)
 admin.initializeApp({ credential: admin.credential.cert(serviceAccount) })
 const db = admin.firestore()
@@ -107,19 +120,21 @@ async function main() {
     const data = dados.data?.toDate ? dados.data.toDate() : new Date(dados.data)
     const tipoLabel = dados.tipoEvento === 'apresentacao' ? 'Apresentação' : 'Ensaio'
     const onde = dados.local ? ` em ${dados.local}` : ''
+    const horario = formatarHorario(dados.horaInicio, dados.horaFim)
+    const quandoHorario = horario ? `, ${horario}` : ''
 
     if (dados.tipo === 'novo_evento' || dados.tipo === 'evento_remarcado') {
       const titulo = dados.tipo === 'novo_evento' ? `${tipoLabel} marcado 🎸` : `${tipoLabel} remarcado 🗓`
       const corpo = dados.tipo === 'novo_evento'
-        ? `${formatarData(data)}${onde}. Você vai?`
-        : `Agora é ${formatarData(data)}${onde}.`
+        ? `${formatarData(data)}${quandoHorario}${onde}. Você vai?`
+        : `Agora é ${formatarData(data)}${quandoHorario}${onde}.`
       for (const dest of tokens) {
         await enviar(dest.token, titulo, corpo, LINK_ENSAIOS)
       }
       console.log(`${dados.tipo} (${dados.ensaioId}): ${tokens.length} notificações enviadas.`)
     } else if (dados.tipo === 'evento_cancelado') {
       const titulo = `${tipoLabel} cancelado ✕`
-      const corpo = `${formatarData(data)}${onde} foi cancelado.`
+      const corpo = `${formatarData(data)}${quandoHorario}${onde} foi cancelado.`
       // Só quem tinha confirmado presença precisa saber que não precisa mais ir
       const ensaioSnap = await db.collection('ensaios').doc(dados.ensaioId).get()
       const presenca = ensaioSnap.exists ? (ensaioSnap.data().presenca || {}) : {}
