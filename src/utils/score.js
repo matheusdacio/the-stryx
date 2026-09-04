@@ -16,6 +16,10 @@ export const OPINIONS = [
 // Pontuação por tipo de opinião da banda sobre a música
 export const SCORES = { hino: 1.2, escopo: 1, ajustar: 0.6, fora: 0.2, nao_gosto: 0 }
 
+// Duplicada em SongCard.jsx e SugestoesPage.jsx — uma função só, usada
+// pelo NotaChip e por quem mais precisar formatar nota
+export const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
+
 /** Pontuação de um mapa de opiniões: soma, média e quantos votaram */
 export function calcSongScore(opinoes) {
   const list = Object.values(opinoes || {})

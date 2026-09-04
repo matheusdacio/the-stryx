@@ -13,6 +13,7 @@ import VideoInline from '../VideoInline'
 import { buscaTomAtiva } from '../../utils/lookup'
 import { matchesSearch } from '../../utils/search'
 import { OPINIONS, calcSongScore, chaveMusica } from '../../utils/score'
+import NotaChip from '../NotaChip'
 import { checarDuplicata, mensagemBloqueio } from '../../utils/duplicata'
 import { DIFFICULTIES, calcDifficulty, difficultyByWeight, fatorFacilidade } from '../../utils/dificuldade'
 import { estaRejeitada, temVeto, todosVotaram, quemFalta, VETOS } from '../../utils/rejeicao'
@@ -25,10 +26,6 @@ const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
 
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-
-// Sugestão nova sem voto nenhum ia pro fim de "Melhores e fáceis", empatada
-// em 0 com as reprovadas — o chip explica por que ela aparece lá em cima
-const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 const SETE_DIAS = 7 * 24 * 60 * 60 * 1000
 const ehNovo = (createdAt) => {
@@ -883,13 +880,9 @@ export default function SugestoesPage() {
                       </div>
                     </div>
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 5 }}>
-                      {showScore && (
-                        <span className="sug-score-chip" title={`Média ${formatarNota(media)} · Soma ${soma.toLocaleString('pt-BR')} · ${total} voto(s)`}>
-                          ⭐ {formatarNota(media)} <span className="sug-score-avg">· {total} {total === 1 ? 'voto' : 'votos'}</span>
-                        </span>
-                      )}
+                      {showScore && <NotaChip nota={{ media, soma, total }} deQuantos={bandMembers.length} />}
                       {diffLabel && (
-                        <span className="sug-diff-chip" style={{ color: diffLabel.color, borderColor: diffLabel.color }}>
+                        <span className="diff-chip" style={{ color: diffLabel.color, borderColor: diffLabel.color }}>
                           🎯 {diffLabel.label}
                         </span>
                       )}

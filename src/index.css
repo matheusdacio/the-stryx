@@ -876,7 +876,6 @@ button { font-family: inherit; }
 .sug-card-rejeitada { border-left: 4px solid var(--gray); }
 .sug-card-rejeitada .sug-thumb { opacity: 0.5; filter: grayscale(1); }
 .sug-card-aberta { border-left: 4px solid var(--border); }
-.mini-chip-nota { color: #fbbf24; font-weight: 600; }
 
 .sug-thumb-wrap { flex-shrink: 0; width: 110px; overflow: hidden; }
 .sug-thumb { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -936,14 +935,11 @@ button { font-family: inherit; }
   border-radius: var(--radius-sm); padding: 1px 6px;
   white-space: nowrap;
 }
-.sug-score-chip {
-  font-size: 0.72rem; font-weight: 700;
-  color: #fbbf24; white-space: nowrap;
-}
-.sug-score-avg { font-weight: 400; color: var(--text-muted); }
+.nota-chip { font-size: 0.78rem; font-weight: 700; color: #fbbf24; white-space: nowrap; }
+.nota-chip-detalhe { font-weight: 400; color: var(--text-muted); }
 
-/* Chip de dificuldade no card de sugestão — vazado, pra não confundir com as opiniões */
-.sug-diff-chip {
+/* Chip de dificuldade — vazado, pra não confundir com as opiniões/domínio. Usado em Sugestões e no card fechado do Setlist */
+.diff-chip {
   font-size: 0.78rem; font-weight: 600; white-space: nowrap;
   padding: 1px 8px; border-radius: 10px;
   border: 1px solid currentColor; background: transparent;

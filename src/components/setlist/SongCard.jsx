@@ -6,16 +6,16 @@ import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { DIFFICULTIES } from '../../utils/dificuldade'
+import { DIFFICULTIES, calcDifficulty, difficultyByWeight } from '../../utils/dificuldade'
 import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 import { showToast } from '../../utils/toast'
 import CifraModal from '../cifras/CifraModal'
+import NotaChip from '../NotaChip'
 
 const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
-const formatarNota = (n) => n.toLocaleString('pt-BR', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
 
 // Explica por que uma música sem votação nenhuma aparece lá no topo de
 // "Recentes" — sem o chip parece só ordem aleatória
@@ -44,6 +44,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
 
   // Dificuldade — voto de cada membro (mapa keyed por uid)
   const dificuldade = song.dificuldade || {}
+  // Chip do card fechado — mesmo nível mais alto votado que ordena "🎯 Dificuldade"
+  const diff = difficultyByWeight(calcDifficulty(dificuldade).max)
   const myDiff = dificuldade[user.uid]?.level
   const voteDiff = (level) => {
     if (myDiff === level) {
@@ -262,11 +264,8 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
           ) : (
             <span className="status-dot status-sem-voto">Sem voto</span>
           )}
-          {nota && (
-            <span className="mini-chip mini-chip-nota" title={`Média ${formatarNota(nota.media)} · ${nota.total} voto(s) da banda`}>
-              ⭐ {formatarNota(nota.media)}
-            </span>
-          )}
+          {nota && <NotaChip nota={nota} compacto />}
+          {diff && <span className="diff-chip" style={{ color: diff.color, borderColor: diff.color }}>🎯 {diff.label}</span>}
           {song.tom && <span className="mini-chip">♪ {song.tom}</span>}
           {(song.tags || []).map((t) => <span key={t} className="mini-chip">🏷 {t}</span>)}
           {song.notes && <span className="mini-chip">📝</span>}
