@@ -86,6 +86,15 @@ export default function PerformanceMode({ event, onClose }) {
   const next = setlist[idxAtual + 1] || null
   const cifraAtual = current ? acharCifra(cifras, current.title, current.artist) : null
 
+  const [mostrarCifra, setMostrarCifra] = useState(false)
+  // Trocar de música fecha a cifra da anterior — senão parece que a letra
+  // na tela é da música que está tocando agora
+  const [idxDaCifraAberta, setIdxDaCifraAberta] = useState(idxAtual)
+  if (mostrarCifra && idxAtual !== idxDaCifraAberta) {
+    setIdxDaCifraAberta(idxAtual)
+    setMostrarCifra(false)
+  }
+
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
   const goPrev = useCallback(() => setIdx((i) => Math.max(i - 1, 0)), [])
 
@@ -206,9 +215,17 @@ export default function PerformanceMode({ event, onClose }) {
               <MetronomeButton bpm={current.bpm} />
             </span>
           )}
+          {cifraAtual && (
+            <button
+              className="perf-cifra-toggle"
+              onClick={(e) => { e.stopPropagation(); setMostrarCifra(!mostrarCifra) }}
+            >
+              📄 {mostrarCifra ? 'Fechar cifra' : 'Cifra'}
+            </button>
+          )}
         </div>
         {current.notes && <p className="perf-notes">{current.notes}</p>}
-        {cifraAtual && (
+        {mostrarCifra && cifraAtual && (
           <pre
             className="perf-cifra-content"
             onClick={(e) => e.stopPropagation()}

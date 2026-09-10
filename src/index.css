@@ -1295,6 +1295,12 @@ button { font-family: inherit; }
   color: var(--text);
   white-space: pre-wrap;
 }
+.perf-cifra-toggle {
+  font-size: 0.8rem; padding: 6px 14px; border-radius: var(--radius);
+  background: rgba(255, 255, 255, 0.08); border: 1px solid var(--border);
+  color: var(--text); cursor: pointer;
+}
+.perf-cifra-toggle:hover { border-color: var(--text-muted); }
 .perf-cifra-content {
   width: 100%; max-width: 640px; margin: 14px auto 0;
   max-height: 42vh; overflow-y: auto; text-align: left;
@@ -1512,6 +1518,8 @@ button.yt-thumb-wrap { border: 0; padding: 0; background: none; cursor: pointer;
 }
 .set-player-nav { display: flex; gap: 8px; margin-top: 8px; }
 .set-player-nav .btn-secondary { font-size: 0.78rem; flex: 1; }
+.set-player-cifra { margin-top: 8px; }
+.set-player-cifra-actions { display: flex; gap: 8px; flex-wrap: wrap; }
 .song-collapsed .video-inline { flex-basis: 100%; }
 
 /* Crédito na tela de login (atribuição do GetSongBPM) */

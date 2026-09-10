@@ -45,6 +45,9 @@ export function acharCifra(cifras, titulo, artista) {
   return (cifras || []).find((c) => !c.artist && normalizeName(c.title) === t) || null
 }
 
+// Opções de tom pro datalist do formulário de cifra (SongCard, SetPlayer)
+export const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
+
 // Junta dois mapas de voto sem deixar a mesma pessoa entrar duas vezes —
 // nem quando votou com nome importado ("import_Nome") de um lado e com login
 // do outro. O que vem em `preferido` vence.

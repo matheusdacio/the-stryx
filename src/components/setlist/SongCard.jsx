@@ -6,14 +6,12 @@ import MetronomeButton from './MetronomeButton'
 import { getYouTubeId } from '../../utils/youtube'
 import VideoInline from '../VideoInline'
 import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
-import { OPINIONS, fundirVotos, acharCifra } from '../../utils/score'
+import { OPINIONS, fundirVotos, acharCifra, CIFRA_KEYS } from '../../utils/score'
 import { todosVotaram } from '../../utils/rejeicao'
 import { showToast } from '../../utils/toast'
 import CifraModal from '../cifras/CifraModal'
 import NotaChip from '../NotaChip'
 import { predecessoraDe, sucessoraDe, motivoInvalido } from '../../utils/pares'
-
-const CIFRA_KEYS = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B']
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
