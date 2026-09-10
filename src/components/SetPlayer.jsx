@@ -47,6 +47,8 @@ export default function SetPlayer({ setlist }) {
 
   const [editingTom, setEditingTom] = useState(false)
   const [tom, setTom] = useState('')
+  const [editingNotes, setEditingNotes] = useState(false)
+  const [notes, setNotes] = useState('')
 
   // Só entram no player as músicas que têm vídeo cadastrado
   const faixas = (setlistCongelado || [])
@@ -57,12 +59,17 @@ export default function SetPlayer({ setlist }) {
   const erro = !!videoId && erroDe === videoId
   const cifraAtual = atual ? acharCifra(cifras, atual.title, atual.artist) : null
 
-  // Trocar de faixa fecha o editor de tom da anterior — senão parece que
-  // o campo na tela é da música que está tocando agora
+  // Trocar de faixa fecha o editor de tom/nota da anterior — senão parece
+  // que o campo na tela é da música que está tocando agora
   const [idxDoTomAberto, setIdxDoTomAberto] = useState(idx)
   if (editingTom && idx !== idxDoTomAberto) {
     setIdxDoTomAberto(idx)
     setEditingTom(false)
+  }
+  const [idxDaNotaAberta, setIdxDaNotaAberta] = useState(idx)
+  if (editingNotes && idx !== idxDaNotaAberta) {
+    setIdxDaNotaAberta(idx)
+    setEditingNotes(false)
   }
 
   useEffect(() => { totalRef.current = faixas.length }, [faixas.length])
@@ -114,6 +121,12 @@ export default function SetPlayer({ setlist }) {
       .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setEditingTom(false)
   }
+  const abrirNotas = () => { setNotes(atual.notes || ''); setEditingNotes(true) }
+  const salvarNotas = () => {
+    updateDoc(doc(db, 'songs', atual.id), { notes })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    setEditingNotes(false)
+  }
 
   if (!repertorio) return <p className="lookup-aviso">Carregando o repertório…</p>
   if (!faixas.length) {
@@ -139,6 +152,9 @@ export default function SetPlayer({ setlist }) {
           <button type="button" className="btn-meta-add" onClick={editingTom ? () => setEditingTom(false) : abrirTom}>
             ✏️ Tom
           </button>
+          <button type="button" className="btn-meta-add" onClick={editingNotes ? () => setEditingNotes(false) : abrirNotas}>
+            ✏️ Nota
+          </button>
         </div>
         {editingTom && (
           <div className="notes-edit">
@@ -149,7 +165,19 @@ export default function SetPlayer({ setlist }) {
             </div>
           </div>
         )}
-        {atual?.notes && <p className="song-notes">{atual.notes}</p>}
+        {editingNotes ? (
+          <div className="notes-edit">
+            <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={3} autoFocus />
+            <div className="notes-actions">
+              <button type="button" className="btn-secondary" onClick={() => setEditingNotes(false)}>Cancelar</button>
+              <button type="button" className="btn-primary" onClick={salvarNotas}>Salvar</button>
+            </div>
+          </div>
+        ) : (
+          <p className="song-notes" onClick={abrirNotas}>
+            {atual?.notes || <span className="placeholder">Toque pra anotar: quem canta, afinação, deixa do solo… (aparece no modo palco)</span>}
+          </p>
+        )}
       </div>
 
       {apiFalhou && (
