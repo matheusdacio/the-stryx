@@ -6,6 +6,7 @@ import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { acharCifra } from '../../utils/score'
 import { formatData, formatHorario } from '../../utils/data'
 import { musicasComBloco } from '../../utils/blocos'
+import { getYouTubeId } from '../../utils/youtube'
 
 export default function PerformanceMode({ event, onClose }) {
   useFecharComVoltar(onClose)
@@ -85,14 +86,17 @@ export default function PerformanceMode({ event, onClose }) {
   const current = setlist[idxAtual]
   const next = setlist[idxAtual + 1] || null
   const cifraAtual = current ? acharCifra(cifras, current.title, current.artist) : null
+  const videoId = current ? getYouTubeId(current.videoUrl) : null
 
   const [mostrarCifra, setMostrarCifra] = useState(false)
-  // Trocar de música fecha a cifra da anterior — senão parece que a letra
-  // na tela é da música que está tocando agora
+  const [tocandoVideo, setTocandoVideo] = useState(false)
+  // Trocar de música fecha a cifra e o vídeo da anterior — senão parece que
+  // é da música que está tocando agora
   const [idxDaCifraAberta, setIdxDaCifraAberta] = useState(idxAtual)
-  if (mostrarCifra && idxAtual !== idxDaCifraAberta) {
+  if ((mostrarCifra || tocandoVideo) && idxAtual !== idxDaCifraAberta) {
     setIdxDaCifraAberta(idxAtual)
     setMostrarCifra(false)
+    setTocandoVideo(false)
   }
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
@@ -215,6 +219,14 @@ export default function PerformanceMode({ event, onClose }) {
               <MetronomeButton bpm={current.bpm} />
             </span>
           )}
+          {videoId && (
+            <button
+              className="perf-cifra-toggle"
+              onClick={(e) => { e.stopPropagation(); setTocandoVideo(true) }}
+            >
+              ▶ Tocar
+            </button>
+          )}
           {cifraAtual && (
             <button
               className="perf-cifra-toggle"
@@ -263,6 +275,29 @@ export default function PerformanceMode({ event, onClose }) {
         <button className="perf-nav-btn" onClick={goPrev} disabled={idxAtual === 0}>‹ Anterior</button>
         <button className="perf-nav-btn primary" onClick={goNext} disabled={idxAtual === setlist.length - 1}>Próxima ›</button>
       </div>
+
+      {tocandoVideo && videoId && (
+        <div className="modal-overlay" onClick={() => setTocandoVideo(false)}>
+          <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
+            <div className="video-inline">
+              <iframe
+                src={`https://www.youtube.com/embed/${videoId}?autoplay=1&rel=0&playsinline=1`}
+                title={current.title}
+                allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture"
+                allowFullScreen
+              />
+            </div>
+            <button
+              type="button"
+              className="btn-secondary"
+              style={{ marginTop: 12, width: '100%' }}
+              onClick={() => setTocandoVideo(false)}
+            >
+              ✕ Fechar vídeo
+            </button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
