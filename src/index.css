@@ -1444,6 +1444,7 @@ button { font-family: inherit; }
   width: 58px;
   text-align: center;
 }
+.trazer-cruas select { width: auto; }
 
 /* Blocos de música do evento (edição) */
 .bloco-edit { border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px 10px; margin-top: 10px; }

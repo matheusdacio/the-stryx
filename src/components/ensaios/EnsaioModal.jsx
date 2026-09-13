@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { collection, addDoc, updateDoc, doc, serverTimestamp, Timestamp, onSnapshot, orderBy, query, deleteField } from 'firebase/firestore'
 import {
   DndContext, closestCenter,
-  PointerSensor, TouchSensor, useSensor, useSensors,
+  PointerSensor, TouchSensor, useSensor, useSensors, useDroppable,
 } from '@dnd-kit/core'
 import { SortableContext, verticalListSortingStrategy, useSortable, arrayMove } from '@dnd-kit/sortable'
 import { CSS } from '@dnd-kit/utilities'
@@ -10,7 +10,7 @@ import { db } from '../../firebase/config'
 import { menosDominadas, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { matchesSearch } from '../../utils/search'
 import { formatData } from '../../utils/data'
-import { blocosDe, novoBlocoId, nomeDoBloco } from '../../utils/blocos'
+import { blocosDe, novoBlocoId, nomeDoBloco, musicasDoEvento } from '../../utils/blocos'
 import { grupoDe, unidadesDe, juntarPares } from '../../utils/pares'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 
@@ -37,6 +37,17 @@ function SortableSetlistItem({ id, className = '', children }) {
   )
 }
 
+// Prefixo do id droppable de cada bloco — precisa ser diferente do id de
+// qualquer unidade, senão o dnd-kit confunde os dois
+const droppableIdDe = (blocoId) => `bloco-${blocoId}`
+
+// Área do bloco inteira como alvo do arrasto: sem isso, um bloco vazio (ou
+// o espaço abaixo da última música) não tinha onde soltar pra entrar nele
+function BlocoDropZone({ id, children }) {
+  const { setNodeRef } = useDroppable({ id })
+  return <div ref={setNodeRef}>{children}</div>
+}
+
 // Evento novo, cancelado ou remarcado — só quem não abre o app dependia
 // disso pra saber. Fila e cron já existem (mesmo caminho da sugestão nova);
 // falha aqui não deve travar nem avisar quem estava salvando o evento
@@ -56,7 +67,7 @@ function enfileirarAviso(tipo, ensaioId, data) {
 
 // `copiando` reaproveita um evento como molde: vem o repertório, a pauta (com
 // os itens desmarcados), local e tipo — mas não a data nem a presença
-export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMembers = [] }) {
+export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMembers = [], ensaios = [] }) {
   const uidsAtivos = uidsAtivosDe(bandMembers)
   const editando = !!ensaio && !copiando
   const [allSongs, setAllSongs] = useState([])
@@ -90,12 +101,21 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   const [blocoDestino, setBlocoDestino] = useState(() => blocos.at(-1)?.id || null)
   const [newItem, setNewItem] = useState('')
   const [songSearch, setSongSearch] = useState('')
+  const [songSearchFocado, setSongSearchFocado] = useState(false)
   const [quantasCruas, setQuantasCruas] = useState(5)
+  const [eventoOrigemId, setEventoOrigemId] = useState('')
   const [aviso, setAviso] = useState('')
   const [saving, setSaving] = useState(false)
   const [mexeu, setMexeu] = useState(false)
 
   const todasMusicas = blocos.flatMap((b) => b.musicas)
+
+  // Unidades (grupo/par vira uma unidade só) já calculadas por bloco, uma
+  // vez só — servem tanto pro render quanto pro arrasto entre blocos, que
+  // precisa saber de qual bloco cada unidade arrastada veio
+  const blocosComUnidades = blocos.map((b, bi) => ({ bloco: b, bi, unidades: unidadesDe(b.musicas, allSongs) }))
+  const unidadeParaBloco = {}
+  blocosComUnidades.forEach(({ bloco, unidades }) => unidades.forEach((u) => { unidadeParaBloco[u.id] = bloco.id }))
 
   // Pointer: arrasta depois de mover 6px (clique/toque normal continua
   // funcionando). Touch: segurar 250ms antes de arrastar (rolar a página
@@ -180,6 +200,44 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
     )
   }
 
+  // Eventos com músicas, excluindo este (não faz sentido trazer dele mesmo)
+  // — mais recente primeiro, é o repertório mais provável de servir de base
+  const outrosEventos = ensaios
+    .filter((e) => e.id !== ensaio?.id && musicasDoEvento(e).length > 0)
+    .sort((a, b) => (b.date?.toMillis?.() || 0) - (a.date?.toMillis?.() || 0))
+
+  // Traz as músicas de outro evento inteiro — cada uma expande pro grupo
+  // (par/cadeia), igual trazerCruas/addSong, sempre tocam juntas
+  const trazerDeEvento = () => {
+    const origem = ensaios.find((e) => e.id === eventoOrigemId)
+    if (!origem) return
+    setMexeu(true)
+    const porId = Object.fromEntries(allSongs.map((s) => [s.id, s]))
+    const jaNoEvento = new Set(todasMusicas.map((s) => s.id))
+    const vistos = new Set()
+    const idsFinal = []
+    musicasDoEvento(origem).forEach((m) => {
+      if (!porId[m.id]) return // música pode ter sido apagada do setlist
+      grupoDe(m.id, allSongs).forEach((id) => {
+        if (jaNoEvento.has(id) || vistos.has(id)) return
+        vistos.add(id)
+        idsFinal.push(id)
+      })
+    })
+    if (!idsFinal.length) {
+      setAviso('Todas as músicas desse evento já estão aqui.')
+      return
+    }
+    const { bs, destino } = comDestino()
+    const novas = idsFinal.map((id) => {
+      const s = porId[id]
+      return { id: s.id, title: s.title, artist: s.artist || '', bpm: s.bpm || null }
+    })
+    setBlocos(bs.map((b) => (b.id === destino ? { ...b, musicas: [...b.musicas, ...novas] } : b)))
+    setBlocoDestino(destino)
+    setAviso(`${novas.length} ${novas.length === 1 ? 'música trazida' : 'músicas trazidas'} de ${formatData(origem.date, { curta: true })}.`)
+  }
+
   // Adicionar traz o grupo inteiro (par/cadeia) da música escolhida, não só ela
   const addSong = (song) => {
     if (todasMusicas.some((s) => s.id === song.id)) return
@@ -238,16 +296,45 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
     }))
   }
 
-  // Arrastar e soltar (toque ou mouse) — um contexto por bloco, reordena as
-  // unidades (grupo inteiro junto) e achata de volta pra b.musicas
-  const handleDragEnd = (blocoId, unidades) => ({ active, over }) => {
+  // Arrastar e soltar (toque ou mouse) — um DndContext só pra tudo (não mais
+  // um por bloco), então a unidade pode ser solta num bloco diferente do
+  // que começou: sai de um lado, entra no outro na posição onde foi solta.
+  // `over.id` é o id de outra unidade (dentro ou fora do bloco de origem)
+  // ou o id droppable do bloco (bloco vazio, ou espaço abaixo da última
+  // música), conforme onde a pessoa soltou
+  const handleDragEnd = ({ active, over }) => {
     if (!over || active.id === over.id) return
+    const origemId = unidadeParaBloco[active.id]
+    if (!origemId) return
+    const destinoId = unidadeParaBloco[over.id] ||
+      (typeof over.id === 'string' && over.id.startsWith('bloco-') ? over.id.slice('bloco-'.length) : null)
+    if (!destinoId) return
+
     setMexeu(true)
-    const oldIndex = unidades.findIndex((u) => u.id === active.id)
-    const newIndex = unidades.findIndex((u) => u.id === over.id)
-    if (oldIndex < 0 || newIndex < 0) return
-    const reordered = arrayMove(unidades, oldIndex, newIndex)
-    setBlocos(blocos.map((b) => (b.id === blocoId ? { ...b, musicas: reordered.flatMap((u) => u.musicas) } : b)))
+    const unidadesOrigem = blocosComUnidades.find((x) => x.bloco.id === origemId).unidades
+    const unidadeMovida = unidadesOrigem.find((u) => u.id === active.id)
+    if (!unidadeMovida) return
+
+    if (origemId === destinoId) {
+      const oldIndex = unidadesOrigem.findIndex((u) => u.id === active.id)
+      const newIndex = unidadesOrigem.findIndex((u) => u.id === over.id)
+      if (oldIndex < 0 || newIndex < 0) return
+      const reordered = arrayMove(unidadesOrigem, oldIndex, newIndex)
+      setBlocos(blocos.map((b) => (b.id === origemId ? { ...b, musicas: reordered.flatMap((u) => u.musicas) } : b)))
+      return
+    }
+
+    const unidadesDestino = blocosComUnidades.find((x) => x.bloco.id === destinoId).unidades
+    const overIndex = unidadesDestino.findIndex((u) => u.id === over.id)
+    const semOrigem = unidadesOrigem.filter((u) => u.id !== active.id)
+    const destinoComNova = [...unidadesDestino]
+    destinoComNova.splice(overIndex >= 0 ? overIndex : destinoComNova.length, 0, unidadeMovida)
+
+    setBlocos(blocos.map((b) => {
+      if (b.id === origemId) return { ...b, musicas: semOrigem.flatMap((u) => u.musicas) }
+      if (b.id === destinoId) return { ...b, musicas: destinoComNova.flatMap((u) => u.musicas) }
+      return b
+    }))
   }
 
   // Uma vez, quando o repertório chega: junta cadeias espalhadas ou fora de
@@ -296,10 +383,12 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
     setBlocoDestino(b.id)
   }
 
-  const searchResults = songSearch.trim()
+  // Com o campo focado, já lista quem falta entrar no evento — sem
+  // precisar digitar nada pra ver as opções disponíveis
+  const searchResults = (songSearch.trim() || songSearchFocado)
     ? allSongs.filter((s) =>
         !todasMusicas.some((x) => x.id === s.id) &&
-        matchesSearch(songSearch, s.title, s.artist)
+        (!songSearch.trim() || matchesSearch(songSearch, s.title, s.artist))
       ).slice(0, 10)
     : []
 
@@ -427,6 +516,8 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             <input
               value={songSearch}
               onChange={(e) => setSongSearch(e.target.value)}
+              onFocus={() => setSongSearchFocado(true)}
+              onBlur={() => setSongSearchFocado(false)}
               placeholder="Buscar música do setlist..."
               aria-label="Buscar música do setlist"
             />
@@ -439,7 +530,13 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                     .map((id) => allSongs.find((x) => x.id === id)?.title)
                     .filter(Boolean)
                   return (
-                    <button key={s.id} type="button" className="song-search-item" onClick={() => addSong(s)}>
+                    <button
+                      key={s.id}
+                      type="button"
+                      className="song-search-item"
+                      onMouseDown={(e) => e.preventDefault()}
+                      onClick={() => addSong(s)}
+                    >
                       + {s.title} {s.artist && <span className="song-search-artist">— {s.artist}</span>}
                       {s.cantor && <span className="mini-chip" style={{ marginLeft: 6 }}>🎤 {s.cantor}</span>}
                       {nomesGrupo.length > 0 && (
@@ -480,9 +577,28 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
               {aviso && <span className="trazer-cruas-aviso">{aviso}</span>}
             </div>
 
-            {blocos.map((b, bi) => {
+            {outrosEventos.length > 0 && (
+              <div className="trazer-cruas">
+                <span>Trazer músicas do evento</span>
+                <select
+                  value={eventoOrigemId}
+                  onChange={(e) => setEventoOrigemId(e.target.value)}
+                  aria-label="Evento de origem"
+                >
+                  <option value="">— escolha —</option>
+                  {outrosEventos.map((e) => (
+                    <option key={e.id} value={e.id}>
+                      {formatData(e.date, { curta: true })}{e.location ? ` · ${e.location}` : ''}
+                    </option>
+                  ))}
+                </select>
+                <button type="button" className="btn-secondary" onClick={trazerDeEvento} disabled={!eventoOrigemId}>+ Trazer</button>
+              </div>
+            )}
+
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              {blocosComUnidades.map(({ bloco: b, bi, unidades }) => {
               const offset = blocos.slice(0, bi).reduce((acc, x) => acc + x.musicas.length, 0)
-              const unidades = unidadesDe(b.musicas, allSongs)
               let localOffset = 0
               return (
                 <div key={b.id} className={`bloco-edit ${b.id === blocoDestino ? 'destino' : ''}`}>
@@ -509,10 +625,12 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                   </div>
 
                   {b.musicas.length === 0 ? (
-                    <p className="filter-hint" style={{ margin: '6px 0 0' }}>Nenhuma música ainda — busque acima ou traga as menos dominadas.</p>
+                    <BlocoDropZone id={droppableIdDe(b.id)}>
+                      <p className="filter-hint" style={{ margin: '6px 0 0' }}>Nenhuma música ainda — busque acima, traga as menos dominadas ou arraste de outro bloco.</p>
+                    </BlocoDropZone>
                   ) : (
-                    <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd(b.id, unidades)}>
-                      <SortableContext items={unidades.map((u) => u.id)} strategy={verticalListSortingStrategy}>
+                    <SortableContext items={unidades.map((u) => u.id)} strategy={verticalListSortingStrategy}>
+                      <BlocoDropZone id={droppableIdDe(b.id)}>
                         <div className="event-setlist">
                           {unidades.map((u, ui) => {
                             const startOffset = offset + localOffset
@@ -574,12 +692,13 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                             )
                           })}
                         </div>
-                      </SortableContext>
-                    </DndContext>
+                      </BlocoDropZone>
+                    </SortableContext>
                   )}
                 </div>
               )
-            })}
+              })}
+            </DndContext>
 
             <button type="button" className="btn-secondary" onClick={novoBloco}>+ Novo bloco</button>
           </div>

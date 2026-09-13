@@ -650,6 +650,7 @@ export default function EnsaiosPage() {
           copiando={!!modal.copiar}
           onClose={() => setModal(null)}
           bandMembers={bandMembers}
+          ensaios={ensaios}
         />
       )}
       {performing && <PerformanceMode event={performing} onClose={() => setPerforming(null)} />}
