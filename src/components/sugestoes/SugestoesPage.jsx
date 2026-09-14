@@ -21,7 +21,7 @@ import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { getYouTubeId } from '../../utils/youtube'
-import { formatarDuracao } from '../../utils/duracao'
+import { formatarDuracao, parseDuracao } from '../../utils/duracao'
 import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -66,6 +66,11 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   const [editingNotes, setEditingNotes] = useState(false)
   const [notes, setNotes] = useState(sugestao.notes || '')
   const [editingComment, setEditingComment] = useState(false)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [videoUrl, setVideoUrl] = useState(sugestao.videoUrl || '')
+  const [tom, setTom] = useState(sugestao.tom || '')
+  const [bpm, setBpm] = useState(sugestao.bpm || '')
+  const [duracao, setDuracao] = useState(formatarDuracao(sugestao.duracaoSeg))
   // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
   // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
   const [commentDraft, setCommentDraft] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
@@ -119,6 +124,27 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   const saveNotes = () => {
     updateDoc(ref, { notes: notes.trim() }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setEditingNotes(false)
+  }
+
+  // Tom/BPM/duração só vêm da busca automática na criação — aqui dá pra
+  // completar ou corrigir na mão (a busca pode não achar, ou achar errado)
+  const openMeta = () => {
+    setVideoUrl(sugestao.videoUrl || '')
+    setTom(sugestao.tom || '')
+    setBpm(sugestao.bpm || '')
+    setDuracao(formatarDuracao(sugestao.duracaoSeg))
+    setEditingMeta(true)
+  }
+  const saveMeta = () => {
+    const duracaoSeg = parseDuracao(duracao)
+    if (duracao.trim() && duracaoSeg === null) { alert('Duração inválida — use m:ss, tipo 3:45.'); return }
+    updateDoc(ref, {
+      videoUrl: videoUrl.trim(),
+      tom: tom.trim(),
+      bpm: bpm ? Number(bpm) : null,
+      duracaoSeg,
+    }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+    setEditingMeta(false)
   }
 
   // Voto de dificuldade (mapa keyed por uid)
@@ -301,6 +327,36 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             {sugestao.description && (
               <p className="sug-description">{sugestao.description}</p>
             )}
+
+        <div className="song-meta-bar" style={{ marginBottom: 12 }}>
+          {sugestao.tom && <span className="mini-chip">♪ {sugestao.tom}</span>}
+          {sugestao.bpm && <span className="mini-chip">♩ {sugestao.bpm} BPM</span>}
+          {sugestao.duracaoSeg && <span className="mini-chip">⏱ {formatarDuracao(sugestao.duracaoSeg)}</span>}
+          <button className="btn-meta-edit" onClick={() => (editingMeta ? setEditingMeta(false) : openMeta())}>✏️ Editar</button>
+        </div>
+
+        {editingMeta && (
+          <div className="song-meta-edit" style={{ marginBottom: 12 }}>
+            <div className="form-row">
+              <label>Tom
+                <input value={tom} onChange={(e) => setTom(e.target.value)} placeholder="Ex: Sol, Am" />
+              </label>
+              <label>BPM
+                <input type="number" min="20" max="300" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="Ex: 120" />
+              </label>
+              <label>Duração
+                <input value={duracao} onChange={(e) => setDuracao(e.target.value)} placeholder="Ex: 3:45" />
+              </label>
+              <label>YouTube
+                <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." />
+              </label>
+            </div>
+            <div className="notes-actions">
+              <button className="btn-secondary" onClick={() => setEditingMeta(false)}>Cancelar</button>
+              <button className="btn-primary" onClick={saveMeta}>Salvar</button>
+            </div>
+          </div>
+        )}
 
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
