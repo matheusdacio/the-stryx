@@ -189,7 +189,9 @@ export default function SetlistPage() {
   // Toca o que está na tela: filtro, tag, busca e ordenação valem pra fila
   const comVideo = displayed.filter((s) => s.videoUrl)
 
-  const comDuracao = displayed.filter((s) => s.duracaoSeg)
+  // Total geral: sempre o setlist inteiro, não muda com filtro/busca —
+  // é "quanto tempo dura tocar tudo", não "quanto dura o que tá na tela"
+  const comDuracao = songs.filter((s) => s.duracaoSeg)
   const duracaoTotalSeg = comDuracao.reduce((acc, s) => acc + s.duracaoSeg, 0)
 
   const counts = FILTERS.reduce((acc, f) => {
@@ -258,7 +260,7 @@ export default function SetlistPage() {
       <p className="filter-hint">O nível da música é o de quem está menos pronto nela.</p>
       {duracaoTotalSeg > 0 && (
         <p className="filter-hint">
-          ⏱ {formatarDuracaoTotal(duracaoTotalSeg)} de música com duração cadastrada ({comDuracao.length} de {displayed.length})
+          ⏱ Total geral: {formatarDuracaoTotal(duracaoTotalSeg)} ({comDuracao.length} de {songs.length} músicas com duração cadastrada)
         </p>
       )}
 

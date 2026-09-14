@@ -295,7 +295,9 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
 
           {hasSetlist && compacto && (
             <div className="pauta-block">
-              <p className="section-label">Músicas ({musicas.length})</p>
+              <p className="section-label">
+                Músicas ({musicas.length}){duracaoTotalSeg > 0 && ` · ⏱ ${formatarDuracaoTotal(duracaoTotalSeg)}`}
+              </p>
               <SetlistPreview setlist={musicas} blocos={blocos.length} limite={3} />
             </div>
           )}
@@ -304,6 +306,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
             <div className="pauta-block">
               <p className="section-label">
                 Músicas ({musicas.length}){blocos.length > 1 && ` · ${blocos.length} blocos`}
+                {duracaoTotalSeg > 0 && ` · ⏱ ${formatarDuracaoTotal(duracaoTotalSeg)}`}
                 {podeMarcar && <span className="filter-hint" style={{ margin: 0, textTransform: 'none', letterSpacing: 0 }}> · marque as que rolaram</span>}
               </p>
               {(() => {
@@ -311,9 +314,13 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
                 return blocos.map((b, bi) => {
                   const inicio = offset
                   offset += (b.musicas || []).length
+                  const duracaoBlocoSeg = (b.musicas || []).reduce((acc, m) => acc + (songs[m.id]?.duracaoSeg || 0), 0)
                   return (
                     <div key={b.id}>
-                      <p className="bloco-titulo">{nomeDoBloco(b, bi)} <span className="count">{(b.musicas || []).length}</span></p>
+                      <p className="bloco-titulo">
+                        {nomeDoBloco(b, bi)} <span className="count">{(b.musicas || []).length}</span>
+                        {duracaoBlocoSeg > 0 && <span className="filter-hint" style={{ margin: 0, textTransform: 'none', letterSpacing: 0 }}> · ⏱ {formatarDuracaoTotal(duracaoBlocoSeg)}</span>}
+                      </p>
                       <ol className="event-songs-list" start={inicio + 1}>
                         {(b.musicas || []).map((s, i) => {
                           const nivel = dominioPorPeso(calcDominio(songs[s.id]?.dominio, uidsAtivosDe(bandMembers)).pior)

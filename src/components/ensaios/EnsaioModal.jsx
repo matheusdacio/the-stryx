@@ -13,6 +13,7 @@ import { formatData } from '../../utils/data'
 import { blocosDe, novoBlocoId, nomeDoBloco, musicasDoEvento } from '../../utils/blocos'
 import { grupoDe, unidadesDe, juntarPares } from '../../utils/pares'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
+import { formatarDuracaoTotal } from '../../utils/duracao'
 
 function toInputDate(ts) {
   if (!ts) return ''
@@ -109,6 +110,9 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
   const [mexeu, setMexeu] = useState(false)
 
   const todasMusicas = blocos.flatMap((b) => b.musicas)
+  // Duração vive na música (allSongs), não no retrato salvo no bloco
+  const duracaoPorId = Object.fromEntries(allSongs.map((s) => [s.id, s.duracaoSeg || 0]))
+  const duracaoTotalSeg = todasMusicas.reduce((acc, m) => acc + (duracaoPorId[m.id] || 0), 0)
 
   // Unidades (grupo/par vira uma unidade só) já calculadas por bloco, uma
   // vez só — servem tanto pro render quanto pro arrasto entre blocos, que
@@ -512,6 +516,7 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
             <p className="section-label">
               Músicas do evento {todasMusicas.length > 0 && `(${todasMusicas.length})`}
               {blocos.length > 1 && ` · ${blocos.length} blocos`}
+              {duracaoTotalSeg > 0 && ` · ⏱ ${formatarDuracaoTotal(duracaoTotalSeg)}`}
             </p>
             <input
               value={songSearch}
@@ -610,6 +615,14 @@ export default function EnsaioModal({ ensaio, copiando = false, onClose, bandMem
                       onChange={(e) => renomearBloco(bi, e.target.value)}
                     />
                     <span className="count">{b.musicas.length}</span>
+                    {(() => {
+                      const duracaoBlocoSeg = b.musicas.reduce((acc, m) => acc + (duracaoPorId[m.id] || 0), 0)
+                      return duracaoBlocoSeg > 0 && (
+                        <span style={{ fontSize: '0.75rem', color: 'var(--text-muted)', whiteSpace: 'nowrap' }}>
+                          ⏱ {formatarDuracaoTotal(duracaoBlocoSeg)}
+                        </span>
+                      )
+                    })()}
                     <button
                       type="button" className="btn-order" aria-label="Mover bloco pra cima" title="Mover bloco pra cima"
                       onClick={(e) => { e.stopPropagation(); moverBloco(bi, -1) }} disabled={bi === 0}
