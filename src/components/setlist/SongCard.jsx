@@ -171,6 +171,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
     const batch = writeBatch(db)
     // Sem isso, quem emendava nesta ficava com "proxima" apontando pro nada
     if (pred) batch.update(doc(db, 'songs', pred.id), { proxima: deleteField() })
+    // Sem isso, a sugestão de origem ficava travada em "aprovada" pra sempre
+    // — some do setlist mas o card continua dizendo "✓ No setlist"
+    if (song.sugestaoId) batch.delete(doc(db, 'sugestoes', song.sugestaoId))
     batch.delete(ref)
     batch.commit().catch(erroSalvar)
   }
