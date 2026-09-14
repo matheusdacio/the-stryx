@@ -19,7 +19,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.title.trim() || bloqueio) return
+    if (!form.title.trim() || !form.artist.trim() || !form.videoUrl.trim() || bloqueio) return
     setSaving(true)
     // Semeia "crua" pra banda toda, igual ao aprovar sugestão — senão a
     // música cadastrada direto nasce "Sem voto" e fica fora do "Trazer as
@@ -55,7 +55,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
         </p>
         <form onSubmit={handleSubmit}>
           <label>Título *<input name="title" value={form.title} onChange={handleChange} placeholder="Ex: Eruption" autoFocus required /></label>
-          <label>Artista / Autor<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" /></label>
+          <label>Artista / Autor *<input name="artist" value={form.artist} onChange={handleChange} placeholder="Ex: Van Halen" required /></label>
           {bloqueio && (
             <p className="aviso-duplicata bloqueio">
               ⛔ {mensagemBloqueio(duplicata)}
@@ -81,8 +81,8 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
             <input name="cantor" value={form.cantor} onChange={handleChange} placeholder="Ex: Marcos, Márcio/Marcos" />
           </label>
           <label>
-            Link do YouTube
-            <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." />
+            Link do YouTube *
+            <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." required />
           </label>
           {videoId && (
             <div className="yt-preview-small">
@@ -97,7 +97,7 @@ export default function AddSongModal({ onClose, totalSongs, acervo }) {
           <label>Observações<textarea name="notes" value={form.notes} onChange={handleChange} placeholder="Quem canta, afinação, deixa do solo… aparece no modo palco" rows={3} /></label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Salvando...' : 'Adicionar'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio || !form.title.trim() || !form.artist.trim() || !form.videoUrl.trim()}>{saving ? 'Salvando...' : 'Adicionar'}</button>
           </div>
         </form>
       </div>

@@ -551,7 +551,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
 
   const handleSubmit = (e) => {
     e.preventDefault()
-    if (!form.title.trim() || bloqueio) return
+    if (!form.title.trim() || !form.artist.trim() || !form.videoUrl.trim() || bloqueio) return
     setSaving(true)
     // Fecha na hora — não espera nenhuma das duas gravações. A fila de
     // notificação é só um "avise a banda" por trás, nunca deve travar quem
@@ -583,7 +583,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
         <form onSubmit={handleSubmit}>
           <div className="form-row">
             <label>Música *<input name="title" value={form.title} onChange={handleChange} placeholder="Nome da música" autoFocus required /></label>
-            <label>Artista<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" /></label>
+            <label>Artista *<input name="artist" value={form.artist} onChange={handleChange} placeholder="Banda / Artista" required /></label>
           </div>
 
           {bloqueio && (
@@ -616,8 +616,8 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
             </p>
           )}
           <label>
-            Link do YouTube
-            <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." />
+            Link do YouTube *
+            <input name="videoUrl" value={form.videoUrl} onChange={handleChange} placeholder="https://youtube.com/watch?v=..." required />
           </label>
           {videoId && (
             <div className="yt-preview-small">
@@ -631,7 +631,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
           </label>
           <div className="modal-actions">
             <button type="button" className="btn-secondary" onClick={onClose}>Cancelar</button>
-            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio}>{saving ? 'Enviando...' : 'Sugerir'}</button>
+            <button type="submit" className="btn-primary" disabled={saving || !!bloqueio || !form.title.trim() || !form.artist.trim() || !form.videoUrl.trim()}>{saving ? 'Enviando...' : 'Sugerir'}</button>
           </div>
         </form>
       </div>
