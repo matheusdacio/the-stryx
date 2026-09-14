@@ -13,6 +13,7 @@ import { DOMINIOS, calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils
 import { fatorFacilidade } from '../../utils/dificuldade'
 import { musicasDoEvento } from '../../utils/blocos'
 import { diaDe } from '../../utils/data'
+import { formatarDuracaoTotal } from '../../utils/duracao'
 import { todosVotaram } from '../../utils/rejeicao'
 import { usePersistedState } from '../../hooks/usePersistedState'
 
@@ -188,6 +189,9 @@ export default function SetlistPage() {
   // Toca o que está na tela: filtro, tag, busca e ordenação valem pra fila
   const comVideo = displayed.filter((s) => s.videoUrl)
 
+  const comDuracao = displayed.filter((s) => s.duracaoSeg)
+  const duracaoTotalSeg = comDuracao.reduce((acc, s) => acc + s.duracaoSeg, 0)
+
   const counts = FILTERS.reduce((acc, f) => {
     acc[f.value] = f.value === 'all'
       ? songs.length
@@ -252,6 +256,11 @@ export default function SetlistPage() {
         )}
       </div>
       <p className="filter-hint">O nível da música é o de quem está menos pronto nela.</p>
+      {duracaoTotalSeg > 0 && (
+        <p className="filter-hint">
+          ⏱ {formatarDuracaoTotal(duracaoTotalSeg)} de música com duração cadastrada ({comDuracao.length} de {displayed.length})
+        </p>
+      )}
 
       {/* Ordenação extra */}
       <div className="sort-bar">

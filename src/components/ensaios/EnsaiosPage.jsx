@@ -6,6 +6,7 @@ import { firstName } from '../../utils/members'
 import { PRESENCAS, splitPresenca, faltaResponder } from '../../utils/presenca'
 import { calcDominio, dominioPorPeso, uidsAtivosDe } from '../../utils/dominio'
 import { formatData, jaPassou, diaDe, formatHora, formatHorario } from '../../utils/data'
+import { formatarDuracaoTotal } from '../../utils/duracao'
 import { acharCifra } from '../../utils/score'
 import { blocosDe, musicasDoEvento, nomeDoBloco } from '../../utils/blocos'
 import EnsaioModal from './EnsaioModal'
@@ -225,6 +226,9 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
   const musicas = musicasDoEvento(ensaio)
   const hasSetlist = musicas.length > 0
   const horario = formatHorario(ensaio.horaInicio, ensaio.horaFim)
+  // Duração vive na música (songs), não no retrato salvo no evento — por
+  // isso busca ao vivo, igual tom/cantor
+  const duracaoTotalSeg = musicas.reduce((acc, s) => acc + (songs[s.id]?.duracaoSeg || 0), 0)
 
   return (
     <div className={`ensaio-row ${open ? 'open' : ''} ${destaque ? `destaque ${ensaio.type === 'apresentacao' ? 'apresentacao' : ''}` : ''}`}>
@@ -254,6 +258,7 @@ function EnsaioRow({ ensaio, onEdit, onCopy, onRemove, onTogglePauta, onPerform,
               {hasSetlist && (
                 <p className="next-ensaio-members">
                   🎵 {musicas.length} músicas{blocos.length > 1 && ` · ${blocos.length} blocos`}
+                  {duracaoTotalSeg > 0 && ` · ⏱ ${formatarDuracaoTotal(duracaoTotalSeg)}`}
                 </p>
               )}
             </div>

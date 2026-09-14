@@ -12,6 +12,7 @@ import { showToast } from '../../utils/toast'
 import CifraModal from '../cifras/CifraModal'
 import NotaChip from '../NotaChip'
 import { predecessoraDe, sucessoraDe, motivoInvalido } from '../../utils/pares'
+import { parseDuracao, formatarDuracao } from '../../utils/duracao'
 
 const firstName = (n) => (n || '').trim().split(' ')[0]
 
@@ -35,6 +36,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
   const [tom, setTom] = useState(song.tom || '')
   const [cantor, setCantor] = useState(song.cantor || '')
   const [bpm, setBpm] = useState(song.bpm || '')
+  const [duracao, setDuracao] = useState(formatarDuracao(song.duracaoSeg))
   const [videoUrl, setVideoUrl] = useState(song.videoUrl || '')
   const [tags, setTags] = useState(song.tags || [])
   const [newTag, setNewTag] = useState('')
@@ -120,12 +122,15 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
       const motivo = motivoInvalido(predSel, song.id, todasMusicas)
       if (motivo) { alert(motivo); return }
     }
+    const duracaoSeg = parseDuracao(duracao)
+    if (duracao.trim() && duracaoSeg === null) { alert('Duração inválida — use m:ss, tipo 3:45.'); return }
 
     const batch = writeBatch(db)
     batch.update(ref, {
       tom: tom.trim(),
       cantor: cantor.trim(),
       bpm: bpm ? Number(bpm) : null,
+      duracaoSeg,
       videoUrl: videoUrl.trim(),
       tags,
       ...(proxSel !== prevProx ? { proxima: proxSel || deleteField() } : {}),
@@ -148,6 +153,7 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
     setTom(song.tom || '')
     setCantor(song.cantor || '')
     setBpm(song.bpm || '')
+    setDuracao(formatarDuracao(song.duracaoSeg))
     setVideoUrl(song.videoUrl || '')
     setTags(song.tags || [])
     setNewTag('')
@@ -410,6 +416,11 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
         ) : (
           <button className="btn-meta-add" onClick={openMeta}>♩ + BPM</button>
         )}
+        {song.duracaoSeg ? (
+          <span className="mini-chip">⏱ {formatarDuracao(song.duracaoSeg)}</span>
+        ) : (
+          <button className="btn-meta-add" onClick={openMeta}>⏱ + duração</button>
+        )}
         {!videoId && (
           <button className="btn-meta-add" onClick={openMeta}>🎬 + vídeo</button>
         )}
@@ -444,6 +455,9 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
             </label>
             <label>BPM
               <input type="number" min="20" max="300" value={bpm} onChange={(e) => setBpm(e.target.value)} placeholder="Ex: 120" />
+            </label>
+            <label>Duração
+              <input value={duracao} onChange={(e) => setDuracao(e.target.value)} placeholder="Ex: 3:45" />
             </label>
             <label>YouTube
               <input value={videoUrl} onChange={(e) => setVideoUrl(e.target.value)} placeholder="https://youtube.com/..." />

@@ -28,6 +28,7 @@ export async function buscarMusicas(termo) {
       artist: r.artistName || '',
       album: r.collectionName || '',
       ano: r.releaseDate ? r.releaseDate.slice(0, 4) : '',
+      duracaoSeg: r.trackTimeMillis ? Math.round(r.trackTimeMillis / 1000) : null,
     })
     return acc
   }, []).slice(0, 5)

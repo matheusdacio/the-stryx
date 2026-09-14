@@ -45,6 +45,7 @@ export default function MusicLookup({ titulo, onPick }) {
   const escolher = async (op) => {
     setEscolhido(op.title)
     const dados = { title: op.title, artist: op.artist }
+    if (op.duracaoSeg) dados.duracaoSeg = op.duracaoSeg
 
     // Vídeo e tom só quando as chaves existem; se falharem, segue com o resto
     if (buscaVideoAtiva || buscaTomAtiva) {

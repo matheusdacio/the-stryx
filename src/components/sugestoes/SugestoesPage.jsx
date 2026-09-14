@@ -21,6 +21,7 @@ import { faltaVotar, countSugestoesPendentes } from '../../utils/pendencias'
 import { showToast } from '../../utils/toast'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { getYouTubeId } from '../../utils/youtube'
+import { formatarDuracao } from '../../utils/duracao'
 import { formatData } from '../../utils/data'
 
 const ADMIN_EMAIL = 'matheusdacioflscbr@gmail.com'
@@ -164,6 +165,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
         tom: sugestao.tom || '',
         cantor: sugestao.cantor || '',
         bpm: sugestao.bpm || null,
+        duracaoSeg: sugestao.duracaoSeg || null,
         tags: sugestao.tags || [],
         // Escala única desde 80191d4: não precisa converter, só copiar
         dificuldade: sugestao.dificuldade || {},
@@ -378,7 +380,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
   useFecharComVoltar(onClose)
   // tom e bpm não têm campo no formulário: vêm da busca automática quando
   // disponível e viajam pro setlist se a sugestão for aprovada
-  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null })
+  const [form, setForm] = useState({ title: '', artist: '', videoUrl: '', description: '', tom: '', bpm: null, duracaoSeg: null })
   const [achado, setAchado] = useState(null)
   const [saving, setSaving] = useState(false)
   const videoId = getYouTubeId(form.videoUrl)
@@ -398,6 +400,7 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
       videoUrl: f.videoUrl.trim() || dados.videoUrl || '',
       tom: f.tom || dados.tom || '',
       bpm: f.bpm || dados.bpm || null,
+      duracaoSeg: f.duracaoSeg || dados.duracaoSeg || null,
     }))
     setAchado(dados)
   }
@@ -460,9 +463,9 @@ function AddSugestaoModal({ onClose, userId, userName, acervo, onAbrirExistente 
           )}
 
           <MusicLookup titulo={form.title} onPick={aplicarAchado} />
-          {(achado?.tom || achado?.bpm) && (
+          {(achado?.tom || achado?.bpm || achado?.duracaoSeg) && (
             <p className="lookup-aviso">
-              Da gravação original{achado.tom ? `, tom ${achado.tom}` : ''}{achado.bpm ? `, ${achado.bpm} BPM` : ''} — confira antes de confiar, a banda pode tocar em outro tom.
+              Da gravação original{achado.tom ? `, tom ${achado.tom}` : ''}{achado.bpm ? `, ${achado.bpm} BPM` : ''}{achado.duracaoSeg ? `, ${formatarDuracao(achado.duracaoSeg)}` : ''} — confira antes de confiar, a banda pode tocar em outro tom ou versão.
               {buscaTomAtiva && (
                 <> Dados de <a href="https://getsongbpm.com" target="_blank" rel="noreferrer">GetSongBPM</a>.</>
               )}
