@@ -59,7 +59,7 @@ function OpinionSummary({ opinoes }) {
   )
 }
 
-function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou }) {
+function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembers, onVotou, acervo }) {
   useFecharComVoltar(onClose)
   const [saving, setSaving] = useState(false)
   const [reopening, setReopening] = useState(false)
@@ -69,11 +69,52 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
   // Inicializador preguiçoso: sem isso o textarea sempre nascia vazio, mesmo
   // reabrindo uma sugestão em que a pessoa já tinha deixado um comentário
   const [commentDraft, setCommentDraft] = useState(() => (sugestao.opinoes || {})[userId]?.comment || '')
+  // Edição da própria sugestão (título, artista, link, motivo). O formulário
+  // é semeado no clique em "Editar", não na montagem, pra não reverter o
+  // que outro membro tiver mudado enquanto o modal estava aberto
+  const [editing, setEditing] = useState(false)
+  const [form, setForm] = useState(null)
+  const [savingEdit, setSavingEdit] = useState(false)
   const ref = doc(db, 'sugestoes', sugestao.id)
 
   const list = opinoesArray(sugestao.opinoes)
   const existing = (sugestao.opinoes || {})[userId]
   const faltam = quemFalta(sugestao, bandMembers)
+
+  // Só quem sugeriu (ou o admin) mexe no conteúdo, e só enquanto está em
+  // aberto — depois de ir pro setlist a música já é uma cópia própria lá
+  const podeEditar = sugestao.status === 'aberta' && (sugestao.suggestedById === userId || isAdmin)
+
+  const abrirEdicao = () => {
+    setForm({
+      title: sugestao.title || '',
+      artist: sugestao.artist || '',
+      videoUrl: sugestao.videoUrl || '',
+      description: sugestao.description || '',
+    })
+    setEditing(true)
+  }
+
+  // Duplicata ignora a própria sugestão — senão ela travaria contra si mesma
+  const acervoSemEsta = acervo
+    ? { ...acervo, sugestoes: (acervo.sugestoes || []).filter((s) => s.id !== sugestao.id) }
+    : undefined
+  const duplicata = editing && form ? checarDuplicata(form.title, form.artist, acervoSemEsta) : {}
+
+  const salvarEdicao = (e) => {
+    e.preventDefault()
+    if (!form?.title.trim() || duplicata.bloqueio) return
+    setSavingEdit(true)
+    updateDoc(ref, {
+      title: form.title.trim(),
+      artist: form.artist.trim(),
+      videoUrl: form.videoUrl.trim(),
+      description: form.description.trim(),
+    })
+      .then(() => { showToast('Sugestão atualizada'); setEditing(false) })
+      .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+      .finally(() => setSavingEdit(false))
+  }
 
   const saveNotes = () => {
     updateDoc(ref, { notes: notes.trim() }).catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
@@ -192,27 +233,74 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
       .finally(() => setReopening(false))
   }
 
+  // Enquanto edita, o modal mostra só o formulário — votos e observações
+  // voltam quando salvar ou cancelar
+  if (editing && form) {
+    return (
+      <div className="modal-overlay" onClick={() => setEditing(false)}>
+        <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
+          <form onSubmit={salvarEdicao}>
+            <h2>Editar sugestão</h2>
+            <div className="form-row">
+              <label>Música *<input name="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome da música" required /></label>
+              <label>Artista<input name="artist" value={form.artist} onChange={(e) => setForm({ ...form, artist: e.target.value })} placeholder="Banda / Artista" /></label>
+            </div>
+            {duplicata.bloqueio && (
+              <p className="aviso-duplicata bloqueio">⛔ {mensagemBloqueio(duplicata)}</p>
+            )}
+            {!duplicata.bloqueio && duplicata.parecidas?.length > 0 && (
+              <p className="aviso-duplicata">
+                ⚠️ Já existe algo parecido: {duplicata.parecidas.join(' · ')} — confira o artista antes de salvar.
+              </p>
+            )}
+            <label>
+              Link do YouTube
+              <input name="videoUrl" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
+            </label>
+            {getYouTubeId(form.videoUrl) && (
+              <div className="yt-preview-small">
+                <img src={`https://img.youtube.com/vi/${getYouTubeId(form.videoUrl)}/hqdefault.jpg`} alt="preview" />
+                <span>✓ Vídeo reconhecido</span>
+              </div>
+            )}
+            <label>
+              Por que sugere essa música?
+              <textarea name="description" value={form.description} onChange={(e) => setForm({ ...form, description: e.target.value })} rows={3} placeholder="Contexto, referência, o que acha legal..." />
+            </label>
+            <div className="modal-actions">
+              <button type="button" className="btn-secondary" onClick={() => setEditing(false)}>Cancelar</button>
+              <button type="submit" className="btn-primary" disabled={savingEdit || !!duplicata.bloqueio}>{savingEdit ? 'Salvando...' : 'Salvar'}</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal modal-large" onClick={(e) => e.stopPropagation()}>
-        <div className="modal-top">
-          <div>
-            <h2 style={{ marginBottom: 2 }}>{sugestao.title}</h2>
-            {sugestao.artist && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{sugestao.artist}</p>}
-          </div>
-          <button className="btn-secondary" onClick={onClose}>Fechar</button>
-        </div>
+            <div className="modal-top">
+              <div>
+                <h2 style={{ marginBottom: 2 }}>{sugestao.title}</h2>
+                {sugestao.artist && <p style={{ color: 'var(--text-muted)', fontSize: '0.85rem' }}>{sugestao.artist}</p>}
+              </div>
+              <div style={{ display: 'flex', gap: 8, flexShrink: 0 }}>
+                {podeEditar && <button className="btn-secondary" onClick={abrirEdicao} title="Editar título, artista, link ou motivo">✏️ Editar</button>}
+                <button className="btn-secondary" onClick={onClose}>Fechar</button>
+              </div>
+            </div>
 
-        <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
-          Sugerida por <strong>{sugestao.suggestedBy}</strong>
-          {sugestao.createdAt && <> · {formatData(sugestao.createdAt, { curta: true })}</>}
-        </p>
+            <p style={{ fontSize: '0.78rem', color: 'var(--text-muted)', marginBottom: 12 }}>
+              Sugerida por <strong>{sugestao.suggestedBy}</strong>
+              {sugestao.createdAt && <> · {formatData(sugestao.createdAt, { curta: true })}</>}
+            </p>
 
-        {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
+            {sugestao.videoUrl && <VideoInline url={sugestao.videoUrl} title={sugestao.title} />}
 
-        {sugestao.description && (
-          <p className="sug-description">{sugestao.description}</p>
-        )}
+            {sugestao.description && (
+              <p className="sug-description">{sugestao.description}</p>
+            )}
 
         {sugestao.status !== 'aberta' && (
           <div className={`sug-status-banner sug-${sugestao.status}`}>
@@ -968,6 +1056,7 @@ export default function SugestoesPage() {
           userId={user.uid}
           userName={user.displayName}
           onVotou={(id) => setFixados((prev) => new Set(prev).add(id))}
+          acervo={{ musicas: musicasSetlist, sugestoes, bandMembers }}
         />
       )}
       {addModal && (

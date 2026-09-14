@@ -13,6 +13,9 @@ A versão exibida no app vem de `src/version.js` (mantenha em sincronia com o `p
 
 ---
 
+## [1.43.0] — 2026-09-14
+- **Editar a própria sugestão**: quem sugeriu (ou o admin) ganha um botão ✏️ Editar no detalhe da sugestão em aberto, pra corrigir título, artista, link do YouTube e o motivo. Opiniões, dificuldade e observações ficam intactas; a checagem de duplicata vale igual à de sugestão nova
+
 ## [1.42.0] — 2026-09-04
 - **Evento ganha horário de início e fim** — aparece no card, na lista e no modo palco, e entra no lembrete de véspera e nos avisos de evento marcado/remarcado/cancelado; ensaio novo já nasce 9h às 17h. Ferramenta admin preenche esse horário nos ensaios antigos que ainda não têm
 
