@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, serverTimestamp, writeBatch } from 'firebase/firestore'
+import { doc, updateDoc, deleteDoc, deleteField, addDoc, collection, getDoc, getDocs, serverTimestamp, writeBatch } from 'firebase/firestore'
 import { db } from '../../firebase/config'
 import { useAuth } from '../../contexts/AuthContext'
 import MetronomeButton from './MetronomeButton'
@@ -166,16 +166,37 @@ export default function SongCard({ song, nota, opinoes = {}, bandMembers = [], c
     setNewTag('')
   }
   const removeTag = (t) => setTags(tags.filter((x) => x !== t))
-  const remove = () => {
+  const remove = async () => {
     if (!confirm(`Apagar "${song.title}" de vez? Votos de domínio e opinião, tom, BPM, tags e observações vão junto. Se é só tirar do setlist, use "↩ Voltar pras sugestões".`)) return
-    const batch = writeBatch(db)
-    // Sem isso, quem emendava nesta ficava com "proxima" apontando pro nada
-    if (pred) batch.update(doc(db, 'songs', pred.id), { proxima: deleteField() })
-    // Sem isso, a sugestão de origem ficava travada em "aprovada" pra sempre
-    // — some do setlist mas o card continua dizendo "✓ No setlist"
-    if (song.sugestaoId) batch.delete(doc(db, 'sugestoes', song.sugestaoId))
-    batch.delete(ref)
-    batch.commit().catch(erroSalvar)
+    setBusy(true)
+    try {
+      const batch = writeBatch(db)
+      // Sem isso, quem emendava nesta ficava com "proxima" apontando pro nada
+      if (pred) batch.update(doc(db, 'songs', pred.id), { proxima: deleteField() })
+      // Sem isso, a sugestão de origem ficava travada em "aprovada" pra sempre
+      // — some do setlist mas o card continua dizendo "✓ No setlist"
+      if (song.sugestaoId) batch.delete(doc(db, 'sugestoes', song.sugestaoId))
+      // Sem isso, a música continuava escalada nos blocos de eventos futuros
+      // com um id que não existe mais — some do setlist mas ninguém percebe
+      // que ela ainda tá no repertório do próximo ensaio
+      const eventosSnap = await getDocs(collection(db, 'ensaios'))
+      eventosSnap.forEach((d) => {
+        const ev = d.data()
+        if (!Array.isArray(ev.blocos)) return
+        let mudou = false
+        const novosBlocos = ev.blocos.map((b) => {
+          if (!(b.musicas || []).some((m) => m.id === song.id)) return b
+          mudou = true
+          return { ...b, musicas: b.musicas.filter((m) => m.id !== song.id) }
+        })
+        if (mudou) batch.update(doc(db, 'ensaios', d.id), { blocos: novosBlocos })
+      })
+      batch.delete(ref)
+      await batch.commit()
+    } catch {
+      erroSalvar()
+      setBusy(false)
+    }
   }
 
   // Tira a música do setlist e devolve pra aba de Sugestões.
