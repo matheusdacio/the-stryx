@@ -108,7 +108,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
 
   const salvarEdicao = (e) => {
     e.preventDefault()
-    if (!form?.title.trim() || duplicata.bloqueio) return
+    if (!form?.title.trim() || !form?.artist.trim() || !form?.videoUrl.trim() || duplicata.bloqueio) return
     setSavingEdit(true)
     updateDoc(ref, {
       title: form.title.trim(),
@@ -269,7 +269,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             <h2>Editar sugestão</h2>
             <div className="form-row">
               <label>Música *<input name="title" value={form.title} onChange={(e) => setForm({ ...form, title: e.target.value })} placeholder="Nome da música" required /></label>
-              <label>Artista<input name="artist" value={form.artist} onChange={(e) => setForm({ ...form, artist: e.target.value })} placeholder="Banda / Artista" /></label>
+              <label>Artista *<input name="artist" value={form.artist} onChange={(e) => setForm({ ...form, artist: e.target.value })} placeholder="Banda / Artista" required /></label>
             </div>
             {duplicata.bloqueio && (
               <p className="aviso-duplicata bloqueio">⛔ {mensagemBloqueio(duplicata)}</p>
@@ -280,8 +280,8 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
               </p>
             )}
             <label>
-              Link do YouTube
-              <input name="videoUrl" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=..." />
+              Link do YouTube *
+              <input name="videoUrl" value={form.videoUrl} onChange={(e) => setForm({ ...form, videoUrl: e.target.value })} placeholder="https://youtube.com/watch?v=..." required />
             </label>
             {getYouTubeId(form.videoUrl) && (
               <div className="yt-preview-small">
@@ -295,7 +295,7 @@ function SugestaoModal({ sugestao, onClose, isAdmin, userId, userName, bandMembe
             </label>
             <div className="modal-actions">
               <button type="button" className="btn-secondary" onClick={() => setEditing(false)}>Cancelar</button>
-              <button type="submit" className="btn-primary" disabled={savingEdit || !!duplicata.bloqueio}>{savingEdit ? 'Salvando...' : 'Salvar'}</button>
+              <button type="submit" className="btn-primary" disabled={savingEdit || !!duplicata.bloqueio || !form.title.trim() || !form.artist.trim() || !form.videoUrl.trim()}>{savingEdit ? 'Salvando...' : 'Salvar'}</button>
             </div>
           </form>
         </div>
