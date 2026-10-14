@@ -1,6 +1,8 @@
 import { useState, useEffect, useRef } from 'react'
-import { collection, doc, onSnapshot, updateDoc } from 'firebase/firestore'
+import { collection, doc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../firebase/config'
+import { useAuth } from '../contexts/AuthContext'
+import { DOMINIOS } from '../utils/dominio'
 import { getYouTubeId, loadYouTubeApi } from '../utils/youtube'
 import { acharCifra, CIFRA_KEYS } from '../utils/score'
 import CifraModal from './cifras/CifraModal'
@@ -12,6 +14,7 @@ import CifraModal from './cifras/CifraModal'
 // Sem botão de fechar próprio: quem monta o componente já mostra um "■ Parar"
 // (o mesmo toggle que liga o player) — dois controles fariam a mesma coisa.
 export default function SetPlayer({ setlist }) {
+  const { user } = useAuth()
   // Congela a fila no instante em que o player nasce: trocar filtro, tag,
   // busca ou ordenação enquanto toca não deve pular a faixa embaixo do pé
   // de quem está ouvindo (o componente já desmonta/remonta a cada play)
@@ -121,6 +124,21 @@ export default function SetPlayer({ setlist }) {
       .catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
     setEditingTom(false)
   }
+  // Mesmo voto do card no Setlist: tocar de novo no nível já marcado desfaz
+  const meuDominio = atual?.dominio?.[user.uid]?.level
+  const votarDominio = (level) => {
+    const ref = doc(db, 'songs', atual.id)
+    const gravacao = meuDominio === level
+      ? updateDoc(ref, { [`dominio.${user.uid}`]: deleteField() })
+      : updateDoc(ref, {
+          [`dominio.${user.uid}`]: {
+            userName: user.displayName || user.email,
+            level,
+            at: new Date().toISOString(),
+          },
+        })
+    gravacao.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
+  }
   const abrirNotas = () => { setNotes(atual.notes || ''); setEditingNotes(true) }
   const salvarNotas = () => {
     updateDoc(doc(db, 'songs', atual.id), { notes })
@@ -143,6 +161,24 @@ export default function SetPlayer({ setlist }) {
       </div>
 
       <div className="perf-player-box"><div ref={containerRef} /></div>
+
+      <div className="difficulty-section">
+        <p className="prompt-label">✅ Você se sente pronto nessa?</p>
+        <div className="difficulty-btns">
+          {DOMINIOS.map((d) => (
+            <button
+              key={d.value}
+              type="button"
+              className={`btn-diff ${meuDominio === d.value ? 'active' : ''}`}
+              style={meuDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+              aria-pressed={meuDominio === d.value}
+              onClick={() => votarDominio(d.value)}
+            >
+              {d.label}
+            </button>
+          ))}
+        </div>
+      </div>
 
       <div className="set-player-cifra">
         <div className="set-player-cifra-actions">
