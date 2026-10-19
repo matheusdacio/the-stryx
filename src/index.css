@@ -1281,6 +1281,7 @@ button { font-family: inherit; }
   margin-top: 14px;
 }
 .perf-chips .perf-bpm { margin-top: 0; }
+.perf-dominio { display: flex; justify-content: center; gap: 8px; flex-wrap: wrap; margin-top: 12px; }
 .perf-tom {
   font-size: clamp(1.4rem, 4vw, 2.2rem);
   font-weight: 700;

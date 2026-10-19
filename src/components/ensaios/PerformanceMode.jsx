@@ -1,6 +1,8 @@
 import { useState, useEffect, useCallback, useRef, Fragment } from 'react'
-import { collection, doc, onSnapshot } from 'firebase/firestore'
+import { collection, doc, onSnapshot, updateDoc, deleteField } from 'firebase/firestore'
 import { db } from '../../firebase/config'
+import { useAuth } from '../../contexts/AuthContext'
+import { DOMINIOS } from '../../utils/dominio'
 import MetronomeButton from '../setlist/MetronomeButton'
 import { useFecharComVoltar } from '../../hooks/useFecharComVoltar'
 import { acharCifra } from '../../utils/score'
@@ -10,6 +12,7 @@ import { getYouTubeId } from '../../utils/youtube'
 
 export default function PerformanceMode({ event, onClose }) {
   useFecharComVoltar(onClose)
+  const { user } = useAuth()
   const [repertorio, setRepertorio] = useState(null)
   // Volta pra onde parou: sair (ou cair da tela) no meio do set e reabrir
   // não deveria empurrar de volta pra música 1
@@ -97,6 +100,22 @@ export default function PerformanceMode({ event, onClose }) {
     setIdxDaCifraAberta(idxAtual)
     setMostrarCifra(false)
     setTocandoVideo(false)
+  }
+
+  // Mesmo voto do card no Setlist: tocar de novo no nível já marcado desfaz
+  const meuDominio = current?.dominio?.[user.uid]?.level
+  const votarDominio = (level) => {
+    const ref = doc(db, 'songs', current.id)
+    const gravacao = meuDominio === level
+      ? updateDoc(ref, { [`dominio.${user.uid}`]: deleteField() })
+      : updateDoc(ref, {
+          [`dominio.${user.uid}`]: {
+            userName: user.displayName || user.email,
+            level,
+            at: new Date().toISOString(),
+          },
+        })
+    gravacao.catch(() => alert('Não deu pra salvar agora. Confere a internet e tenta de novo.'))
   }
 
   const goNext = useCallback(() => setIdx((i) => Math.min(i + 1, setlist.length - 1)), [setlist.length])
@@ -236,6 +255,22 @@ export default function PerformanceMode({ event, onClose }) {
             </button>
           )}
         </div>
+        {repertorio?.[current.id] && (
+          <div className="perf-dominio" onClick={(e) => e.stopPropagation()}>
+            {DOMINIOS.map((d) => (
+              <button
+                key={d.value}
+                type="button"
+                className={`btn-diff ${meuDominio === d.value ? 'active' : ''}`}
+                style={meuDominio === d.value ? { background: d.bg, borderColor: d.color, color: d.color } : {}}
+                aria-pressed={meuDominio === d.value}
+                onClick={() => votarDominio(d.value)}
+              >
+                {d.label}
+              </button>
+            ))}
+          </div>
+        )}
         {current.notes && <p className="perf-notes">{current.notes}</p>}
         {mostrarCifra && cifraAtual && (
           <pre
